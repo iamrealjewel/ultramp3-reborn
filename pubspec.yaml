@@ -1,0 +1,67 @@
+name: ultramp3
+description: UltraMP3 Reborn — A modern, high-performance offline music player with a premium cyber-retro aesthetic.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Reactive State Management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.3
+
+  # Declarative Routing
+  go_router: ^13.2.0
+
+  # Audio Playback Engine & Session Focus
+  just_audio: ^0.9.36
+  audio_service: ^0.18.12
+  audio_session: ^0.1.16
+  rxdart: ^0.27.7 # Combines playback position & duration streams cleanly
+
+  # Media Discovery & File System Queries
+  on_audio_query: ^2.9.0
+  permission_handler: ^11.3.0
+  device_info_plus: ^10.1.0 # Detects Android OS levels dynamically
+  path_provider: ^2.1.2
+  path: ^1.9.0
+
+  # Local Offline Database
+  hive_flutter: ^1.1.0
+
+  # Premium UI & Visuals
+  google_fonts: ^6.1.0
+  flutter_svg: ^2.0.9
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+
+  # Code Generation Tools
+  build_runner: ^2.4.8
+  riverpod_generator: ^2.4.0
+  freezed: ^2.4.7
+  freezed_annotation: ^2.4.1
+  hive_generator: ^2.0.1
+  json_serializable: ^6.7.1
+
+flutter:
+  uses-material-design: true
+  
+  # Configure assets for beautiful retro default icons or covers
+  assets:
+    - assets/images/
+    - assets/icons/
+
+flutter_launcher_icons:
+  android: "ic_launcher"
+  image_path: "assets/icons/app_icon.png"
+
