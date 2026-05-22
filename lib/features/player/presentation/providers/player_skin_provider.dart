@@ -1,8 +1,25 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:ultramp3/core/services/storage_service.dart';
 import '../../domain/models/player_skin.dart';
 
 class PlayerSkinNotifier extends StateNotifier<PlayerSkin> {
-  PlayerSkinNotifier() : super(PlayerSkin.s60Grey); // Default to classic S60 Grey
+  final StorageService _storageService;
+
+  PlayerSkinNotifier(this._storageService) : super(PlayerSkin.classicBlue) {
+    _loadSkin();
+  }
+
+  void _loadSkin() {
+    final skinName = _storageService.getActiveSkin();
+    state = PlayerSkin.all.firstWhere(
+      (s) => s.name.toLowerCase() == skinName.toLowerCase(),
+      orElse: () => PlayerSkin.classicBlue,
+    );
+  }
+
+  void _saveSkin(PlayerSkin skin) {
+    _storageService.setActiveSkin(skin.name);
+  }
 
   // Cycle through available skins based on selected skinType in round-robin fashion
   void cycleSkin(String skinType) {
@@ -11,12 +28,15 @@ class PlayerSkinNotifier extends StateNotifier<PlayerSkin> {
     if (filteredSkins.isEmpty) return;
 
     final currentIndex = filteredSkins.indexOf(state);
+    final PlayerSkin nextSkin;
     if (currentIndex == -1) {
-      state = filteredSkins.first;
+      nextSkin = filteredSkins.first;
     } else {
       final nextIndex = (currentIndex + 1) % filteredSkins.length;
-      state = filteredSkins[nextIndex];
+      nextSkin = filteredSkins[nextIndex];
     }
+    state = nextSkin;
+    _saveSkin(nextSkin);
   }
 
   // Ensure active skin matches the current category
@@ -26,25 +46,30 @@ class PlayerSkinNotifier extends StateNotifier<PlayerSkin> {
       final filteredSkins = PlayerSkin.all.where((s) => s.isFlat == isTargetFlat).toList();
       if (filteredSkins.isNotEmpty) {
         state = filteredSkins.first;
+        _saveSkin(filteredSkins.first);
       }
     }
   }
 
   // Explicitly select a skin by name
   void setSkinByName(String name) {
-    state = PlayerSkin.all.firstWhere(
+    final newSkin = PlayerSkin.all.firstWhere(
       (skin) => skin.name.toLowerCase() == name.toLowerCase(),
-      orElse: () => PlayerSkin.s60Grey,
+      orElse: () => PlayerSkin.classicBlue,
     );
+    state = newSkin;
+    _saveSkin(newSkin);
   }
 
   // Set skin directly
   void setSkin(PlayerSkin skin) {
     state = skin;
+    _saveSkin(skin);
   }
 }
 
 // Global provider for referencing and listening to active skeuomorphic skin changes
 final playerSkinProvider = StateNotifierProvider<PlayerSkinNotifier, PlayerSkin>((ref) {
-  return PlayerSkinNotifier();
+  final storageService = ref.watch(storageServiceProvider);
+  return PlayerSkinNotifier(storageService);
 });

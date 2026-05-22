@@ -395,8 +395,8 @@ class PlayerSkin {
   );
 
   static const List<PlayerSkin> all = [
-    s60Grey,
     classicBlue,
+    s60Grey,
     obsidianVoid,
     matrixAmber,
     ferrariRed,

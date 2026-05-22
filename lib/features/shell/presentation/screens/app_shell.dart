@@ -18,6 +18,9 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeSkin = ref.watch(playerSkinProvider);
+    final navActiveColor = activeSkin.name == 'S60 Classic Grey'
+        ? const Color(0xFF2ECC71)
+        : activeSkin.textColor;
 
     return Scaffold(
       extendBody: true, // Allows content to flow behind glassmorphic bottom bar
@@ -53,7 +56,7 @@ class AppShell extends ConsumerWidget {
               child: BottomNavigationBar(
                 currentIndex: navigationShell.currentIndex,
                 backgroundColor: AppColors.obsidianDark.withOpacity(0.7),
-                selectedItemColor: activeSkin.textColor,
+                selectedItemColor: navActiveColor,
                 unselectedItemColor: AppColors.textMuted,
                 selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
                 unselectedLabelStyle: const TextStyle(fontSize: 11),
@@ -62,22 +65,22 @@ class AppShell extends ConsumerWidget {
                 items: [
                   BottomNavigationBarItem(
                     icon: const Icon(Icons.home_outlined),
-                    activeIcon: Icon(Icons.home, color: activeSkin.textColor),
+                    activeIcon: Icon(Icons.home, color: navActiveColor),
                     label: 'Home',
                   ),
                   BottomNavigationBarItem(
                     icon: const Icon(Icons.music_note_outlined),
-                    activeIcon: Icon(Icons.music_note, color: activeSkin.textColor),
+                    activeIcon: Icon(Icons.music_note, color: navActiveColor),
                     label: 'Library',
                   ),
                   BottomNavigationBarItem(
                     icon: const Icon(Icons.folder_open_outlined),
-                    activeIcon: Icon(Icons.folder, color: activeSkin.textColor),
+                    activeIcon: Icon(Icons.folder, color: navActiveColor),
                     label: 'Folders',
                   ),
                   BottomNavigationBarItem(
                     icon: const Icon(Icons.queue_music_outlined),
-                    activeIcon: Icon(Icons.queue_music, color: activeSkin.textColor),
+                    activeIcon: Icon(Icons.queue_music, color: navActiveColor),
                     label: 'Playlists',
                   ),
                 ],

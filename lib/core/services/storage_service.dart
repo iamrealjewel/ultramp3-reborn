@@ -34,6 +34,58 @@ class StorageService {
   bool getGlassEnabled() => _settingsBox.get('glass_enabled', defaultValue: true);
   Future<void> setGlassEnabled(bool value) => _settingsBox.put('glass_enabled', value);
 
+  bool getDialerTransparencyEnabled() => _settingsBox.get('dialer_transparency_enabled', defaultValue: false);
+  Future<void> setDialerTransparencyEnabled(bool value) => _settingsBox.put('dialer_transparency_enabled', value);
+
+  double getDialerOpacity() => _settingsBox.get('dialer_opacity', defaultValue: 1.0);
+  Future<void> setDialerOpacity(double value) => _settingsBox.put('dialer_opacity', value);
+
+  String getSkinType() => _settingsBox.get('skin_type', defaultValue: 'classic');
+  Future<void> setSkinType(String value) => _settingsBox.put('skin_type', value);
+
+  bool getVisualizerTransparencyEnabled() => _settingsBox.get('visualizer_transparency_enabled', defaultValue: false);
+  Future<void> setVisualizerTransparencyEnabled(bool value) => _settingsBox.put('visualizer_transparency_enabled', value);
+
+  double getVisualizerOpacity() => _settingsBox.get('visualizer_opacity', defaultValue: 0.55);
+  Future<void> setVisualizerOpacity(double value) => _settingsBox.put('visualizer_opacity', value);
+
+  bool getShowAlbumArt() => _settingsBox.get('show_album_art', defaultValue: false);
+  Future<void> setShowAlbumArt(bool value) => _settingsBox.put('show_album_art', value);
+
+  // --- PLAYBACK SESSION MODULE ---
+  bool getShuffleEnabled() => _settingsBox.get('shuffle_enabled', defaultValue: false);
+  Future<void> setShuffleEnabled(bool value) => _settingsBox.put('shuffle_enabled', value);
+
+  String getLoopMode() => _settingsBox.get('loop_mode', defaultValue: 'off');
+  Future<void> setLoopMode(String value) => _settingsBox.put('loop_mode', value);
+
+  String getEqualizerPreset() => _settingsBox.get('equalizer_preset', defaultValue: 'Flat');
+  Future<void> setEqualizerPreset(String value) => _settingsBox.put('equalizer_preset', value);
+
+  List<double> getEqualizerBands() {
+    final bands = _settingsBox.get('equalizer_bands');
+    if (bands is List) {
+      return List<double>.from(bands.map((e) => (e as num).toDouble()));
+    }
+    return [0.0, 0.0, 0.0, 0.0, 0.0];
+  }
+  Future<void> setEqualizerBands(List<double> values) => _settingsBox.put('equalizer_bands', values);
+
+  double getVolumeLevel() => _settingsBox.get('volume_level', defaultValue: 1.0);
+  Future<void> setVolumeLevel(double value) => _settingsBox.put('volume_level', value);
+
+  String getVisualizerStyle() => _settingsBox.get('visualizer_style', defaultValue: 'spectrumBars');
+  Future<void> setVisualizerStyle(String value) => _settingsBox.put('visualizer_style', value);
+
+  int getVisualizerVariation() => _settingsBox.get('visualizer_variation', defaultValue: 0);
+  Future<void> setVisualizerVariation(int value) => _settingsBox.put('visualizer_variation', value);
+
+  String getActiveSkin() => _settingsBox.get('active_skin', defaultValue: 'Symbian Classic Blue');
+  Future<void> setActiveSkin(String value) => _settingsBox.put('active_skin', value);
+
+  String getDialStyle() => _settingsBox.get('dial_style', defaultValue: 'circular');
+  Future<void> setDialStyle(String value) => _settingsBox.put('dial_style', value);
+
   // --- FAVORITES MODULE ---
   Box<String> get _favoritesBox => Hive.box<String>(_favoritesBoxName);
 
@@ -109,6 +161,8 @@ class StorageService {
 
   // --- QUEUE MODULE ---
   Box get _queueBox => Hive.box(_queueBoxName);
+
+  Future<void> savePlaybackPosition(int positionMs) => _queueBox.put('position_ms', positionMs);
 
   Future<void> saveQueueState({
     required List<String> songIds,

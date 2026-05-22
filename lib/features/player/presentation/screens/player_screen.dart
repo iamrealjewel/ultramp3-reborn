@@ -7,6 +7,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart' as ja;
 import 'dart:math' as math;
 import 'dart:async';
+import 'package:path/path.dart' as p;
 
 import 'package:ultramp3/core/theme/app_colors.dart';
 import 'package:ultramp3/core/services/playback_service.dart';
@@ -116,6 +117,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
   // Equalizer 5-Band values (in dB, -12.0 to +12.0)
   final List<double> _eqBands = [0.0, 0.0, 0.0, 0.0, 0.0];
 
+  StreamSubscription<Duration>? _positionSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -132,10 +135,107 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
       vsync: this,
       duration: const Duration(seconds: 4),
     );
+
+    // 1. Load initial visualizer & dial & equalizer settings synchronously from storage
+    final storage = ref.read(storageServiceProvider);
+    
+    final styleStr = storage.getVisualizerStyle();
+    _visualizerStyle = VisualizerStyle.values.firstWhere(
+      (e) => e.name == styleStr,
+      orElse: () => VisualizerStyle.spectrumBars,
+    );
+    
+    _visualizerVariation = storage.getVisualizerVariation();
+
+    final dialStyleStr = storage.getDialStyle();
+    _dialStyle = DialStyle.values.firstWhere(
+      (e) => e.name == dialStyleStr,
+      orElse: () => DialStyle.circular,
+    );
+
+    _activePreset = storage.getEqualizerPreset();
+    final savedBands = storage.getEqualizerBands();
+    for (int i = 0; i < 5; i++) {
+      if (i < savedBands.length) {
+        _eqBands[i] = savedBands[i];
+      }
+    }
+
+    // 2. Restore active playback session in a post-frame callback
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _restorePlaybackSession();
+    });
+  }
+
+  Future<void> _restorePlaybackSession() async {
+    if (!mounted) return;
+    try {
+      final storage = ref.read(storageServiceProvider);
+      final playbackService = ref.read(playbackServiceProvider);
+      final player = playbackService.handler.playerInstance;
+
+      // A. Restore Shuffle & Loop
+      final shuffleOn = storage.getShuffleEnabled();
+      await player.setShuffleModeEnabled(shuffleOn);
+
+      final loopModeStr = storage.getLoopMode();
+      final loopMode = ja.LoopMode.values.firstWhere(
+        (e) => e.name == loopModeStr,
+        orElse: () => ja.LoopMode.off,
+      );
+      await player.setLoopMode(loopMode);
+
+      // B. Restore Volume & Equalizer Bands in the service
+      final vol = storage.getVolumeLevel();
+      await player.setVolume(vol);
+      await playbackService.setEqualizerBands(_eqBands);
+
+      // C. Restore Queue & Active Song & Position
+      final queueList = storage.getSavedQueueList();
+      final activeSongId = storage.getSavedActiveSongId();
+      final positionMs = storage.getSavedPositionMs();
+
+      if (queueList.isNotEmpty && activeSongId != null) {
+        final activeSongItem = MediaItem(
+          id: activeSongId,
+          title: p.basenameWithoutExtension(activeSongId),
+          artist: 'Unknown Artist',
+        );
+
+        final fullQueueItems = queueList.map((id) {
+          if (id == activeSongId) return activeSongItem;
+          return MediaItem(
+            id: id,
+            title: p.basenameWithoutExtension(id),
+            artist: 'Unknown Artist',
+          );
+        }).toList();
+
+        await playbackService.handler.loadQueueItem(activeSongItem, fullQueue: fullQueueItems);
+        
+        if (positionMs > 0) {
+          await player.seek(Duration(milliseconds: positionMs));
+        }
+      }
+
+      // D. Register position subscription for real-time throttled persistence
+      int lastSavedMs = 0;
+      _positionSubscription = player.positionStream.listen((pos) {
+        if (!mounted) return;
+        final ms = pos.inMilliseconds;
+        if ((ms - lastSavedMs).abs() >= 1000) {
+          ref.read(storageServiceProvider).savePlaybackPosition(ms);
+          lastSavedMs = ms;
+        }
+      });
+    } catch (e) {
+      print('Error restoring playback session: $e');
+    }
   }
 
   @override
   void dispose() {
+    _positionSubscription?.cancel();
     _visualizerController.dispose();
     _vinylRotationController.dispose();
     _statusTimer?.cancel();
@@ -619,6 +719,63 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Row 2: Shuffle & Repeat (left) | Volume Down & Up (right)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Left: Shuffle & Repeat
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      Icons.shuffle_rounded,
+                      color: isShuffle ? accentColor : accentColor.withOpacity(0.35),
+                      size: 26,
+                    ),
+                    onPressed: hasTrack ? () => _toggleShuffle(playbackService, accentColor) : null,
+                    tooltip: 'Shuffle',
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      loopMode == ja.LoopMode.one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
+                      color: loopMode != ja.LoopMode.off ? accentColor : accentColor.withOpacity(0.35),
+                      size: 26,
+                    ),
+                    onPressed: hasTrack ? () => _toggleRepeat(playbackService, accentColor) : null,
+                    tooltip: 'Repeat',
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                  ),
+                ],
+              ),
+              // Right: Volume Down & Up
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.volume_down_rounded, color: accentColor.withOpacity(0.85), size: 26),
+                    onPressed: () => _volumeDown(playbackService, activeSkin),
+                    tooltip: 'Volume Down',
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.volume_up_rounded, color: accentColor.withOpacity(0.85), size: 26),
+                    onPressed: () => _volumeUp(playbackService, activeSkin),
+                    tooltip: 'Volume Up',
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+
           // Row 1: Skip Prev | Fast Rewind | Play/Pause FAB | Fast Forward | Skip Next
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -680,63 +837,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                 onPressed: hasTrack ? () => playbackService.skipToNext() : null,
                 tooltip: 'Next',
                 padding: EdgeInsets.zero,
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 2),
-
-          // Row 2: Shuffle & Repeat (left) | Volume Down & Up (right)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Left: Shuffle & Repeat
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.shuffle_rounded,
-                      color: isShuffle ? accentColor : accentColor.withOpacity(0.35),
-                      size: 26,
-                    ),
-                    onPressed: hasTrack ? () => _toggleShuffle(playbackService, accentColor) : null,
-                    tooltip: 'Shuffle',
-                    padding: const EdgeInsets.all(8),
-                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      loopMode == ja.LoopMode.one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
-                      color: loopMode != ja.LoopMode.off ? accentColor : accentColor.withOpacity(0.35),
-                      size: 26,
-                    ),
-                    onPressed: hasTrack ? () => _toggleRepeat(playbackService, accentColor) : null,
-                    tooltip: 'Repeat',
-                    padding: const EdgeInsets.all(8),
-                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                  ),
-                ],
-              ),
-              // Right: Volume Down & Up
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.volume_down_rounded, color: accentColor.withOpacity(0.85), size: 26),
-                    onPressed: () => _volumeDown(playbackService, activeSkin),
-                    tooltip: 'Volume Down',
-                    padding: const EdgeInsets.all(8),
-                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.volume_up_rounded, color: accentColor.withOpacity(0.85), size: 26),
-                    onPressed: () => _volumeUp(playbackService, activeSkin),
-                    tooltip: 'Volume Up',
-                    padding: const EdgeInsets.all(8),
-                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                  ),
-                ],
               ),
             ],
           ),
@@ -808,6 +908,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
   @override
   Widget build(BuildContext context) {
     final activeSkin = ref.watch(playerSkinProvider);
+    final topNavColor = activeSkin.name == 'S60 Classic Grey'
+        ? const Color(0xFF2ECC71)
+        : activeSkin.textColor;
     final playbackService = ref.watch(playbackServiceProvider);
     final player = playbackService.handler.playerInstance;
     final settings = ref.watch(playerSettingsProvider);
@@ -837,7 +940,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                   color: Colors.black.withOpacity(0.9),
                   border: Border(
                     bottom: BorderSide(
-                      color: activeSkin.textColor.withOpacity(0.15),
+                      color: topNavColor.withOpacity(0.15),
                       width: 1,
                     ),
                   ),
@@ -855,13 +958,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                     Text(
                       'ULTRAMP3',
                       style: TextStyle(
-                        color: activeSkin.textColor,
+                        color: topNavColor,
                         fontFamily: 'Orbitron',
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                         letterSpacing: 1.5,
                         shadows: [
-                          Shadow(color: activeSkin.textColor.withOpacity(0.6), blurRadius: 8),
+                          Shadow(color: topNavColor.withOpacity(0.6), blurRadius: 8),
                         ],
                       ),
                     ),
@@ -871,7 +974,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                         if (!activeSkin.isFlat)
                           IconButton(
                             tooltip: 'Dial Style',
-                            icon: Icon(Icons.track_changes_rounded, color: activeSkin.textColor.withOpacity(0.9), size: 20),
+                            icon: Icon(Icons.track_changes_rounded, color: topNavColor.withOpacity(0.9), size: 20),
                             onPressed: () {
                               setState(() {
                                 final styles = DialStyle.values;
@@ -881,26 +984,29 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                               _showFeedbackGlow(
                                 context,
                                 'DIAL: ${_dialStyle.name.toUpperCase()}',
-                                activeSkin.textColor,
+                                topNavColor,
                               );
                             },
                           ),
                         IconButton(
                           tooltip: 'Skin',
-                          icon: Icon(Icons.palette_rounded, color: activeSkin.textColor.withOpacity(0.9), size: 20),
+                          icon: Icon(Icons.palette_rounded, color: topNavColor.withOpacity(0.9), size: 20),
                           onPressed: () {
                             ref.read(playerSkinProvider.notifier).cycleSkin(ref.read(playerSettingsProvider).skinType);
                             final nextSkin = ref.read(playerSkinProvider);
+                            final nextTopNavColor = nextSkin.name == 'S60 Classic Grey'
+                                ? const Color(0xFF2ECC71)
+                                : nextSkin.textColor;
                             _showFeedbackGlow(
                               context,
                               'SKIN: ${nextSkin.name.toUpperCase()}',
-                              activeSkin.textColor,
+                              nextTopNavColor,
                             );
                           },
                         ),
                         IconButton(
                           tooltip: 'Visualizer Style',
-                          icon: Icon(Icons.waves_rounded, color: activeSkin.textColor.withOpacity(0.9), size: 20),
+                          icon: Icon(Icons.waves_rounded, color: topNavColor.withOpacity(0.9), size: 20),
                           onPressed: () {
                             setState(() {
                               final int maxVars = _getMaxVariations(_visualizerStyle);
@@ -917,7 +1023,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                             _showFeedbackGlow(
                               context,
                               'VISUALIZER: ${_visualizerStyle.name.toUpperCase()} (V${_visualizerVariation + 1})',
-                              activeSkin.textColor,
+                              topNavColor,
                             );
                           },
                         ),
@@ -925,7 +1031,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                           tooltip: 'Equalizer',
                           icon: Icon(
                             _showEqualizer ? Icons.equalizer_rounded : Icons.equalizer_outlined,
-                            color: _showEqualizer ? activeSkin.textColor : activeSkin.textColor.withOpacity(0.6),
+                            color: _showEqualizer ? topNavColor : topNavColor.withOpacity(0.6),
                             size: 20,
                           ),
                           onPressed: () {
@@ -936,14 +1042,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                         ),
                         IconButton(
                           tooltip: 'Library',
-                          icon: Icon(Icons.library_music_rounded, color: activeSkin.textColor.withOpacity(0.9), size: 20),
+                          icon: Icon(Icons.library_music_rounded, color: topNavColor.withOpacity(0.9), size: 20),
                           onPressed: () {
                             context.go('/library');
                           },
                         ),
                         IconButton(
                           tooltip: 'Settings',
-                          icon: Icon(Icons.settings_rounded, color: activeSkin.textColor.withOpacity(0.9), size: 20),
+                          icon: Icon(Icons.settings_rounded, color: topNavColor.withOpacity(0.9), size: 20),
                           onPressed: () {
                             Navigator.push(
                               context,
@@ -1445,73 +1551,77 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                         if (activeSkin.isFlat)
                           const SizedBox(height: 125) // Reserved height for the tucked modern sticky footer dialer
                         else ...[
-                          // 5. Dial cockpit console with real-time stream bindings for Shuffle & Repeat (Skeuomorphic Only)
-                          StreamBuilder<ja.LoopMode>(
-                            stream: player.loopModeStream,
-                            initialData: player.loopMode,
-                            builder: (context, loopSnapshot) {
-                              final loopMode = loopSnapshot.data ?? ja.LoopMode.off;
-                              return StreamBuilder<bool>(
-                                stream: player.shuffleModeEnabledStream,
-                                initialData: player.shuffleModeEnabled,
-                                builder: (context, shuffleSnapshot) {
-                                  final isShuffle = shuffleSnapshot.data ?? false;
-                                  final bgOpacity = settings.dialerTransparencyEnabled ? settings.dialerOpacity : 1.0;
-                                  return SizedBox(
-                                    width: _dialStyle == DialStyle.rectangular ? 320 : 260,
-                                    height: _dialStyle == DialStyle.rectangular ? 180 : 260,
-                                    child: Stack(
-                                      children: [
-                                        Positioned.fill(
-                                          child: _S60DpadCockpitConsole(
-                                            skin: activeSkin,
-                                            isPlaying: _isPlaying,
-                                            dialStyle: _dialStyle,
-                                            animationTime: _animationTime,
-                                            isShuffle: isShuffle,
-                                            loopMode: loopMode,
-                                            bgOpacity: bgOpacity,
-                                            onPlayPause: () {
-                                              if (_isPlaying) {
-                                                playbackService.pause();
-                                              } else {
-                                                playbackService.play();
-                                              }
-                                            },
-                                            onVolumeUp: () => _volumeUp(playbackService, activeSkin),
-                                            onVolumeDown: () => _volumeDown(playbackService, activeSkin),
-                                            onSkipPrevious: () => playbackService.skipToPrevious(),
-                                            onSkipNext: () => playbackService.skipToNext(),
-                                            onFastRewind: () => _fastRewind(playbackService, activeSkin),
-                                            onFastForward: () => _fastForward(playbackService, activeSkin),
-                                            onToggleShuffle: () => _toggleShuffle(playbackService, activeSkin.textColor),
-                                            onToggleRepeat: () => _toggleRepeat(playbackService, activeSkin.textColor),
-                                            onCycleDialStyle: () {
-                                              setState(() {
-                                                final styles = DialStyle.values;
-                                                final nextIndex = (_dialStyle.index + 1) % styles.length;
-                                                _dialStyle = styles[nextIndex];
-                                              });
-                                              _showFeedbackGlow(
-                                                context,
-                                                'DIAL: ${_dialStyle.name.toUpperCase()}',
-                                                activeSkin.textColor,
-                                              );
-                                            },
-                                            onCycleSkin: () {
-                                              ref.read(playerSkinProvider.notifier).cycleSkin(ref.read(playerSettingsProvider).skinType);
-                                              _showFeedbackGlow(context, 'SKIN: ${ref.read(playerSkinProvider).name.toUpperCase()}', activeSkin.textColor);
-                                            },
+                          if (_dialStyle == DialStyle.circular)
+                            const SizedBox(height: 275) // Reserved height for skeuomorphic circular click-wheel footer dialer
+                          else ...[
+                            // 5. Dial cockpit console with real-time stream bindings for Shuffle & Repeat (Skeuomorphic Wide Only)
+                            StreamBuilder<ja.LoopMode>(
+                              stream: player.loopModeStream,
+                              initialData: player.loopMode,
+                              builder: (context, loopSnapshot) {
+                                final loopMode = loopSnapshot.data ?? ja.LoopMode.off;
+                                return StreamBuilder<bool>(
+                                  stream: player.shuffleModeEnabledStream,
+                                  initialData: player.shuffleModeEnabled,
+                                  builder: (context, shuffleSnapshot) {
+                                    final isShuffle = shuffleSnapshot.data ?? false;
+                                    final bgOpacity = settings.dialerTransparencyEnabled ? settings.dialerOpacity : 1.0;
+                                    return SizedBox(
+                                      width: 320,
+                                      height: 180,
+                                      child: Stack(
+                                        children: [
+                                          Positioned.fill(
+                                            child: _S60DpadCockpitConsole(
+                                              skin: activeSkin,
+                                              isPlaying: _isPlaying,
+                                              dialStyle: _dialStyle,
+                                              animationTime: _animationTime,
+                                              isShuffle: isShuffle,
+                                              loopMode: loopMode,
+                                              bgOpacity: bgOpacity,
+                                              onPlayPause: () {
+                                                if (_isPlaying) {
+                                                  playbackService.pause();
+                                                } else {
+                                                  playbackService.play();
+                                                }
+                                              },
+                                              onVolumeUp: () => _volumeUp(playbackService, activeSkin),
+                                              onVolumeDown: () => _volumeDown(playbackService, activeSkin),
+                                              onSkipPrevious: () => playbackService.skipToPrevious(),
+                                              onSkipNext: () => playbackService.skipToNext(),
+                                              onFastRewind: () => _fastRewind(playbackService, activeSkin),
+                                              onFastForward: () => _fastForward(playbackService, activeSkin),
+                                              onToggleShuffle: () => _toggleShuffle(playbackService, activeSkin.textColor),
+                                              onToggleRepeat: () => _toggleRepeat(playbackService, activeSkin.textColor),
+                                              onCycleDialStyle: () {
+                                                setState(() {
+                                                  final styles = DialStyle.values;
+                                                  final nextIndex = (_dialStyle.index + 1) % styles.length;
+                                                  _dialStyle = styles[nextIndex];
+                                                });
+                                                _showFeedbackGlow(
+                                                  context,
+                                                  'DIAL: ${_dialStyle.name.toUpperCase()}',
+                                                  activeSkin.textColor,
+                                                );
+                                              },
+                                              onCycleSkin: () {
+                                                ref.read(playerSkinProvider.notifier).cycleSkin(ref.read(playerSettingsProvider).skinType);
+                                                _showFeedbackGlow(context, 'SKIN: ${ref.read(playerSkinProvider).name.toUpperCase()}', activeSkin.textColor);
+                                              },
+                                            ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 24),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 24),
+                          ],
                         ],
                        ],
                     ),
@@ -1521,7 +1631,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
             ],
           ),
 
-          if (activeSkin.isFlat)
+          if (activeSkin.isFlat || _dialStyle == DialStyle.circular)
             Positioned(
               left: 0,
               right: 0,
@@ -1536,21 +1646,66 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                     initialData: player.shuffleModeEnabled,
                     builder: (context, shuffleSnapshot) {
                       final isShuffle = shuffleSnapshot.data ?? false;
-                      return StreamBuilder<MediaItem?>(
-                        stream: playbackService.currentMediaItemStream,
-                        builder: (context, trackSnap) {
-                          final hasTrack = trackSnap.data != null;
-                          return _buildFlatPlayControlPanel(
-                            activeSkin: activeSkin,
-                            player: player,
-                            playbackService: playbackService,
-                            isShuffle: isShuffle,
-                            loopMode: loopMode,
-                            bgOpacity: 1.0,
-                            hasTrack: hasTrack,
-                          );
-                        },
-                      );
+                      if (activeSkin.isFlat) {
+                        return StreamBuilder<MediaItem?>(
+                          stream: playbackService.currentMediaItemStream,
+                          builder: (context, trackSnap) {
+                            final hasTrack = trackSnap.data != null;
+                            return _buildFlatPlayControlPanel(
+                              activeSkin: activeSkin,
+                              player: player,
+                              playbackService: playbackService,
+                              isShuffle: isShuffle,
+                              loopMode: loopMode,
+                              bgOpacity: 1.0,
+                              hasTrack: hasTrack,
+                            );
+                          },
+                        );
+                      } else {
+                        // Skeuomorphic circular click-wheel dialer positioned at bottom
+                        final bgOpacity = settings.dialerTransparencyEnabled ? settings.dialerOpacity : 1.0;
+                        return _S60DpadCockpitConsole(
+                          skin: activeSkin,
+                          isPlaying: _isPlaying,
+                          dialStyle: _dialStyle,
+                          animationTime: _animationTime,
+                          isShuffle: isShuffle,
+                          loopMode: loopMode,
+                          bgOpacity: bgOpacity,
+                          onPlayPause: () {
+                            if (_isPlaying) {
+                              playbackService.pause();
+                            } else {
+                              playbackService.play();
+                            }
+                          },
+                          onVolumeUp: () => _volumeUp(playbackService, activeSkin),
+                          onVolumeDown: () => _volumeDown(playbackService, activeSkin),
+                          onSkipPrevious: () => playbackService.skipToPrevious(),
+                          onSkipNext: () => playbackService.skipToNext(),
+                          onFastRewind: () => _fastRewind(playbackService, activeSkin),
+                          onFastForward: () => _fastForward(playbackService, activeSkin),
+                          onToggleShuffle: () => _toggleShuffle(playbackService, activeSkin.textColor),
+                          onToggleRepeat: () => _toggleRepeat(playbackService, activeSkin.textColor),
+                          onCycleDialStyle: () {
+                            setState(() {
+                              final styles = DialStyle.values;
+                              final nextIndex = (_dialStyle.index + 1) % styles.length;
+                              _dialStyle = styles[nextIndex];
+                            });
+                            _showFeedbackGlow(
+                              context,
+                              'DIAL: ${_dialStyle.name.toUpperCase()}',
+                              activeSkin.textColor,
+                            );
+                          },
+                          onCycleSkin: () {
+                            ref.read(playerSkinProvider.notifier).cycleSkin(ref.read(playerSettingsProvider).skinType);
+                            _showFeedbackGlow(context, 'SKIN: ${ref.read(playerSkinProvider).name.toUpperCase()}', activeSkin.textColor);
+                          },
+                        );
+                      }
                     },
                   );
                 },
@@ -2701,6 +2856,12 @@ class _S60DpadCockpitConsole extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isWide = dialStyle == DialStyle.rectangular;
+    
+    // If skeuomorphic (not flat) and circular, render the gorgeous iPod click-wheel console
+    if (!isWide && !skin.isFlat) {
+      return _buildSkeuomorphicClickWheel(context);
+    }
+
     final double width = isWide ? 320.0 : 260.0;
     final double height = isWide ? 180.0 : 260.0;
     final Color iconCol = getDialIconColor();
@@ -2834,6 +2995,251 @@ class _S60DpadCockpitConsole extends StatelessWidget {
     );
   }
 
+  Widget _buildSkeuomorphicClickWheel(BuildContext context) {
+    final Color iconCol = getDialIconColor();
+
+    return Container(
+      width: double.infinity,
+      height: 260.0,
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(30.0),
+          topRight: Radius.circular(30.0),
+        ),
+        border: Border(
+          top: BorderSide(
+            color: skin.outerBorderColor.withOpacity(0.5),
+            width: 2,
+          ),
+        ),
+        color: skin.panelBgColor.withOpacity(bgOpacity),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.35),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
+          )
+        ],
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Corner buttons outside the main wheel
+          
+          // Top-Left corner: Fast Backward
+          Positioned(
+            left: 24,
+            top: 20,
+            child: _buildCornerButton(
+              icon: Icons.fast_rewind_rounded,
+              onTap: onFastRewind,
+              tooltip: 'FAST BACKWARD',
+            ),
+          ),
+          
+          // Top-Right corner: Fast Forward
+          Positioned(
+            right: 24,
+            top: 20,
+            child: _buildCornerButton(
+              icon: Icons.fast_forward_rounded,
+              onTap: onFastForward,
+              tooltip: 'FAST FORWARD',
+            ),
+          ),
+          
+          // Bottom-Left corner: Repeat toggle
+          Positioned(
+            left: 24,
+            bottom: 28,
+            child: _buildCornerButton(
+              icon: loopMode == ja.LoopMode.one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
+              onTap: onToggleRepeat,
+              isActive: loopMode != ja.LoopMode.off,
+              tooltip: loopMode == ja.LoopMode.one ? 'REPEAT: ONE' : (loopMode == ja.LoopMode.all ? 'REPEAT: ALL' : 'REPEAT: OFF'),
+            ),
+          ),
+          
+          // Bottom-Right corner: Shuffle toggle
+          Positioned(
+            right: 24,
+            bottom: 28,
+            child: _buildCornerButton(
+              icon: Icons.shuffle_rounded,
+              onTap: onToggleShuffle,
+              isActive: isShuffle,
+              tooltip: isShuffle ? 'SHUFFLE: ON' : 'SHUFFLE: OFF',
+            ),
+          ),
+          
+          // Main central iPod click-wheel circle
+          Container(
+            width: 204,
+            height: 204,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: skin.outerBorderColor.withOpacity(0.85), width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.45),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                )
+              ],
+              gradient: SweepGradient(
+                colors: [
+                  skin.buttonFaceColor,
+                  skin.buttonFaceColor.withOpacity(0.8),
+                  skin.buttonFaceColor.withOpacity(0.55),
+                  skin.buttonFaceColor.withOpacity(0.8),
+                  skin.buttonFaceColor,
+                ],
+                stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+              ),
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Top: Vol Up
+                Positioned(
+                  top: 5,
+                  child: _WheelCardinalButton(
+                    icon: Icons.add_rounded,
+                    onTap: onVolumeUp,
+                    tooltip: 'VOL +',
+                    iconColor: iconCol,
+                  ),
+                ),
+                
+                // Bottom: Vol Down
+                Positioned(
+                  bottom: 5,
+                  child: _WheelCardinalButton(
+                    icon: Icons.remove_rounded,
+                    onTap: onVolumeDown,
+                    tooltip: 'VOL -',
+                    iconColor: iconCol,
+                  ),
+                ),
+                
+                // Left: Skip Previous (Long press: REW)
+                Positioned(
+                  left: 5,
+                  child: _WheelCardinalButton(
+                    icon: Icons.skip_previous_rounded,
+                    onTap: onSkipPrevious,
+                    onLongPress: onFastRewind,
+                    tooltip: 'PREV (Hold: REW)',
+                    iconColor: iconCol,
+                  ),
+                ),
+                
+                // Right: Skip Next (Long press: FF)
+                Positioned(
+                  right: 5,
+                  child: _WheelCardinalButton(
+                    icon: Icons.skip_next_rounded,
+                    onTap: onSkipNext,
+                    onLongPress: onFastForward,
+                    tooltip: 'NEXT (Hold: FF)',
+                    iconColor: iconCol,
+                  ),
+                ),
+                
+                // Center circular Play/Pause button
+                Align(
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 86,
+                    height: 86,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.black.withOpacity(0.45), width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.25),
+                          blurRadius: 3,
+                          offset: const Offset(0, 2),
+                        )
+                      ],
+                      gradient: LinearGradient(
+                        colors: [
+                          skin.buttonFaceColor.withOpacity(0.9),
+                          skin.buttonFaceColor,
+                          skin.buttonFaceColor.withOpacity(0.65),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: onPlayPause,
+                        child: Center(
+                          child: Icon(
+                            isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                            color: iconCol,
+                            size: 36,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCornerButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    bool isActive = false,
+    required String tooltip,
+  }) {
+    return _TactileButtonWrapper(
+      onTap: onTap,
+      child: Tooltip(
+        message: tooltip,
+        child: Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.black.withOpacity(0.45), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.35),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              )
+            ],
+            gradient: LinearGradient(
+              colors: [
+                skin.buttonFaceColor,
+                skin.buttonFaceColor.withOpacity(0.7),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: Center(
+            child: Icon(
+              icon,
+              color: isActive ? skin.textColor : skin.buttonIconColor.withOpacity(0.7),
+              size: 26,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   BoxDecoration _buildOuterDialChassis() {
     if (skin.isFlat) {
       switch (dialStyle) {
@@ -2936,6 +3342,47 @@ class _S60DpadCockpitConsole extends StatelessWidget {
         onPlayPause: onPlayPause,
         iconColor: getDialIconColor(),
         textColor: getDialTextColor(),
+      ),
+    );
+  }
+}
+
+class _WheelCardinalButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final String tooltip;
+  final Color iconColor;
+  final double size;
+  final double iconSize;
+
+  const _WheelCardinalButton({
+    required this.icon,
+    required this.onTap,
+    this.onLongPress,
+    required this.tooltip,
+    required this.iconColor,
+    this.size = 52,
+    this.iconSize = 32,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: _TactileButtonWrapper(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Container(
+          width: size,
+          height: size,
+          alignment: Alignment.center,
+          child: Icon(
+            icon,
+            color: iconColor,
+            size: iconSize,
+          ),
+        ),
       ),
     );
   }
@@ -3097,10 +3544,12 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
 class _TactileButtonWrapper extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   const _TactileButtonWrapper({
     required this.child,
     this.onTap,
+    this.onLongPress,
   });
 
   @override
@@ -3146,12 +3595,21 @@ class _TactileButtonWrapperState extends State<_TactileButtonWrapper> with Singl
     _controller.reverse();
   }
 
+  void _handleLongPress() {
+    _controller.reverse();
+    if (widget.onLongPress != null) {
+      HapticFeedback.mediumImpact();
+      widget.onLongPress!();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTapDown: _handleTapDown,
       onTapUp: _handleTapUp,
       onTapCancel: _handleTapCancel,
+      onLongPress: widget.onLongPress != null ? _handleLongPress : null,
       behavior: HitTestBehavior.opaque,
       child: ScaleTransition(
         scale: _scaleAnimation,
@@ -3248,7 +3706,7 @@ class _DpadTactileButton extends StatelessWidget {
             Icon(
               icon,
               color: color.withOpacity(0.95),
-              size: dense ? 22 : 28,
+              size: dense ? 26 : 32,
             ),
             const SizedBox(height: 1),
             Text(
@@ -3343,7 +3801,7 @@ class _DpadMicroToggle extends StatelessWidget {
             Icon(
               icon,
               color: color,
-              size: dense ? 12 : 15,
+              size: dense ? 15 : 18,
             ),
             const SizedBox(height: 1),
             Text(
