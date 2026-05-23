@@ -21,6 +21,7 @@ class AppShell extends ConsumerWidget {
     final navActiveColor = activeSkin.name == 'S60 Classic Grey'
         ? const Color(0xFF2ECC71)
         : activeSkin.textColor;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
       extendBody: true, // Allows content to flow behind glassmorphic bottom bar
@@ -31,8 +32,8 @@ class AppShell extends ConsumerWidget {
             child: navigationShell,
           ),
           
-          // Floating Mini Player (Positioned at bottom, above bottom bar - hidden when viewing S60 Player on Tab 0!)
-          if (navigationShell.currentIndex != 0)
+          // Floating Mini Player (Positioned at bottom, above bottom bar)
+          if (navigationShell.currentIndex != 0 && !isLandscape)
             Positioned(
               left: 12,
               right: 12,
@@ -41,7 +42,7 @@ class AppShell extends ConsumerWidget {
             ),
         ],
       ),
-      bottomNavigationBar: Container(
+      bottomNavigationBar: isLandscape ? null : Container(
         decoration: const BoxDecoration(
           border: Border(
             top: BorderSide(color: AppColors.glassBorder, width: 0.8),

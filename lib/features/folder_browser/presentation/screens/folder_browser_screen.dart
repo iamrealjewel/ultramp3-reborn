@@ -188,6 +188,35 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
           ),
         ),
         actions: [
+          if (MediaQuery.of(context).orientation == Orientation.landscape) ...[
+            IconButton(
+              tooltip: 'Home',
+              icon: const Icon(Icons.home_rounded, color: AppColors.neonGreen),
+              onPressed: () => context.go('/home'),
+            ),
+            IconButton(
+              tooltip: 'Library',
+              icon: const Icon(Icons.music_note_rounded, color: AppColors.neonGreen),
+              onPressed: () => context.go('/library'),
+            ),
+            IconButton(
+              tooltip: 'Folders',
+              icon: const Icon(Icons.folder_rounded, color: AppColors.neonGreen),
+              onPressed: () => context.go('/folders'),
+            ),
+            IconButton(
+              tooltip: 'Playlists',
+              icon: const Icon(Icons.queue_music_rounded, color: AppColors.neonGreen),
+              onPressed: () => context.go('/playlists'),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              width: 1,
+              height: 16,
+              color: AppColors.neonGreen.withOpacity(0.2),
+            ),
+            const SizedBox(width: 8),
+          ],
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppColors.neonGreen),
             onPressed: _loadDirectoryContents,

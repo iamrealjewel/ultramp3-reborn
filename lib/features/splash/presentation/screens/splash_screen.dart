@@ -104,8 +104,196 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     super.dispose();
   }
 
+  Widget _buildLogoStack() {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: 140,
+          height: 140,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.neonGreen.withOpacity(0.18),
+                blurRadius: 40,
+                spreadRadius: 8,
+              ),
+            ],
+          ),
+        ),
+        
+        // Spring scaling App Icon
+        AnimatedBuilder(
+          animation: _iconAnimationController,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _iconScale.value,
+              child: Opacity(
+                opacity: _iconOpacity.value,
+                child: child,
+              ),
+            );
+          },
+          child: Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.5),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(26),
+              child: Image.asset(
+                'assets/icons/app_icon.png',
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTitles() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'ULTRAMP3',
+          style: GoogleFonts.orbitron(
+            color: AppColors.neonGreen,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 4.0,
+            shadows: [
+              Shadow(
+                color: AppColors.neonGreen.withOpacity(0.4),
+                blurRadius: 8,
+              ),
+            ],
+          ),
+        ),
+        Text(
+          'REBORN',
+          style: GoogleFonts.rajdhani(
+            color: AppColors.electricCyan,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 6.0,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProgressBarContainer() {
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(maxWidth: 260),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      decoration: BoxDecoration(
+        color: AppColors.obsidianDark.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.glassBorder,
+          width: 0.8,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'INDEXING STORAGE',
+                style: GoogleFonts.orbitron(
+                  color: AppColors.neonGreen,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 9.5,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              Text(
+                '${(_loadingProgress * 100).toInt()}%',
+                style: GoogleFonts.orbitron(
+                  color: AppColors.neonGreen,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 9.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Neon Digital S60 LED bar
+          Container(
+            height: 12,
+            decoration: BoxDecoration(
+              color: Colors.black,
+              borderRadius: BorderRadius.circular(3),
+              border: Border.all(
+                color: AppColors.neonGreen.withOpacity(0.2),
+                width: 0.8,
+              ),
+            ),
+            padding: const EdgeInsets.all(1.5),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FractionallySizedBox(
+                widthFactor: _loadingProgress,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.neonGreen,
+                    borderRadius: BorderRadius.circular(1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.neonGreen.withOpacity(0.6),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Diagnostics terminal print log
+          Container(
+            height: 28,
+            alignment: Alignment.center,
+            child: Text(
+              _diagnosticLog,
+              style: GoogleFonts.shareTechMono(
+                color: AppColors.textSecondary,
+                fontSize: 10.5,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+
     return Scaffold(
       backgroundColor: AppColors.voidBlack,
       body: Container(
@@ -133,207 +321,52 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
             SafeArea(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+                padding: EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: isLandscape ? 16.0 : 32.0,
+                ),
                 child: SizedBox(
                   width: double.infinity,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const Spacer(flex: 3),
-
-                // Pulsing glowing background behind logo
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Container(
-                      width: 140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.neonGreen.withOpacity(0.18),
-                            blurRadius: 40,
-                            spreadRadius: 8,
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    // Spring scaling App Icon
-                    AnimatedBuilder(
-                      animation: _iconAnimationController,
-                      builder: (context, child) {
-                        return Transform.scale(
-                          scale: _iconScale.value,
-                          child: Opacity(
-                            opacity: _iconOpacity.value,
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(26),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.5),
-                              blurRadius: 15,
-                              offset: const Offset(0, 8),
+                  child: isLandscape
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Scale down logo slightly in landscape
+                                Transform.scale(
+                                  scale: 0.75,
+                                  child: _buildLogoStack(),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildTitles(),
+                              ],
                             ),
+                            _buildProgressBarContainer(),
+                          ],
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Spacer(flex: 3),
+                            _buildLogoStack(),
+                            const SizedBox(height: 24),
+                            _buildTitles(),
+                            const Spacer(flex: 2),
+                            _buildProgressBarContainer(),
+                            const Spacer(flex: 1),
                           ],
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(26),
-                          child: Image.asset(
-                            'assets/icons/app_icon.png',
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                // Title
-                Text(
-                  'ULTRAMP3',
-                  style: GoogleFonts.orbitron(
-                    color: AppColors.neonGreen,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 4.0,
-                    shadows: [
-                      Shadow(
-                        color: AppColors.neonGreen.withOpacity(0.4),
-                        blurRadius: 8,
-                      ),
-                    ],
-                  ),
-                ),
-
-                Text(
-                  'REBORN',
-                  style: GoogleFonts.rajdhani(
-                    color: AppColors.electricCyan,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 6.0,
-                  ),
-                ),
-
-                const Spacer(flex: 2),
-
-                // Cyber Retro S60 Progress Bar
-                Container(
-                  width: double.infinity,
-                  constraints: const BoxConstraints(maxWidth: 260),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                  decoration: BoxDecoration(
-                    color: AppColors.obsidianDark.withOpacity(0.6),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppColors.glassBorder,
-                      width: 0.8,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'INDEXING STORAGE',
-                            style: GoogleFonts.orbitron(
-                              color: AppColors.neonGreen,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 9.5,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                          Text(
-                            '${(_loadingProgress * 100).toInt()}%',
-                            style: GoogleFonts.orbitron(
-                              color: AppColors.neonGreen,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 9.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Neon Digital S60 LED bar
-                      Container(
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: Colors.black,
-                          borderRadius: BorderRadius.circular(3),
-                          border: Border.all(
-                            color: AppColors.neonGreen.withOpacity(0.2),
-                            width: 0.8,
-                          ),
-                        ),
-                        padding: const EdgeInsets.all(1.5),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: FractionallySizedBox(
-                            widthFactor: _loadingProgress,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: AppColors.neonGreen,
-                                borderRadius: BorderRadius.circular(1.5),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.neonGreen.withOpacity(0.6),
-                                    blurRadius: 4,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // Diagnostics terminal print log
-                      Container(
-                        height: 28,
-                        alignment: Alignment.center,
-                        child: Text(
-                          _diagnosticLog,
-                          style: GoogleFonts.shareTechMono(
-                            color: AppColors.textSecondary,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                    const Spacer(flex: 1),
-                  ],
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
   }
 }
 

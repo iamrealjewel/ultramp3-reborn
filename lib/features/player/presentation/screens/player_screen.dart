@@ -9,8 +9,8 @@ import 'dart:math' as math;
 import 'dart:async';
 import 'package:path/path.dart' as p;
 
-import 'package:ultramp3/core/theme/app_colors.dart';
 import 'package:ultramp3/core/services/playback_service.dart';
+import 'package:ultramp3/core/services/storage_service.dart';
 import 'package:ultramp3/features/player/presentation/providers/player_skin_provider.dart';
 import 'package:ultramp3/features/player/presentation/providers/player_settings_provider.dart';
 import 'package:ultramp3/features/player/domain/models/player_skin.dart';
@@ -18,7 +18,7 @@ import 'package:ultramp3/features/player/presentation/screens/player_settings_sc
 import 'package:ultramp3/features/player/presentation/screens/add_to_playlist_screen.dart';
 import 'package:ultramp3/features/playlists/presentation/providers/playlist_providers.dart';
 
-// Supported 12 Visualization Styles
+// Supported 14 Visualization Styles
 enum VisualizerStyle {
   spectrumBars,     // Center-out, Rounded capsule, Retro Winamp, Floating
   waveform,         // Continuous, Oscilloscope, Bezier, Symmetrical
@@ -32,12 +32,20 @@ enum VisualizerStyle {
   solarFlares,      // [NEW] Concentric laser rings & solar flares
   vortexOrbit,      // [NEW] Vocal double helix orbit dots
   rippleWaves,      // [NEW] Multi-layered translucent overlapping waves
+  particleWaveFlow, // [NEW] Beautiful flowing particles on dynamic spectrum wave
+  cosmicTunnel,     // [NEW] 3D radial warp starfield vortex tunnel
+  orbitalGlow,
+  frequencyLaser,
+  dnaHelix,
+  audioMatrixGrid,
+  blackHoleStars, // [NEW] 3D gravitational starfall vortex swallowing stars into a central singing singularity
 }
 
 // Supported Skeuomorphic Dial Styles
 enum DialStyle {
   circular,
   rectangular,
+  digitalToggles,
 }
 
 // 3D coordinate star for Astro Starfield visualizer
@@ -81,6 +89,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
   bool _isPlaying = false;
   bool _hasTrack = false; // Empty state safeguard: freeze visualizer when no track
   double _animationTime = 0.0;
+  double _lastBeatTime = 0.0;
+  double _beatEnergy = 0.0;
+  double _snareEnergy = 0.0;
 
   // Real-time stars list for Astro Starfield style
   late final List<_AstroStar> _stars;
@@ -90,6 +101,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
   int _visualizerVariation = 0; // Cycles from 0 to 4 depending on style!
   DialStyle _dialStyle = DialStyle.circular;
   bool _showEqualizer = false;
+
+  // EQ Hardware Knobs (0.0 = min/neutral, 1.0 = max)
+  double _bassValue = 0.5;   // Boosts 60Hz + 230Hz bands via native EQ
+  double _stereoValue = 0.5; // Simulates stereo widening in visualizer
 
   String? _statusMessage;
   Timer? _statusTimer;
@@ -235,6 +250,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
 
   @override
   void dispose() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
     _positionSubscription?.cancel();
     _visualizerController.dispose();
     _vinylRotationController.dispose();
@@ -291,17 +307,38 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
         _vinylRotationController.repeat();
       }
 
-      final double beatPulse = math.sin(_animationTime * 2 * math.pi * 2.13).abs();
+      // ━━━━━ REAL-TIME TRANSIENT BEAT ENERGY SIMULATOR ━━━━━
+      // Exponential decay of beat transient energies
+      _beatEnergy = _beatEnergy * 0.85;
+      _snareEnergy = _snareEnergy * 0.82;
+
+      // Kick drum beat (occurs every ~460ms -> ~130 BPM, standard punchy track)
+      if (_animationTime - _lastBeatTime >= 0.46) {
+        _beatEnergy = 1.0 + _random.nextDouble() * 0.3; // Randomize velocity slightly for natural feel
+        _lastBeatTime = _animationTime;
+      }
+
+      // Snare drum beat (hi-hat/snare hits shifted 230ms off the kick drum)
+      if ((_animationTime - _lastBeatTime - 0.23).abs() <= 0.02 && _snareEnergy < 0.2) {
+        _snareEnergy = 0.8 + _random.nextDouble() * 0.25;
+      }
 
       for (int i = 0; i < 10; i++) {
         double targetHeight = 4.0;
 
         if (i < 3) {
-          targetHeight = 4.0 + (beatPulse * 28.0) + (math.sin(_animationTime * 14.0 + i) * 6.0);
+          // Low Bass bands kick heavily with beat energy transients
+          targetHeight = 4.0 + (_beatEnergy * 28.0) + (_random.nextDouble() * 4.0);
         } else if (i < 7) {
-          targetHeight = 4.0 + (math.sin(_animationTime * 8.0 + i) * 20.0) + (math.cos(_animationTime * 12.0 - i) * 8.0);
+          // Mid vocal/snare bands react to hi-hat/snare hits
+          targetHeight = 4.0 + (_snareEnergy * 22.0) + (math.sin(_animationTime * 14.0 + i).abs() * 8.0);
         } else {
-          targetHeight = 4.0 + (math.sin(_animationTime * 32.0 + i).abs() * 14.0) + (_random.nextDouble() * 8.0);
+          // Treble bands have high frequency sharp sparks and noise spikes
+          if (_random.nextDouble() > 0.82) {
+            targetHeight = 4.0 + (_random.nextDouble() * 24.0); // crisp high-hat tick!
+          } else {
+            targetHeight = 4.0 + (math.sin(_animationTime * 36.0 + i).abs() * 8.0);
+          }
         }
 
         // Apply software-level 5-band EQ modulation to real-time visualizer heights
@@ -345,7 +382,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
       case VisualizerStyle.solarFlares:
       case VisualizerStyle.vortexOrbit:
       case VisualizerStyle.rippleWaves:
-        return 1;
+      case VisualizerStyle.particleWaveFlow:
+      case VisualizerStyle.cosmicTunnel:
+      case VisualizerStyle.orbitalGlow:
+      case VisualizerStyle.frequencyLaser:
+      case VisualizerStyle.dnaHelix:
+      case VisualizerStyle.audioMatrixGrid:
+      case VisualizerStyle.blackHoleStars:
+        return 4; // All newer styles support 4 variations
     }
   }
 
@@ -433,8 +477,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
         _eqBands[i] = bands[i];
       }
     });
-    service.setEqualizerBands(bands);
+    _applyEqualizerWithKnobs(service);
     _showFeedbackGlow(context, 'EQ PRESET: ${name.toUpperCase()}', color);
+  }
+
+  /// Applies EQ bands to native engine, adding Bass knob boost on top of preset values.
+  void _applyEqualizerWithKnobs(PlaybackService service) {
+    // Compute bass boost from knob: 0.5 = neutral (0dB), 1.0 = +12dB boost, 0.0 = -12dB cut
+    final double bassBoostDb = (_bassValue - 0.5) * 24.0; // ±12dB range
+    final List<double> bandsToSend = List.from(_eqBands);
+    bandsToSend[0] = (bandsToSend[0] + bassBoostDb * 1.0).clamp(-12.0, 12.0);   // 60Hz
+    bandsToSend[1] = (bandsToSend[1] + bassBoostDb * 0.7).clamp(-12.0, 12.0);   // 230Hz
+    service.setEqualizerBands(bandsToSend);
   }
 
   void _showFeedbackGlow(BuildContext context, String message, Color glowColor) {
@@ -692,6 +746,337 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
     );
   }
 
+  /// Visualizer viewport layout - shared between portrait top section and landscape left section
+  Widget _buildVisualizerSection({
+    required BuildContext context,
+    required PlayerSkin activeSkin,
+    required PlaybackService playbackService,
+    required PlayerSettings settings,
+    required ja.AudioPlayer player,
+    required bool isLandscape,
+  }) {
+    final double visOpacity = activeSkin.isFlat
+        ? 1.0
+        : (settings.visualizerTransparencyEnabled
+            ? settings.visualizerOpacity
+            : 1.0);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        height: isLandscape ? double.infinity : (activeSkin.isFlat ? 300 : 230),
+        width: double.infinity,
+        child: GestureDetector(
+          onTap: () {
+            if (!settings.showAlbumArt) {
+              setState(() {
+                final int maxVars = _getMaxVariations(_visualizerStyle);
+                _visualizerVariation = (_visualizerVariation + 1) % maxVars;
+              });
+              _showFeedbackGlow(
+                context,
+                'VIS VARIATION: ${_visualizerVariation + 1}',
+                activeSkin.textColor,
+              );
+            }
+          },
+          child: StreamBuilder<MediaItem?>(
+            stream: playbackService.currentMediaItemStream,
+            builder: (context, mediaSnapshot) {
+              final mediaItem = mediaSnapshot.data;
+              return StreamBuilder<PlaybackState>(
+                stream: playbackService.playbackStateStream,
+                builder: (context, stateSnapshot) {
+                  final state = stateSnapshot.data;
+                  _isPlaying = state?.playing ?? false;
+                  _hasTrack = mediaItem != null;
+
+                  return Stack(
+                    children: [
+                      // LCD Glass Background
+                      Positioned.fill(
+                        child: Container(
+                          color: activeSkin.lcdBgColor.withOpacity(visOpacity),
+                        ),
+                      ),
+                      
+                      // CustomPaint or AlbumArt wrapped in Padding to keep distance from overlays
+                      if (settings.showAlbumArt)
+                        Positioned.fill(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 38, bottom: 44),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              alignment: Alignment.center,
+                              child: _buildAlbumArtWidget(mediaItem, activeSkin),
+                            ),
+                          ),
+                        )
+                      else
+                        Positioned.fill(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 38, bottom: 60),
+                            child: CustomPaint(
+                              size: Size.infinite,
+                              painter: _VisualizerPainter(
+                                style: _visualizerStyle,
+                                variation: _visualizerVariation,
+                                amplitudes: _visualizerHeights,
+                                peaks: _peakHeights,
+                                time: _animationTime,
+                                stars: _stars,
+                                barColor: activeSkin.visualizerColor,
+                                peakColor: activeSkin.visualizerPeakColor,
+                                hasTrack: _isPlaying,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      // Top Status Overlay: Bitrate and Sample Rate badges
+                      Positioned(
+                        top: isLandscape ? 14 : 10,
+                        left: 12,
+                        right: 12,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _BacklitLCDBadge(
+                              text: '320 KBPS',
+                              color: activeSkin.textColor,
+                            ),
+                            const SizedBox(width: 16),
+                            _BacklitLCDBadge(
+                              text: '44.1 KHZ',
+                              color: activeSkin.textColor,
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Bottom Controls Overlay: Equalizer selected badge & Volume level bar
+                      Positioned(
+                        bottom: 6,
+                        left: 8,
+                        right: 8,
+                        child: _buildVisualizerControls(playbackService, activeSkin, player),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Dialer panel selector layout - shared between portrait overlay and landscape right column
+  Widget _buildConfiguredDialer({
+    required BuildContext context,
+    required PlayerSkin activeSkin,
+    required PlaybackService playbackService,
+    required ja.AudioPlayer player,
+    required PlayerSettings settings,
+    required bool isShuffle,
+    required ja.LoopMode loopMode,
+  }) {
+    if (activeSkin.isFlat) {
+      return StreamBuilder<MediaItem?>(
+        stream: playbackService.currentMediaItemStream,
+        builder: (context, trackSnap) {
+          final hasTrack = trackSnap.data != null;
+          return _buildFlatPlayControlPanel(
+            activeSkin: activeSkin,
+            player: player,
+            playbackService: playbackService,
+            isShuffle: isShuffle,
+            loopMode: loopMode,
+            bgOpacity: 1.0,
+            hasTrack: hasTrack,
+          );
+        },
+      );
+    } else {
+      final bgOpacity = settings.dialerTransparencyEnabled ? settings.dialerOpacity : 1.0;
+      return _S60DpadCockpitConsole(
+        skin: activeSkin,
+        isPlaying: _isPlaying,
+        dialStyle: _dialStyle,
+        animationTime: _animationTime,
+        isShuffle: isShuffle,
+        loopMode: loopMode,
+        bgOpacity: bgOpacity,
+        onPlayPause: () {
+          if (_isPlaying) {
+            playbackService.pause();
+          } else {
+            playbackService.play();
+          }
+        },
+        onVolumeUp: () => _volumeUp(playbackService, activeSkin),
+        onVolumeDown: () => _volumeDown(playbackService, activeSkin),
+        onSkipPrevious: () => playbackService.skipToPrevious(),
+        onSkipNext: () => playbackService.skipToNext(),
+        onFastRewind: () => _fastRewind(playbackService, activeSkin),
+        onFastForward: () => _fastForward(playbackService, activeSkin),
+        onToggleShuffle: () => _toggleShuffle(playbackService, activeSkin.textColor),
+        onToggleRepeat: () => _toggleRepeat(playbackService, activeSkin.textColor),
+        onCycleDialStyle: () => _showDialerSwitcherSheet(context),
+        onCycleSkin: () => _showSkinSwitcherSheet(context),
+      );
+    }
+  }
+
+  /// Landscape mode: 2-column cockpit layout
+  /// Left: Visualizer | Right: Track controls + inline dialer
+  Widget _buildLandscapeCockpit(
+    BuildContext context,
+    PlayerSkin activeSkin,
+    PlaybackService playbackService,
+    PlayerSettings settings,
+    ja.AudioPlayer player,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ══ Left column: Visualizer (flex 11) ══
+        Expanded(
+          flex: 11,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 8, top: 12, bottom: 8, right: 4),
+            child: _buildVisualizerSection(
+              context: context,
+              activeSkin: activeSkin,
+              playbackService: playbackService,
+              settings: settings,
+              player: player,
+              isLandscape: true,
+            ),
+          ),
+        ),
+
+        // ══ Right column: Controls (flex 10) ══
+        Expanded(
+          flex: 10,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 4, right: 8, top: 12, bottom: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Track name
+                  StreamBuilder<MediaItem?>(
+                    stream: playbackService.currentMediaItemStream,
+                    builder: (context, mediaSnap) {
+                      final mediaItem = mediaSnap.data;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: activeSkin.isFlat ? Colors.black.withOpacity(0.3) : activeSkin.lcdBgColor,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: activeSkin.isFlat ? activeSkin.textColor.withOpacity(0.15) : activeSkin.lcdBorderColor, width: 1.0),
+                        ),
+                        child: _ScrollingMarqueeText(
+                          title: mediaItem?.title ?? 'No Track Loaded',
+                          artist: mediaItem?.artist ?? 'UltraMP3 Reborn',
+                          textColor: activeSkin.textColor,
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  // Progress bar
+                  StreamBuilder<PositionState>(
+                    stream: playbackService.positionStateStream,
+                    builder: (context, posSnapshot) {
+                      final posData = posSnapshot.data;
+                      final position = posData?.position ?? Duration.zero;
+                      final duration = posData?.duration ?? Duration.zero;
+                      final double progress = duration.inMilliseconds > 0
+                          ? (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0)
+                          : 0.0;
+                      return Column(
+                        children: [
+                          SliderTheme(
+                            data: SliderThemeData(
+                              trackHeight: 2.5,
+                              activeTrackColor: activeSkin.textColor,
+                              inactiveTrackColor: activeSkin.textColor.withOpacity(0.15),
+                              thumbColor: activeSkin.textColor,
+                              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4.0),
+                              overlayShape: const RoundSliderOverlayShape(overlayRadius: 8),
+                            ),
+                            child: Slider(
+                              value: progress,
+                              onChanged: (val) {
+                                final ms = (val * duration.inMilliseconds).toInt();
+                                playbackService.seek(Duration(milliseconds: ms));
+                              },
+                            ),
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(_formatDuration(position), style: TextStyle(color: activeSkin.textColor, fontFamily: 'Orbitron', fontSize: 9, fontWeight: FontWeight.bold)),
+                              Text(_formatDuration(duration), style: TextStyle(color: activeSkin.textColor.withOpacity(0.6), fontFamily: 'Orbitron', fontSize: 9)),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                         const Spacer(),
+
+                  // Configured dialer console
+                  StreamBuilder<ja.LoopMode>(
+                    stream: player.loopModeStream,
+                    initialData: player.loopMode,
+                    builder: (context, loopSnap) {
+                      final loopMode = loopSnap.data ?? ja.LoopMode.off;
+                      return StreamBuilder<bool>(
+                        stream: player.shuffleModeEnabledStream,
+                        initialData: player.shuffleModeEnabled,
+                        builder: (context, shuffleSnap) {
+                          final isShuffle = shuffleSnap.data ?? false;
+                          final double designWidth = 360.0;
+                          final double designHeight = activeSkin.isFlat ? 145 : (_dialStyle == DialStyle.rectangular ? 180 : (_dialStyle == DialStyle.circular ? 260 : 180));
+
+                          return Center(
+                            child: SizedBox(
+                              height: activeSkin.isFlat ? 100 : (_dialStyle == DialStyle.rectangular ? 130 : 180),
+                              child: FittedBox(
+                                fit: BoxFit.contain,
+                                child: SizedBox(
+                                  width: designWidth,
+                                  height: designHeight,
+                                  child: _buildConfiguredDialer(
+                                    context: context,
+                                    activeSkin: activeSkin,
+                                    playbackService: playbackService,
+                                    player: player,
+                                    settings: settings,
+                                    isShuffle: isShuffle,
+                                    loopMode: loopMode,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildFlatPlayControlPanel({
     required PlayerSkin activeSkin,
     required ja.AudioPlayer player,
@@ -704,143 +1089,158 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
     final accentColor = activeSkin.textColor;
     final disabledColor = accentColor.withOpacity(0.25);
 
-    return Container(
-      padding: const EdgeInsets.only(left: 12, right: 12, top: 10, bottom: 8),
-      decoration: BoxDecoration(
-        color: activeSkin.panelBgColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-        border: Border(
-          top: BorderSide(color: activeSkin.outerBorderColor.withOpacity(0.3), width: 1.5),
-          left: BorderSide(color: activeSkin.outerBorderColor.withOpacity(0.3), width: 1.5),
-          right: BorderSide(color: activeSkin.outerBorderColor.withOpacity(0.3), width: 1.5),
-        ),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, -3))],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Row 2: Shuffle & Repeat (left) | Volume Down & Up (right)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Left: Shuffle & Repeat
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.shuffle_rounded,
-                      color: isShuffle ? accentColor : accentColor.withOpacity(0.35),
-                      size: 26,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: activeSkin.panelBgColor.withOpacity(0.65),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: activeSkin.textColor.withOpacity(0.22), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: activeSkin.textColor.withOpacity(0.12),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 4),
+                )
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top Row: Media Control Layout (Shuffle, Skip Prev, Neon Centerpiece Play, Skip Next, Repeat)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Shuffle
+                    IconButton(
+                      icon: Icon(
+                        Icons.shuffle_rounded,
+                        color: isShuffle ? accentColor : accentColor.withOpacity(0.35),
+                        size: 24,
+                      ),
+                      onPressed: hasTrack ? () => _toggleShuffle(playbackService, accentColor) : null,
+                      tooltip: 'Shuffle',
+                      padding: EdgeInsets.zero,
                     ),
-                    onPressed: hasTrack ? () => _toggleShuffle(playbackService, accentColor) : null,
-                    tooltip: 'Shuffle',
-                    padding: const EdgeInsets.all(8),
-                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      loopMode == ja.LoopMode.one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
-                      color: loopMode != ja.LoopMode.off ? accentColor : accentColor.withOpacity(0.35),
-                      size: 26,
+                    // Skip Prev
+                    IconButton(
+                      icon: Icon(Icons.skip_previous_rounded, color: hasTrack ? accentColor : disabledColor, size: 32),
+                      onPressed: hasTrack ? () => playbackService.skipToPrevious() : null,
+                      tooltip: 'Previous',
+                      padding: EdgeInsets.zero,
                     ),
-                    onPressed: hasTrack ? () => _toggleRepeat(playbackService, accentColor) : null,
-                    tooltip: 'Repeat',
-                    padding: const EdgeInsets.all(8),
-                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                  ),
-                ],
-              ),
-              // Right: Volume Down & Up
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.volume_down_rounded, color: accentColor.withOpacity(0.85), size: 26),
-                    onPressed: () => _volumeDown(playbackService, activeSkin),
-                    tooltip: 'Volume Down',
-                    padding: const EdgeInsets.all(8),
-                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.volume_up_rounded, color: accentColor.withOpacity(0.85), size: 26),
-                    onPressed: () => _volumeUp(playbackService, activeSkin),
-                    tooltip: 'Volume Up',
-                    padding: const EdgeInsets.all(8),
-                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                  ),
-                ],
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-
-          // Row 1: Skip Prev | Fast Rewind | Play/Pause FAB | Fast Forward | Skip Next
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // Skip Prev
-              IconButton(
-                icon: Icon(Icons.skip_previous_rounded, color: hasTrack ? accentColor : disabledColor, size: 36),
-                onPressed: hasTrack ? () => playbackService.skipToPrevious() : null,
-                tooltip: 'Previous',
-                padding: EdgeInsets.zero,
-              ),
-              // Fast Rewind
-              IconButton(
-                icon: Icon(Icons.fast_rewind_rounded, color: hasTrack ? accentColor : disabledColor, size: 28),
-                onPressed: hasTrack ? () => _fastRewind(playbackService, activeSkin) : null,
-                tooltip: 'Rewind',
-                padding: EdgeInsets.zero,
-              ),
-              // Play/Pause circular FAB – 64px
-              GestureDetector(
-                onTap: hasTrack ? () {
-                  if (_isPlaying) {
-                    playbackService.pause();
-                  } else {
-                    playbackService.play();
-                  }
-                } : null,
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: hasTrack ? activeSkin.buttonFaceColor : activeSkin.buttonFaceColor.withOpacity(0.4),
-                    border: Border.all(
-                      color: hasTrack ? accentColor.withOpacity(0.9) : disabledColor,
-                      width: 1.5,
+                    // Central floating neon play button
+                    GestureDetector(
+                      onTap: hasTrack ? () {
+                        if (_isPlaying) {
+                          playbackService.pause();
+                        } else {
+                          playbackService.play();
+                        }
+                      } : null,
+                      child: Container(
+                        width: 58,
+                        height: 58,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [
+                              accentColor,
+                              accentColor.withOpacity(0.85),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: accentColor.withOpacity(0.4),
+                              blurRadius: 12,
+                              spreadRadius: 2,
+                              offset: const Offset(0, 0),
+                            )
+                          ],
+                        ),
+                        child: Icon(
+                          _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                          color: accentColor.computeLuminance() > 0.5 ? Colors.black87 : Colors.white,
+                          size: 34,
+                        ),
+                      ),
                     ),
-                    boxShadow: hasTrack ? [
-                      BoxShadow(color: accentColor.withOpacity(0.25), blurRadius: 8, spreadRadius: 1)
-                    ] : [],
-                  ),
-                  child: Icon(
-                    _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                    color: hasTrack ? accentColor : disabledColor,
-                    size: 38,
-                  ),
+                    // Skip Next
+                    IconButton(
+                      icon: Icon(Icons.skip_next_rounded, color: hasTrack ? accentColor : disabledColor, size: 32),
+                      onPressed: hasTrack ? () => playbackService.skipToNext() : null,
+                      tooltip: 'Next',
+                      padding: EdgeInsets.zero,
+                    ),
+                    // Repeat
+                    IconButton(
+                      icon: Icon(
+                        loopMode == ja.LoopMode.one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
+                        color: loopMode != ja.LoopMode.off ? accentColor : accentColor.withOpacity(0.35),
+                        size: 24,
+                      ),
+                      onPressed: hasTrack ? () => _toggleRepeat(playbackService, accentColor) : null,
+                      tooltip: 'Repeat',
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
                 ),
-              ),
-              // Fast Forward
-              IconButton(
-                icon: Icon(Icons.fast_forward_rounded, color: hasTrack ? accentColor : disabledColor, size: 28),
-                onPressed: hasTrack ? () => _fastForward(playbackService, activeSkin) : null,
-                tooltip: 'Fast Forward',
-                padding: EdgeInsets.zero,
-              ),
-              // Skip Next
-              IconButton(
-                icon: Icon(Icons.skip_next_rounded, color: hasTrack ? accentColor : disabledColor, size: 36),
-                onPressed: hasTrack ? () => playbackService.skipToNext() : null,
-                tooltip: 'Next',
-                padding: EdgeInsets.zero,
-              ),
-            ],
+                
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4),
+                  child: Divider(color: Colors.transparent, height: 4),
+                ),
+                
+                // Bottom Row: Helper controls (Volume down, Fast Rewind, Fast Forward, Volume up)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Volume Down
+                    IconButton(
+                      icon: Icon(Icons.volume_down_rounded, color: accentColor.withOpacity(0.65), size: 20),
+                      onPressed: () => _volumeDown(playbackService, activeSkin),
+                      tooltip: 'Volume Down',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    ),
+                    // Fast Rewind
+                    IconButton(
+                      icon: Icon(Icons.fast_rewind_rounded, color: hasTrack ? accentColor.withOpacity(0.8) : disabledColor, size: 22),
+                      onPressed: hasTrack ? () => _fastRewind(playbackService, activeSkin) : null,
+                      tooltip: 'Rewind',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    ),
+                    // Fast Forward
+                    IconButton(
+                      icon: Icon(Icons.fast_forward_rounded, color: hasTrack ? accentColor.withOpacity(0.8) : disabledColor, size: 22),
+                      onPressed: hasTrack ? () => _fastForward(playbackService, activeSkin) : null,
+                      tooltip: 'Fast Forward',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    ),
+                    // Volume Up
+                    IconButton(
+                      icon: Icon(Icons.volume_up_rounded, color: accentColor.withOpacity(0.65), size: 20),
+                      onPressed: () => _volumeUp(playbackService, activeSkin),
+                      tooltip: 'Volume Up',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -905,6 +1305,503 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
     );
   }
 
+  void _showSkinSwitcherSheet(BuildContext context) {
+    final activeSkin = ref.read(playerSkinProvider);
+    final displayedSkins = PlayerSkin.all.where((s) => s.isFlat == activeSkin.isFlat).toList();
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return ClipRRect(
+          borderRadius: isLandscape
+              ? BorderRadius.zero
+              : const BorderRadius.vertical(top: Radius.circular(24)),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              height: isLandscape ? MediaQuery.of(context).size.height : MediaQuery.of(context).size.height * 0.65,
+              padding: EdgeInsets.only(
+                top: isLandscape ? (MediaQuery.of(context).padding.top + 8) : 0,
+                bottom: isLandscape ? 12 : (kBottomNavigationBarHeight + MediaQuery.of(context).padding.bottom),
+              ),
+              decoration: BoxDecoration(
+                color: activeSkin.panelBgColor.withOpacity(0.85),
+                borderRadius: isLandscape
+                    ? BorderRadius.zero
+                    : const BorderRadius.vertical(top: Radius.circular(24)),
+                border: isLandscape
+                    ? null
+                    : Border.all(color: activeSkin.textColor.withOpacity(0.25), width: 1.5),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: activeSkin.textColor.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2.5),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(
+                      mainAxisAlignment: isLandscape ? MainAxisAlignment.spaceBetween : MainAxisAlignment.center,
+                      children: [
+                        if (isLandscape) const SizedBox(width: 48),
+                        Text(
+                          'COCKPIT SKINS',
+                          style: TextStyle(
+                            fontFamily: 'Orbitron',
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: activeSkin.textColor,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        if (isLandscape)
+                          IconButton(
+                            icon: Icon(Icons.close_rounded, color: activeSkin.textColor),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: GridView.builder(
+                      padding: const EdgeInsets.all(16),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.85,
+                      ),
+                      itemCount: displayedSkins.length,
+                      itemBuilder: (context, idx) {
+                        final skin = displayedSkins[idx];
+                        final isSelected = skin.name == activeSkin.name;
+                        
+                        return GestureDetector(
+                          onTap: () {
+                            ref.read(playerSkinProvider.notifier).setSkinByName(skin.name);
+                            Navigator.pop(context);
+                            _showFeedbackGlow(context, 'SKIN: ${skin.name.toUpperCase()}', skin.textColor);
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isSelected ? skin.textColor.withOpacity(0.15) : Colors.black.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                  color: isSelected ? skin.textColor : skin.textColor.withOpacity(0.2),
+                                width: isSelected ? 2.0 : 1.0,
+                              ),
+                              boxShadow: isSelected ? [
+                                BoxShadow(
+                                  color: skin.textColor.withOpacity(0.25),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                )
+                              ] : [],
+                            ),
+                            padding: const EdgeInsets.all(8),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: skin.textColor,
+                                      ),
+                                    ),
+                                    Container(
+                                      width: 18,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(4),
+                                        color: skin.lcdBgColor,
+                                        border: Border.all(color: skin.lcdBorderColor, width: 0.5),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Expanded(
+                                  child: Center(
+                                    child: Text(
+                                      skin.name,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: isSelected ? skin.textColor : Colors.white.withOpacity(0.85),
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                        fontSize: 10.5,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(4),
+                                    color: Colors.black.withOpacity(0.4),
+                                  ),
+                                  child: Text(
+                                    skin.isFlat ? 'FLAT' : 'S60',
+                                    style: TextStyle(
+                                      fontFamily: 'monospace',
+                                      fontSize: 7.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: skin.textColor.withOpacity(0.7),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showVisualizerSwitcherSheet(BuildContext context) {
+    final activeSkin = ref.read(playerSkinProvider);
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return ClipRRect(
+          borderRadius: isLandscape
+              ? BorderRadius.zero
+              : const BorderRadius.vertical(top: Radius.circular(24)),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              height: isLandscape ? MediaQuery.of(context).size.height : MediaQuery.of(context).size.height * 0.65,
+              padding: EdgeInsets.only(
+                top: isLandscape ? (MediaQuery.of(context).padding.top + 8) : 0,
+                bottom: isLandscape ? 12 : (kBottomNavigationBarHeight + MediaQuery.of(context).padding.bottom),
+              ),
+              decoration: BoxDecoration(
+                color: activeSkin.panelBgColor.withOpacity(0.85),
+                borderRadius: isLandscape
+                    ? BorderRadius.zero
+                    : const BorderRadius.vertical(top: Radius.circular(24)),
+                border: isLandscape
+                    ? null
+                    : Border.all(color: activeSkin.textColor.withOpacity(0.25), width: 1.5),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: activeSkin.textColor.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2.5),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(
+                      mainAxisAlignment: isLandscape ? MainAxisAlignment.spaceBetween : MainAxisAlignment.center,
+                      children: [
+                        if (isLandscape) const SizedBox(width: 48),
+                        Text(
+                          'VISUALIZATION ENGINES',
+                          style: TextStyle(
+                            fontFamily: 'Orbitron',
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: activeSkin.textColor,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        if (isLandscape)
+                          IconButton(
+                            icon: Icon(Icons.close_rounded, color: activeSkin.textColor),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: GridView.builder(
+                      padding: const EdgeInsets.all(16),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.95,
+                      ),
+                      itemCount: VisualizerStyle.values.length,
+                      itemBuilder: (context, idx) {
+                        final style = VisualizerStyle.values[idx];
+                        final isSelected = style == _visualizerStyle;
+                        
+                        IconData styleIcon = Icons.analytics_rounded;
+                        if (style == VisualizerStyle.spectrumBars) styleIcon = Icons.bar_chart_rounded;
+                        if (style == VisualizerStyle.waveform) styleIcon = Icons.insights_rounded;
+                        if (style == VisualizerStyle.circularSpectrum) styleIcon = Icons.track_changes_rounded;
+                        if (style == VisualizerStyle.particleReactive) styleIcon = Icons.grain_rounded;
+                        if (style == VisualizerStyle.liquidFluid) styleIcon = Icons.opacity_rounded;
+                        if (style == VisualizerStyle.breathingRings) styleIcon = Icons.blur_circular_rounded;
+                        if (style == VisualizerStyle.retroWinamp) styleIcon = Icons.grid_view_rounded;
+                        if (style == VisualizerStyle.albumArtReactive) styleIcon = Icons.album_rounded;
+                        if (style == VisualizerStyle.combinedUltra) styleIcon = Icons.auto_awesome_rounded;
+                        if (style == VisualizerStyle.solarFlares) styleIcon = Icons.flare_rounded;
+                        if (style == VisualizerStyle.vortexOrbit) styleIcon = Icons.all_out_rounded;
+                        if (style == VisualizerStyle.rippleWaves) styleIcon = Icons.waves_rounded;
+                        if (style == VisualizerStyle.particleWaveFlow) styleIcon = Icons.bubble_chart_rounded;
+                        if (style == VisualizerStyle.cosmicTunnel) styleIcon = Icons.center_focus_strong_rounded;
+                        if (style == VisualizerStyle.orbitalGlow) styleIcon = Icons.star_purple500_rounded;
+                        if (style == VisualizerStyle.frequencyLaser) styleIcon = Icons.flash_on_rounded;
+                        if (style == VisualizerStyle.dnaHelix) styleIcon = Icons.sync_rounded;
+                        if (style == VisualizerStyle.audioMatrixGrid) styleIcon = Icons.apps_rounded;
+                        if (style == VisualizerStyle.blackHoleStars) styleIcon = Icons.blur_on_rounded;
+
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _visualizerStyle = style;
+                              _visualizerVariation = 0;
+                            });
+                            Navigator.pop(context);
+                            _showFeedbackGlow(context, 'VISUALIZER: ${style.name.toUpperCase()}', activeSkin.textColor);
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isSelected ? activeSkin.textColor.withOpacity(0.15) : Colors.black.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: isSelected ? activeSkin.textColor : activeSkin.textColor.withOpacity(0.2),
+                                width: isSelected ? 2.0 : 1.0,
+                              ),
+                              boxShadow: isSelected ? [
+                                BoxShadow(
+                                  color: activeSkin.textColor.withOpacity(0.25),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                )
+                              ] : [],
+                            ),
+                            padding: const EdgeInsets.all(8),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  styleIcon,
+                                  color: isSelected ? activeSkin.textColor : Colors.white.withOpacity(0.7),
+                                  size: 24,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  style.name.replaceAllMapped(RegExp(r'(^|[a-z])([A-Z])'), (m) => '${m.group(1)} ${m.group(2)}').toUpperCase(),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontFamily: 'monospace',
+                                    color: isSelected ? activeSkin.textColor : Colors.white.withOpacity(0.85),
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                    fontSize: 8,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showDialerSwitcherSheet(BuildContext context) {
+    final activeSkin = ref.read(playerSkinProvider);
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return ClipRRect(
+          borderRadius: isLandscape
+              ? BorderRadius.zero
+              : const BorderRadius.vertical(top: Radius.circular(24)),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              height: isLandscape ? MediaQuery.of(context).size.height : MediaQuery.of(context).size.height * 0.45,
+              padding: EdgeInsets.only(
+                top: isLandscape ? (MediaQuery.of(context).padding.top + 8) : 0,
+                bottom: isLandscape ? 12 : (kBottomNavigationBarHeight + MediaQuery.of(context).padding.bottom),
+              ),
+              decoration: BoxDecoration(
+                color: activeSkin.panelBgColor.withOpacity(0.85),
+                borderRadius: isLandscape
+                    ? BorderRadius.zero
+                    : const BorderRadius.vertical(top: Radius.circular(24)),
+                border: isLandscape
+                    ? null
+                    : Border.all(color: activeSkin.textColor.withOpacity(0.25), width: 1.5),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: activeSkin.textColor.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2.5),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(
+                      mainAxisAlignment: isLandscape ? MainAxisAlignment.spaceBetween : MainAxisAlignment.center,
+                      children: [
+                        if (isLandscape) const SizedBox(width: 48),
+                        Text(
+                          'TACTILE COCKPIT CONTROLLERS',
+                          style: TextStyle(
+                            fontFamily: 'Orbitron',
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: activeSkin.textColor,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        if (isLandscape)
+                          IconButton(
+                            icon: Icon(Icons.close_rounded, color: activeSkin.textColor),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: GridView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 0.85,
+                      ),
+                      itemCount: DialStyle.values.length,
+                      itemBuilder: (context, idx) {
+                        final style = DialStyle.values[idx];
+                        final isSelected = style == _dialStyle;
+
+                        IconData dIcon = Icons.radio_button_checked_rounded;
+                        String label = '';
+                        if (style == DialStyle.circular) {
+                          dIcon = Icons.motion_photos_on_rounded;
+                          label = 'IPOD WHEEL';
+                        }
+                        if (style == DialStyle.rectangular) {
+                          dIcon = Icons.crop_landscape_rounded;
+                          label = 'RECT CONSOLE';
+                        }
+                        if (style == DialStyle.digitalToggles) {
+                          dIcon = Icons.developer_board_rounded;
+                          label = 'SYNTH RACK';
+                        }
+
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _dialStyle = style;
+                            });
+                            ref.read(storageServiceProvider).setDialStyle(style.name);
+                            Navigator.pop(context);
+                            _showFeedbackGlow(context, 'DIAL: ${style.name.toUpperCase()}', activeSkin.textColor);
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isSelected ? activeSkin.textColor.withOpacity(0.15) : Colors.black.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSelected ? activeSkin.textColor : activeSkin.textColor.withOpacity(0.2),
+                                width: isSelected ? 2.0 : 1.0,
+                              ),
+                              boxShadow: isSelected ? [
+                                BoxShadow(
+                                  color: activeSkin.textColor.withOpacity(0.25),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                )
+                              ] : [],
+                            ),
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  dIcon,
+                                  color: isSelected ? activeSkin.textColor : Colors.white.withOpacity(0.7),
+                                  size: 32,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  label,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontFamily: 'Orbitron',
+                                    color: isSelected ? activeSkin.textColor : Colors.white.withOpacity(0.85),
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                    fontSize: 8.5,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final activeSkin = ref.watch(playerSkinProvider);
@@ -916,836 +1813,704 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
     final settings = ref.watch(playerSettingsProvider);
 
     return Scaffold(
-      body: Stack(
-        children: [
-          // 1. Dynamic landscape backgrounds
-          Positioned.fill(
-            child: Container(
-              decoration: _buildBackgroundDecoration(activeSkin),
-            ),
-          ),
+      body: OrientationBuilder(
+        builder: (context, orientation) {
+          final isLandscape = orientation == Orientation.landscape;
+          if (isLandscape) {
+            SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+          } else {
+            SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
+          }
 
-          Column(
+          return Stack(
             children: [
-              // 2. Tucked Top Bar (full-width flat container at the very top edge with dynamic notch padding)
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top + 4,
-                  left: 16,
-                  right: 16,
-                  bottom: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.9),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: topNavColor.withOpacity(0.15),
-                      width: 1,
-                    ),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.4),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'ULTRAMP3',
-                      style: TextStyle(
-                        color: topNavColor,
-                        fontFamily: 'Orbitron',
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        letterSpacing: 1.5,
-                        shadows: [
-                          Shadow(color: topNavColor.withOpacity(0.6), blurRadius: 8),
-                        ],
-                      ),
-                    ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (!activeSkin.isFlat)
-                          IconButton(
-                            tooltip: 'Dial Style',
-                            icon: Icon(Icons.track_changes_rounded, color: topNavColor.withOpacity(0.9), size: 20),
-                            onPressed: () {
-                              setState(() {
-                                final styles = DialStyle.values;
-                                final nextIndex = (_dialStyle.index + 1) % styles.length;
-                                _dialStyle = styles[nextIndex];
-                              });
-                              _showFeedbackGlow(
-                                context,
-                                'DIAL: ${_dialStyle.name.toUpperCase()}',
-                                topNavColor,
-                              );
-                            },
-                          ),
-                        IconButton(
-                          tooltip: 'Skin',
-                          icon: Icon(Icons.palette_rounded, color: topNavColor.withOpacity(0.9), size: 20),
-                          onPressed: () {
-                            ref.read(playerSkinProvider.notifier).cycleSkin(ref.read(playerSettingsProvider).skinType);
-                            final nextSkin = ref.read(playerSkinProvider);
-                            final nextTopNavColor = nextSkin.name == 'S60 Classic Grey'
-                                ? const Color(0xFF2ECC71)
-                                : nextSkin.textColor;
-                            _showFeedbackGlow(
-                              context,
-                              'SKIN: ${nextSkin.name.toUpperCase()}',
-                              nextTopNavColor,
-                            );
-                          },
-                        ),
-                        IconButton(
-                          tooltip: 'Visualizer Style',
-                          icon: Icon(Icons.waves_rounded, color: topNavColor.withOpacity(0.9), size: 20),
-                          onPressed: () {
-                            setState(() {
-                              final int maxVars = _getMaxVariations(_visualizerStyle);
-
-                              if (_visualizerVariation < maxVars - 1) {
-                                _visualizerVariation++;
-                              } else {
-                                final styles = VisualizerStyle.values;
-                                final nextIndex = (_visualizerStyle.index + 1) % styles.length;
-                                _visualizerStyle = styles[nextIndex];
-                                _visualizerVariation = 0;
-                              }
-                            });
-                            _showFeedbackGlow(
-                              context,
-                              'VISUALIZER: ${_visualizerStyle.name.toUpperCase()} (V${_visualizerVariation + 1})',
-                              topNavColor,
-                            );
-                          },
-                        ),
-                        IconButton(
-                          tooltip: 'Equalizer',
-                          icon: Icon(
-                            _showEqualizer ? Icons.equalizer_rounded : Icons.equalizer_outlined,
-                            color: _showEqualizer ? topNavColor : topNavColor.withOpacity(0.6),
-                            size: 20,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _showEqualizer = !_showEqualizer;
-                            });
-                          },
-                        ),
-                        IconButton(
-                          tooltip: 'Library',
-                          icon: Icon(Icons.library_music_rounded, color: topNavColor.withOpacity(0.9), size: 20),
-                          onPressed: () {
-                            context.go('/library');
-                          },
-                        ),
-                        IconButton(
-                          tooltip: 'Settings',
-                          icon: Icon(Icons.settings_rounded, color: topNavColor.withOpacity(0.9), size: 20),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const PlayerSettingsScreen()),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
+              // 1. Dynamic landscape backgrounds
+              Positioned.fill(
+                child: Container(
+                  decoration: _buildBackgroundDecoration(activeSkin),
                 ),
               ),
 
-              // 3. Padded scroll-free cockpit area to prevent overflow
-              Expanded(
-                child: SafeArea(
-                  top: false,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10.0), // Reduced from 16 to 10 for bleed bezel look
-                    child: Column(
-                      children: [
-                         const SizedBox(height: 8), // Reduced spacing to avoid bottom overflow completely
-
-                        // Sleek, unified visualizer with rounded corners & glass opacity
-                        StreamBuilder<MediaItem?>(
-                          stream: playbackService.currentMediaItemStream,
-                          builder: (context, mediaSnapshot) {
-                            return StreamBuilder<PlaybackState>(
-                              stream: playbackService.playbackStateStream,
-                              builder: (context, stateSnapshot) {
-                                final state = stateSnapshot.data;
-                                _isPlaying = state?.playing ?? false;
-                                _hasTrack = mediaSnapshot.data != null;
-
-                                final double visOpacity = activeSkin.isFlat
-                                    ? 1.0
-                                    : (settings.visualizerTransparencyEnabled
-                                        ? settings.visualizerOpacity
-                                        : 0.55);
-
-                                return ClipRRect(
-                                  borderRadius: BorderRadius.circular(8), // Reduced rounded corners from 16 to 8
-                                  child: SizedBox(
-                                    height: activeSkin.isFlat ? 300 : 230, // Premium visualizer viewport (230 height in skeuomorphic, 300 in flat)
-                                    width: double.infinity,
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        if (!settings.showAlbumArt) {
-                                          setState(() {
-                                            final int maxVars = _getMaxVariations(_visualizerStyle);
-                                            _visualizerVariation = (_visualizerVariation + 1) % maxVars;
-                                          });
-                                          _showFeedbackGlow(
-                                            context,
-                                            'VIS VARIATION: ${_visualizerVariation + 1}',
-                                            activeSkin.textColor,
-                                          );
-                                        }
-                                      },
-                                      child: StreamBuilder<MediaItem?>(
-                                        stream: playbackService.currentMediaItemStream,
-                                        builder: (context, mediaSnapshot) {
-                                          final mediaItem = mediaSnapshot.data;
-                                          return Stack(
-                                            children: [
-                                              // LCD Glass Background
-                                              Positioned.fill(
-                                                child: Container(
-                                                  color: activeSkin.lcdBgColor.withOpacity(visOpacity),
-                                                ),
-                                              ),
-                                              
-                                              // CustomPaint or AlbumArt wrapped in Padding to keep distance from overlays
-                                              if (settings.showAlbumArt)
-                                                Positioned.fill(
-                                                  child: Padding(
-                                                    padding: const EdgeInsets.only(top: 38, bottom: 44),
-                                                    child: Container(
-                                                      padding: const EdgeInsets.all(8),
-                                                      alignment: Alignment.center,
-                                                      child: _buildAlbumArtWidget(mediaItem, activeSkin),
-                                                    ),
-                                                  ),
-                                                )
-                                              else
-                                                Positioned.fill(
-                                                  child: Padding(
-                                                    padding: const EdgeInsets.only(top: 38, bottom: 60),
-                                                    child: CustomPaint(
-                                                      size: Size.infinite,
-                                                      painter: _VisualizerPainter(
-                                                        style: _visualizerStyle,
-                                                        variation: _visualizerVariation,
-                                                        amplitudes: _visualizerHeights,
-                                                        peaks: _peakHeights,
-                                                        time: _animationTime,
-                                                        stars: _stars,
-                                                        barColor: activeSkin.visualizerColor,
-                                                        peakColor: activeSkin.visualizerPeakColor,
-                                                        hasTrack: _isPlaying,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-
-                                              // Top Status Overlay: Bitrate and Sample Rate badges
-                                              Positioned(
-                                                top: 10,
-                                                left: 12,
-                                                right: 12,
-                                                child: Row(
-                                                  mainAxisAlignment: MainAxisAlignment.center,
-                                                  children: [
-                                                    _BacklitLCDBadge(
-                                                      text: '320 KBPS',
-                                                      color: activeSkin.textColor,
-                                                    ),
-                                                    const SizedBox(width: 16),
-                                                    _BacklitLCDBadge(
-                                                      text: '44.1 KHZ',
-                                                      color: activeSkin.textColor,
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-
-                                              // Bottom Controls Overlay: Equalizer selected badge & Volume level bar
-                                              Positioned(
-                                                bottom: 6,
-                                                left: 8,
-                                                right: 8,
-                                                child: _buildVisualizerControls(playbackService, activeSkin, player),
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
-                          },
+              Column(
+                children: [
+                  // 2. Tucked Top Bar (full-width flat container at the very top edge with dynamic notch padding, compact in landscape)
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.only(
+                      top: isLandscape ? 4 : (MediaQuery.of(context).padding.top + 4),
+                      left: 16,
+                      right: 16,
+                      bottom: isLandscape ? 4 : 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.9),
+                      border: Border(
+                        bottom: BorderSide(
+                          color: topNavColor.withOpacity(0.15),
+                          width: 1,
                         ),
-
-                        const SizedBox(height: 2),
-
-                        // Floating background-less update feedback ticker
-                        AnimatedOpacity(
-                          opacity: _statusMessage != null ? 1.0 : 0.0,
-                          duration: const Duration(milliseconds: 200),
-                          child: Container(
-                            height: 16, // Reduced from 20
-                            alignment: Alignment.center,
-                            child: Text(
-                              _statusMessage ?? '',
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.4),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'ULTRAMP3',
                               style: TextStyle(
-                                color: activeSkin.textColor,
+                                color: topNavColor,
                                 fontFamily: 'Orbitron',
                                 fontWeight: FontWeight.bold,
-                                fontSize: 13,
+                                fontSize: 16,
                                 letterSpacing: 1.5,
                                 shadows: [
-                                  Shadow(
-                                    color: activeSkin.textColor.withOpacity(0.8),
-                                    blurRadius: 8,
-                                  ),
+                                  Shadow(color: topNavColor.withOpacity(0.6), blurRadius: 8),
                                 ],
                               ),
                             ),
-                          ),
+                            if (isLandscape) ...[
+                              const SizedBox(width: 24),
+                              IconButton(
+                                tooltip: 'Home',
+                                icon: Icon(Icons.home_rounded, color: topNavColor, size: 20),
+                                onPressed: () => context.go('/home'),
+                              ),
+                              IconButton(
+                                tooltip: 'Library',
+                                icon: Icon(Icons.music_note_rounded, color: topNavColor.withOpacity(0.9), size: 20),
+                                onPressed: () => context.go('/library'),
+                              ),
+                              IconButton(
+                                tooltip: 'Folders',
+                                icon: Icon(Icons.folder_rounded, color: topNavColor.withOpacity(0.9), size: 20),
+                                onPressed: () => context.go('/folders'),
+                              ),
+                              IconButton(
+                                tooltip: 'Playlists',
+                                icon: Icon(Icons.queue_music_rounded, color: topNavColor.withOpacity(0.9), size: 20),
+                                onPressed: () => context.go('/playlists'),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                width: 1,
+                                height: 16,
+                                color: topNavColor.withOpacity(0.2),
+                              ),
+                            ],
+                          ],
                         ),
-
-                        const SizedBox(height: 4), 
-
-                        // 4. Independent track name marquee + Quick Actions above progress bar
-                        StreamBuilder<MediaItem?>(
-                          stream: playbackService.currentMediaItemStream,
-                          builder: (context, mediaSnapshot) {
-                            final mediaItem = mediaSnapshot.data;
-                            final String trackTitle = mediaItem?.title ?? 'No Track Loaded';
-                            final String trackArtist = mediaItem?.artist ?? 'UltraMP3 Reborn';
-                            final bool hasTrack = mediaItem != null;
-
-                            return Consumer(
-                              builder: (context, ref, _) {
-                                final favorites = ref.watch(favoritesProvider);
-                                final isFav = hasTrack && favorites.contains(mediaItem.id);
-
-                                return Container(
-                                  margin: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
-                                  padding: const EdgeInsets.only(left: 12.0, right: 4.0, top: 2.0, bottom: 2.0),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.35),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: activeSkin.textColor.withOpacity(0.12), width: 0.8),
-                                  ),
-                                  height: 36,
-                                  child: Row(
-                                    children: [
-                                      // Scrolling track title + artist
-                                      Expanded(
-                                        child: _ScrollingMarqueeText(
-                                          title: trackTitle,
-                                          artist: trackArtist,
-                                          textColor: activeSkin.textColor,
-                                        ),
-                                      ),
-                                      // Favorite toggle button
-                                      SizedBox(
-                                        width: 42,
-                                        height: 42,
-                                        child: Material(
-                                          color: Colors.transparent,
-                                          child: InkWell(
-                                            borderRadius: BorderRadius.circular(21),
-                                            onTap: hasTrack ? () => ref.read(favoritesProvider.notifier).toggle(mediaItem!.id) : null,
-                                            child: Center(
-                                              child: Icon(
-                                                isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                                                color: isFav ? Colors.pinkAccent : activeSkin.textColor.withOpacity(0.55),
-                                                size: 18,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      // Add to Playlist button
-                                      SizedBox(
-                                        width: 42,
-                                        height: 42,
-                                        child: Material(
-                                          color: Colors.transparent,
-                                          child: InkWell(
-                                            borderRadius: BorderRadius.circular(21),
-                                            onTap: hasTrack ? () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) => AddToPlaylistScreen(
-                                                    songId: mediaItem!.id,
-                                                    songTitle: mediaItem.title,
-                                                  ),
-                                                ),
-                                              );
-                                            } : null,
-                                            child: Center(
-                                              child: Icon(
-                                                Icons.playlist_add_rounded,
-                                                color: activeSkin.textColor.withOpacity(0.55),
-                                                size: 18,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (!activeSkin.isFlat)
+                              IconButton(
+                                tooltip: 'Dial Style',
+                                icon: Icon(Icons.track_changes_rounded, color: topNavColor.withOpacity(0.9), size: 20),
+                                onPressed: () => _showDialerSwitcherSheet(context),
+                              ),
+                            IconButton(
+                              tooltip: 'Skin',
+                              icon: Icon(Icons.palette_rounded, color: topNavColor.withOpacity(0.9), size: 20),
+                              onPressed: () => _showSkinSwitcherSheet(context),
+                            ),
+                            IconButton(
+                              tooltip: 'Visualizer Style',
+                              icon: Icon(Icons.waves_rounded, color: topNavColor.withOpacity(0.9), size: 20),
+                              onPressed: () => _showVisualizerSwitcherSheet(context),
+                            ),
+                            IconButton(
+                              tooltip: 'Equalizer',
+                              icon: Icon(
+                                _showEqualizer ? Icons.equalizer_rounded : Icons.equalizer_outlined,
+                                color: _showEqualizer ? topNavColor : topNavColor.withOpacity(0.6),
+                                size: 20,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _showEqualizer = !_showEqualizer;
+                                });
+                              },
+                            ),
+                            if (!isLandscape)
+                              IconButton(
+                                tooltip: 'Library',
+                                icon: Icon(Icons.library_music_rounded, color: topNavColor.withOpacity(0.9), size: 20),
+                                onPressed: () {
+                                  context.go('/library');
+                                },
+                              ),
+                            IconButton(
+                              tooltip: 'Settings',
+                              icon: Icon(Icons.settings_rounded, color: topNavColor.withOpacity(0.9), size: 20),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const PlayerSettingsScreen()),
                                 );
                               },
-                            );
-                          },
+                            ),
+                          ],
                         ),
+                      ],
+                    ),
+                  ),
 
-                        StreamBuilder<PositionState>(
-                          stream: playbackService.positionStateStream,
-                          builder: (context, posSnapshot) {
-                            final posData = posSnapshot.data;
-                            final position = posData?.position ?? Duration.zero;
-                            final duration = posData?.duration ?? Duration.zero;
-                            double currentProgress = 0.0;
+                  // 3. Cockpit area - responsive to both portrait and landscape orientation
+                  Expanded(
+                    child: SafeArea(
+                      top: false,
+                      child: () {
+                        if (isLandscape) {
+                          // ━━━━━ LANDSCAPE: Two-column cockpit ━━━━━
+                          return _buildLandscapeCockpit(context, activeSkin, playbackService, settings, player);
+                        }
 
-                            if (duration.inMilliseconds > 0) {
-                              currentProgress = position.inMilliseconds / duration.inMilliseconds;
-                            }
+                        // ━━━━━ PORTRAIT: Standard vertical layout ━━━━━
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                          child: SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const SizedBox(height: 8),
 
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SliderTheme(
-                                    data: SliderThemeData(
-                                      trackHeight: 3.0,
-                                      activeTrackColor: activeSkin.textColor,
-                                      inactiveTrackColor: activeSkin.textColor.withOpacity(0.15),
-                                      thumbColor: activeSkin.textColor,
-                                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5.0),
-                                      overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
-                                    ),
-                                    child: Slider(
-                                      value: currentProgress.clamp(0.0, 1.0),
-                                      onChanged: (val) {
-                                        final targetMs = (val * duration.inMilliseconds).toInt();
-                                        playbackService.seek(Duration(milliseconds: targetMs));
-                                      },
+                                _buildVisualizerSection(
+                                  context: context,
+                                  activeSkin: activeSkin,
+                                  playbackService: playbackService,
+                                  settings: settings,
+                                  player: player,
+                                  isLandscape: false,
+                                ),
+
+                                const SizedBox(height: 2),
+
+                                // Floating background-less update feedback ticker
+                                AnimatedOpacity(
+                                  opacity: _statusMessage != null ? 1.0 : 0.0,
+                                  duration: const Duration(milliseconds: 200),
+                                  child: Container(
+                                    height: 16, // Reduced from 20
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      _statusMessage ?? '',
+                                      style: TextStyle(
+                                        color: activeSkin.textColor,
+                                        fontFamily: 'Orbitron',
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                        letterSpacing: 1.5,
+                                        shadows: [
+                                          Shadow(
+                                            color: activeSkin.textColor.withOpacity(0.8),
+                                            blurRadius: 8,
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                  // Display progress time and total duration below the progress bar
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                ),
+
+                                const SizedBox(height: 4), 
+                                // 4. Track name marquee + Quick Actions above progress bar
+                                StreamBuilder<MediaItem?>(
+                                  stream: playbackService.currentMediaItemStream,
+                                  builder: (context, mediaSnapshot) {
+                                    final mediaItem = mediaSnapshot.data;
+                                    final String trackTitle = mediaItem?.title ?? 'No Track Loaded';
+                                    final String trackArtist = mediaItem?.artist ?? 'UltraMP3 Reborn';
+                                    final bool hasTrack = mediaItem != null;
+
+                                    return Consumer(
+                                      builder: (context, ref, _) {
+                                        final favorites = ref.watch(favoritesProvider);
+                                        final isFav = hasTrack && favorites.contains(mediaItem.id);
+
+                                        return Container(
+                                          margin: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+                                          padding: const EdgeInsets.only(left: 12.0, right: 4.0, top: 2.0, bottom: 2.0),
                                           decoration: BoxDecoration(
-                                            color: Colors.black.withOpacity(0.4),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: Text(
-                                            _formatDuration(position),
-                                            style: TextStyle(
-                                              color: activeSkin.textColor,
-                                              fontFamily: 'Orbitron',
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
+                                            color: activeSkin.isFlat
+                                                ? Colors.black.withOpacity(0.35)
+                                                : activeSkin.lcdBgColor, // Solid opaque for S60 legibility
+                                            borderRadius: BorderRadius.circular(10),
+                                            border: Border.all(
+                                              color: activeSkin.isFlat
+                                                  ? activeSkin.textColor.withOpacity(0.15)
+                                                  : activeSkin.lcdBorderColor,
+                                              width: activeSkin.isFlat ? 0.8 : 1.2,
                                             ),
                                           ),
-                                        ),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: Colors.black.withOpacity(0.4),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: Text(
-                                            _formatDuration(duration),
-                                            style: TextStyle(
-                                              color: activeSkin.textColor.withOpacity(0.8),
-                                              fontFamily: 'Orbitron',
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-
-                        // Upcoming Queue Display
-                        StreamBuilder<List<MediaItem>>(
-                          stream: playbackService.handler.queue,
-                          builder: (context, queueSnap) {
-                            return StreamBuilder<int?>(
-                              stream: playbackService.handler.playerInstance.currentIndexStream,
-                              builder: (context, indexSnap) {
-                                final queue = queueSnap.data ?? [];
-                                final currentIndex = indexSnap.data ?? 0;
-
-                                if (activeSkin.isFlat) {
-                                  final upcoming = <MapEntry<int, MediaItem>>[];
-                                  for (int i = currentIndex + 1; i < queue.length && upcoming.length < 5; i++) {
-                                    upcoming.add(MapEntry(i, queue[i]));
-                                  }
-                                  if (upcoming.isEmpty) return const SizedBox.shrink();
-
-                                  return Container(
-                                    margin: const EdgeInsets.only(top: 6, left: 6, right: 6),
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.28),
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: activeSkin.textColor.withOpacity(0.1), width: 0.8),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.only(bottom: 6),
-                                          child: Text(
-                                            'UP NEXT',
-                                            style: TextStyle(
-                                              color: activeSkin.textColor.withOpacity(0.5),
-                                              fontFamily: 'Orbitron',
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.bold,
-                                              letterSpacing: 1.2,
-                                            ),
-                                          ),
-                                        ),
-                                        ...upcoming.map((entry) {
-                                          final idx = entry.key;
-                                          final item = entry.value;
-                                          return GestureDetector(
-                                            behavior: HitTestBehavior.opaque,
-                                            onTap: () => playbackService.handler.playerInstance.seek(Duration.zero, index: idx),
-                                            child: Padding(
-                                              padding: const EdgeInsets.symmetric(vertical: 4),
-                                              child: Row(
-                                                children: [
-                                                  Container(
-                                                    width: 22,
-                                                    height: 22,
-                                                    alignment: Alignment.center,
-                                                    decoration: BoxDecoration(
-                                                      shape: BoxShape.circle,
-                                                      color: activeSkin.textColor.withOpacity(0.1),
-                                                    ),
-                                                    child: Text(
-                                                      '${idx + 1}',
-                                                      style: TextStyle(
-                                                        color: activeSkin.textColor.withOpacity(0.6),
-                                                        fontSize: 9,
-                                                        fontWeight: FontWeight.bold,
+                                          height: 36,
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                child: _ScrollingMarqueeText(
+                                                  title: trackTitle,
+                                                  artist: trackArtist,
+                                                  textColor: activeSkin.textColor,
+                                                ),
+                                              ),
+                                              SizedBox(
+                                                width: 42,
+                                                height: 42,
+                                                child: Material(
+                                                  color: Colors.transparent,
+                                                  child: InkWell(
+                                                    borderRadius: BorderRadius.circular(21),
+                                                    onTap: hasTrack ? () => ref.read(favoritesProvider.notifier).toggle(mediaItem!.id) : null,
+                                                    child: Center(
+                                                      child: Icon(
+                                                        isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                                        color: isFav ? Colors.pinkAccent : activeSkin.textColor.withOpacity(0.55),
+                                                        size: 18,
                                                       ),
                                                     ),
                                                   ),
-                                                  const SizedBox(width: 10),
-                                                  Expanded(
-                                                    child: Column(
-                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                      children: [
-                                                        Text(
-                                                          item.title,
-                                                          style: TextStyle(
-                                                            color: activeSkin.textColor.withOpacity(0.9),
-                                                            fontSize: 12,
-                                                            fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              SizedBox(
+                                                width: 42,
+                                                height: 42,
+                                                child: Material(
+                                                  color: Colors.transparent,
+                                                  child: InkWell(
+                                                    borderRadius: BorderRadius.circular(21),
+                                                    onTap: hasTrack ? () {
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (_) => AddToPlaylistScreen(
+                                                            songId: mediaItem!.id,
+                                                            songTitle: mediaItem.title,
                                                           ),
-                                                          maxLines: 1,
-                                                          overflow: TextOverflow.ellipsis,
                                                         ),
-                                                        Text(
-                                                          item.artist ?? '',
-                                                          style: TextStyle(
-                                                            color: activeSkin.textColor.withOpacity(0.45),
-                                                            fontSize: 10,
-                                                          ),
-                                                          maxLines: 1,
-                                                          overflow: TextOverflow.ellipsis,
-                                                        ),
-                                                      ],
+                                                      );
+                                                    } : null,
+                                                    child: Center(
+                                                      child: Icon(
+                                                        Icons.playlist_add_rounded,
+                                                        color: activeSkin.textColor.withOpacity(0.55),
+                                                        size: 18,
+                                                      ),
                                                     ),
                                                   ),
-                                                  Icon(Icons.chevron_right_rounded, color: activeSkin.textColor.withOpacity(0.3), size: 16),
-                                                ],
+                                                ),
                                               ),
-                                            ),
-                                          );
-                                        }).toList(),
-                                      ],
-                                    ),
-                                  );
-                                } else {
-                                  final nextIndex = currentIndex + 1;
-                                  if (nextIndex >= queue.length) return const SizedBox.shrink();
-                                  final nextItem = queue[nextIndex];
-
-                                  return Container(
-                                    margin: const EdgeInsets.only(top: 4, left: 6, right: 6),
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                                    decoration: BoxDecoration(
-                                      color: activeSkin.lcdBgColor.withOpacity(0.55),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: activeSkin.lcdBorderColor.withOpacity(0.5), width: 0.8),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Text(
-                                          'NEXT  ',
-                                          style: TextStyle(
-                                            color: activeSkin.textColor.withOpacity(0.55),
-                                            fontFamily: 'Orbitron',
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 1.0,
+                                            ],
                                           ),
-                                        ),
-                                        Expanded(
-                                          child: Text(
-                                            '${nextItem.title} – ${nextItem.artist ?? ""}',
-                                            style: TextStyle(
-                                              color: activeSkin.textColor.withOpacity(0.85),
-                                              fontFamily: 'monospace',
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }
-                              },
-                            );
-                          },
-                        ),
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
 
-                        const Spacer(flex: 1),
+                                // 5. Progress / seek bar + time badges
+                                StreamBuilder<PositionState>(
+                                  stream: playbackService.positionStateStream,
+                                  builder: (context, posSnapshot) {
+                                    final posData = posSnapshot.data;
+                                    final position = posData?.position ?? Duration.zero;
+                                    final duration = posData?.duration ?? Duration.zero;
+                                    double currentProgress = 0.0;
 
-                        if (activeSkin.isFlat)
-                          const SizedBox(height: 125) // Reserved height for the tucked modern sticky footer dialer
-                        else ...[
-                          if (_dialStyle == DialStyle.circular)
-                            const SizedBox(height: 275) // Reserved height for skeuomorphic circular click-wheel footer dialer
-                          else ...[
-                            // 5. Dial cockpit console with real-time stream bindings for Shuffle & Repeat (Skeuomorphic Wide Only)
-                            StreamBuilder<ja.LoopMode>(
-                              stream: player.loopModeStream,
-                              initialData: player.loopMode,
-                              builder: (context, loopSnapshot) {
-                                final loopMode = loopSnapshot.data ?? ja.LoopMode.off;
-                                return StreamBuilder<bool>(
-                                  stream: player.shuffleModeEnabledStream,
-                                  initialData: player.shuffleModeEnabled,
-                                  builder: (context, shuffleSnapshot) {
-                                    final isShuffle = shuffleSnapshot.data ?? false;
-                                    final bgOpacity = settings.dialerTransparencyEnabled ? settings.dialerOpacity : 1.0;
-                                    return SizedBox(
-                                      width: 320,
-                                      height: 180,
-                                      child: Stack(
+                                    if (duration.inMilliseconds > 0) {
+                                      currentProgress = position.inMilliseconds / duration.inMilliseconds;
+                                    }
+
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Positioned.fill(
-                                            child: _S60DpadCockpitConsole(
-                                              skin: activeSkin,
-                                              isPlaying: _isPlaying,
-                                              dialStyle: _dialStyle,
-                                              animationTime: _animationTime,
-                                              isShuffle: isShuffle,
-                                              loopMode: loopMode,
-                                              bgOpacity: bgOpacity,
-                                              onPlayPause: () {
-                                                if (_isPlaying) {
-                                                  playbackService.pause();
-                                                } else {
-                                                  playbackService.play();
-                                                }
+                                          SliderTheme(
+                                            data: SliderThemeData(
+                                              trackHeight: 3.0,
+                                              activeTrackColor: activeSkin.textColor,
+                                              inactiveTrackColor: activeSkin.textColor.withOpacity(0.15),
+                                              thumbColor: activeSkin.textColor,
+                                              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5.0),
+                                              overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+                                            ),
+                                            child: Slider(
+                                              value: currentProgress.clamp(0.0, 1.0),
+                                              onChanged: (val) {
+                                                final targetMs = (val * duration.inMilliseconds).toInt();
+                                                playbackService.seek(Duration(milliseconds: targetMs));
                                               },
-                                              onVolumeUp: () => _volumeUp(playbackService, activeSkin),
-                                              onVolumeDown: () => _volumeDown(playbackService, activeSkin),
-                                              onSkipPrevious: () => playbackService.skipToPrevious(),
-                                              onSkipNext: () => playbackService.skipToNext(),
-                                              onFastRewind: () => _fastRewind(playbackService, activeSkin),
-                                              onFastForward: () => _fastForward(playbackService, activeSkin),
-                                              onToggleShuffle: () => _toggleShuffle(playbackService, activeSkin.textColor),
-                                              onToggleRepeat: () => _toggleRepeat(playbackService, activeSkin.textColor),
-                                              onCycleDialStyle: () {
-                                                setState(() {
-                                                  final styles = DialStyle.values;
-                                                  final nextIndex = (_dialStyle.index + 1) % styles.length;
-                                                  _dialStyle = styles[nextIndex];
-                                                });
-                                                _showFeedbackGlow(
-                                                  context,
-                                                  'DIAL: ${_dialStyle.name.toUpperCase()}',
-                                                  activeSkin.textColor,
-                                                );
-                                              },
-                                              onCycleSkin: () {
-                                                ref.read(playerSkinProvider.notifier).cycleSkin(ref.read(playerSettingsProvider).skinType);
-                                                _showFeedbackGlow(context, 'SKIN: ${ref.read(playerSkinProvider).name.toUpperCase()}', activeSkin.textColor);
-                                              },
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: activeSkin.isFlat
+                                                        ? Colors.black.withOpacity(0.28)
+                                                        : activeSkin.lcdBgColor, // Solid for S60
+                                                    borderRadius: BorderRadius.circular(4),
+                                                    border: activeSkin.isFlat
+                                                        ? null
+                                                        : Border.all(color: activeSkin.lcdBorderColor, width: 0.8),
+                                                  ),
+                                                  child: Text(
+                                                    _formatDuration(position),
+                                                    style: TextStyle(
+                                                      color: activeSkin.textColor,
+                                                      fontFamily: 'Orbitron',
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: activeSkin.isFlat
+                                                        ? Colors.black.withOpacity(0.28)
+                                                        : activeSkin.lcdBgColor, // Solid for S60
+                                                    borderRadius: BorderRadius.circular(4),
+                                                    border: activeSkin.isFlat
+                                                        ? null
+                                                        : Border.all(color: activeSkin.lcdBorderColor, width: 0.8),
+                                                  ),
+                                                  child: Text(
+                                                    _formatDuration(duration),
+                                                    style: TextStyle(
+                                                      color: activeSkin.textColor,
+                                                      fontFamily: 'Orbitron',
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
                                         ],
                                       ),
                                     );
                                   },
-                                );
-                              },
+                                ),
+
+                                // 6. Upcoming Queue Display
+                                StreamBuilder<List<MediaItem>>(
+                                  stream: playbackService.handler.queue,
+                                  builder: (context, queueSnap) {
+                                    return StreamBuilder<int?>(
+                                      stream: playbackService.handler.playerInstance.currentIndexStream,
+                                      builder: (context, indexSnap) {
+                                        final queue = queueSnap.data ?? [];
+                                        final currentIndex = indexSnap.data ?? 0;
+
+                                        if (activeSkin.isFlat) {
+                                          final upcoming = <MapEntry<int, MediaItem>>[];
+                                          for (int i = currentIndex + 1; i < queue.length && upcoming.length < 5; i++) {
+                                            upcoming.add(MapEntry(i, queue[i]));
+                                          }
+                                          if (upcoming.isEmpty) return const SizedBox.shrink();
+
+                                          return Container(
+                                            margin: const EdgeInsets.only(top: 6, left: 6, right: 6),
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black.withOpacity(0.28),
+                                              borderRadius: BorderRadius.circular(10),
+                                              border: Border.all(color: activeSkin.textColor.withOpacity(0.1), width: 0.8),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Padding(
+                                                  padding: const EdgeInsets.only(bottom: 6),
+                                                  child: Text(
+                                                    'UP NEXT',
+                                                    style: TextStyle(
+                                                      color: activeSkin.textColor.withOpacity(0.5),
+                                                      fontFamily: 'Orbitron',
+                                                      fontSize: 9,
+                                                      fontWeight: FontWeight.bold,
+                                                      letterSpacing: 1.2,
+                                                    ),
+                                                  ),
+                                                ),
+                                                ...upcoming.map((entry) {
+                                                  final idx = entry.key;
+                                                  final item = entry.value;
+                                                  return GestureDetector(
+                                                    behavior: HitTestBehavior.opaque,
+                                                    onTap: () => playbackService.handler.playerInstance.seek(Duration.zero, index: idx),
+                                                    child: Padding(
+                                                      padding: const EdgeInsets.symmetric(vertical: 4),
+                                                      child: Row(
+                                                        children: [
+                                                          Container(
+                                                            width: 22,
+                                                            height: 22,
+                                                            alignment: Alignment.center,
+                                                            decoration: BoxDecoration(
+                                                              shape: BoxShape.circle,
+                                                              color: activeSkin.textColor.withOpacity(0.1),
+                                                            ),
+                                                            child: Text(
+                                                              '${idx + 1}',
+                                                              style: TextStyle(
+                                                                color: activeSkin.textColor.withOpacity(0.6),
+                                                                fontSize: 9,
+                                                                fontWeight: FontWeight.bold,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          const SizedBox(width: 10),
+                                                          Expanded(
+                                                            child: Column(
+                                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                                              children: [
+                                                                Text(
+                                                                  item.title,
+                                                                  style: TextStyle(
+                                                                    color: activeSkin.textColor.withOpacity(0.9),
+                                                                    fontSize: 12,
+                                                                    fontWeight: FontWeight.bold,
+                                                                  ),
+                                                                  maxLines: 1,
+                                                                  overflow: TextOverflow.ellipsis,
+                                                                ),
+                                                                Text(
+                                                                  item.artist ?? '',
+                                                                  style: TextStyle(
+                                                                    color: activeSkin.textColor.withOpacity(0.45),
+                                                                    fontSize: 10,
+                                                                  ),
+                                                                  maxLines: 1,
+                                                                  overflow: TextOverflow.ellipsis,
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                          Icon(Icons.chevron_right_rounded, color: activeSkin.textColor.withOpacity(0.3), size: 16),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  );
+                                                }).toList(),
+                                              ],
+                                            ),
+                                          );
+                                        } else {
+                                          final upcoming = <MapEntry<int, MediaItem>>[];
+                                          for (int i = currentIndex + 1; i < queue.length && upcoming.length < 5; i++) {
+                                            upcoming.add(MapEntry(i, queue[i]));
+                                          }
+                                          if (upcoming.isEmpty) return const SizedBox.shrink();
+
+                                          return Container(
+                                            margin: const EdgeInsets.only(top: 6, left: 6, right: 6),
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: activeSkin.lcdBgColor.withOpacity(0.85),
+                                              borderRadius: BorderRadius.circular(6),
+                                              border: Border.all(color: activeSkin.lcdBorderColor, width: 1.0),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Padding(
+                                                  padding: const EdgeInsets.only(bottom: 4),
+                                                  child: Row(
+                                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                    children: [
+                                                      Text(
+                                                        'UPCOMING QUEUE',
+                                                        style: TextStyle(
+                                                          color: activeSkin.textColor.withOpacity(0.6),
+                                                          fontFamily: 'Orbitron',
+                                                          fontSize: 8,
+                                                          fontWeight: FontWeight.bold,
+                                                          letterSpacing: 1.1,
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        '${upcoming.length} TRACKS',
+                                                        style: TextStyle(
+                                                          color: activeSkin.textColor.withOpacity(0.6),
+                                                          fontFamily: 'monospace',
+                                                          fontSize: 8,
+                                                          fontWeight: FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                Divider(color: activeSkin.lcdBorderColor.withOpacity(0.35), height: 6, thickness: 0.5),
+                                                ...upcoming.map((entry) {
+                                                  final idx = entry.key;
+                                                  final item = entry.value;
+                                                  return GestureDetector(
+                                                    behavior: HitTestBehavior.opaque,
+                                                    onTap: () => playbackService.handler.playerInstance.seek(Duration.zero, index: idx),
+                                                    child: Padding(
+                                                      padding: const EdgeInsets.symmetric(vertical: 3),
+                                                      child: Row(
+                                                        children: [
+                                                          Text(
+                                                            '${(idx + 1).toString().padLeft(2, '0')}. ',
+                                                            style: TextStyle(
+                                                              color: activeSkin.textColor.withOpacity(0.8),
+                                                              fontFamily: 'monospace',
+                                                              fontSize: 10,
+                                                              fontWeight: FontWeight.bold,
+                                                            ),
+                                                          ),
+                                                          Expanded(
+                                                            child: Text(
+                                                              '${item.title} – ${item.artist ?? ""}',
+                                                              style: TextStyle(
+                                                                color: activeSkin.textColor,
+                                                                fontFamily: 'monospace',
+                                                                fontSize: 10,
+                                                                fontWeight: FontWeight.bold,
+                                                              ),
+                                                              maxLines: 1,
+                                                              overflow: TextOverflow.ellipsis,
+                                                            ),
+                                                          ),
+                                                          Icon(Icons.play_arrow_rounded, color: activeSkin.textColor.withOpacity(0.5), size: 12),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  );
+                                                }).toList(),
+                                              ],
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    );
+                                  },
+                                ),
+
+                                const SizedBox(height: 12),
+                                () {
+                                  final navHeight = kBottomNavigationBarHeight + MediaQuery.of(context).padding.bottom;
+                                  if (activeSkin.isFlat) {
+                                    return SizedBox(height: 100 + navHeight);
+                                  } else {
+                                    if (_dialStyle == DialStyle.circular) {
+                                      return SizedBox(height: 260 + navHeight);
+                                    } else {
+                                      return SizedBox(height: 180 + navHeight + 20);
+                                    }
+                                  }
+                                }(),
+                              ],
                             ),
-                            const SizedBox(height: 24),
-                          ],
-                        ],
-                       ],
+                          ),
+                        );
+                      }(),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
 
-          if (activeSkin.isFlat || _dialStyle == DialStyle.circular)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: kBottomNavigationBarHeight,
-              child: StreamBuilder<ja.LoopMode>(
-                stream: player.loopModeStream,
-                initialData: player.loopMode,
-                builder: (context, loopSnapshot) {
-                  final loopMode = loopSnapshot.data ?? ja.LoopMode.off;
-                  return StreamBuilder<bool>(
-                    stream: player.shuffleModeEnabledStream,
-                    initialData: player.shuffleModeEnabled,
-                    builder: (context, shuffleSnapshot) {
-                      final isShuffle = shuffleSnapshot.data ?? false;
-                      if (activeSkin.isFlat) {
-                        return StreamBuilder<MediaItem?>(
-                          stream: playbackService.currentMediaItemStream,
-                          builder: (context, trackSnap) {
-                            final hasTrack = trackSnap.data != null;
-                            return _buildFlatPlayControlPanel(
-                              activeSkin: activeSkin,
-                              player: player,
-                              playbackService: playbackService,
-                              isShuffle: isShuffle,
-                              loopMode: loopMode,
-                              bgOpacity: 1.0,
-                              hasTrack: hasTrack,
-                            );
-                          },
-                        );
-                      } else {
-                        // Skeuomorphic circular click-wheel dialer positioned at bottom
-                        final bgOpacity = settings.dialerTransparencyEnabled ? settings.dialerOpacity : 1.0;
-                        return _S60DpadCockpitConsole(
-                          skin: activeSkin,
-                          isPlaying: _isPlaying,
-                          dialStyle: _dialStyle,
-                          animationTime: _animationTime,
-                          isShuffle: isShuffle,
-                          loopMode: loopMode,
-                          bgOpacity: bgOpacity,
-                          onPlayPause: () {
-                            if (_isPlaying) {
-                              playbackService.pause();
-                            } else {
-                              playbackService.play();
-                            }
-                          },
-                          onVolumeUp: () => _volumeUp(playbackService, activeSkin),
-                          onVolumeDown: () => _volumeDown(playbackService, activeSkin),
-                          onSkipPrevious: () => playbackService.skipToPrevious(),
-                          onSkipNext: () => playbackService.skipToNext(),
-                          onFastRewind: () => _fastRewind(playbackService, activeSkin),
-                          onFastForward: () => _fastForward(playbackService, activeSkin),
-                          onToggleShuffle: () => _toggleShuffle(playbackService, activeSkin.textColor),
-                          onToggleRepeat: () => _toggleRepeat(playbackService, activeSkin.textColor),
-                          onCycleDialStyle: () {
-                            setState(() {
-                              final styles = DialStyle.values;
-                              final nextIndex = (_dialStyle.index + 1) % styles.length;
-                              _dialStyle = styles[nextIndex];
-                            });
-                            _showFeedbackGlow(
-                              context,
-                              'DIAL: ${_dialStyle.name.toUpperCase()}',
-                              activeSkin.textColor,
-                            );
-                          },
-                          onCycleSkin: () {
-                            ref.read(playerSkinProvider.notifier).cycleSkin(ref.read(playerSettingsProvider).skinType);
-                            _showFeedbackGlow(context, 'SKIN: ${ref.read(playerSkinProvider).name.toUpperCase()}', activeSkin.textColor);
-                          },
-                        );
-                      }
-                    },
-                  );
-                },
-              ),
-            ),
-
-          // 3. Full-screen EQ modal overlay (covers entire player screen)
-          if (_showEqualizer)
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: () => setState(() => _showEqualizer = false),
-                child: Container(
-                  color: Colors.black.withOpacity(0.72),
-                  alignment: Alignment.center,
-                  child: GestureDetector(
-                    onTap: () {}, // Prevent tap-through
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 40.0),
-                      child: _SkeuomorphicEqualizerPanel(
-                        skin: activeSkin,
-                        bands: _eqBands,
-                        activePreset: _activePreset,
-                        presets: _presets,
-                        onBandChanged: (index, val) {
-                          setState(() {
-                            _eqBands[index] = val;
-                            _activePreset = 'Custom';
-                            _presets['Custom'] = List.from(_eqBands);
-                          });
-                          playbackService.setEqualizerBands(_eqBands);
+              // Dialer panel — docked or floating cleanly above bottom navigation, hidden in landscape
+              if (!isLandscape)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: () {
+                    final navHeight = kBottomNavigationBarHeight + MediaQuery.of(context).padding.bottom;
+                    if (activeSkin.isFlat || _dialStyle == DialStyle.circular) {
+                      return _dialStyle == DialStyle.circular ? navHeight - 57 : navHeight - 30; // Move flat dialer down by 30px
+                    } else {
+                      return navHeight + 20; // Safe distance above bottom navigation bar
+                    }
+                  }(),
+                  child: StreamBuilder<ja.LoopMode>(
+                    stream: player.loopModeStream,
+                    initialData: player.loopMode,
+                    builder: (context, loopSnapshot) {
+                      final loopMode = loopSnapshot.data ?? ja.LoopMode.off;
+                      return StreamBuilder<bool>(
+                        stream: player.shuffleModeEnabledStream,
+                        initialData: player.shuffleModeEnabled,
+                        builder: (context, shuffleSnapshot) {
+                          final isShuffle = shuffleSnapshot.data ?? false;
+                          return _buildConfiguredDialer(
+                            context: context,
+                            activeSkin: activeSkin,
+                            playbackService: playbackService,
+                            player: player,
+                            settings: settings,
+                            isShuffle: isShuffle,
+                            loopMode: loopMode,
+                          );
                         },
-                        onPresetSelected: (name, values) => _applyEqPreset(playbackService, name, values, activeSkin.textColor),
-                        onClose: () => setState(() => _showEqualizer = false),
+                      );
+                    },
+                  ),
+                ),
+
+              // 3. Full-screen EQ modal overlay (covers entire player screen)
+              if (_showEqualizer)
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _showEqualizer = false),
+                    child: Container(
+                      color: Colors.black.withOpacity(0.72),
+                      alignment: isLandscape ? null : Alignment.center,
+                      child: GestureDetector(
+                        onTap: () {}, // Prevent tap-through
+                        child: Padding(
+                          padding: isLandscape ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16.0, vertical: 40.0),
+                          child: _SkeuomorphicEqualizerPanel(
+                            skin: activeSkin,
+                            bands: _eqBands,
+                            activePreset: _activePreset,
+                            presets: _presets,
+                            bassValue: _bassValue,
+                            stereoValue: _stereoValue,
+                            onBassChanged: (val) {
+                              setState(() => _bassValue = val);
+                              _applyEqualizerWithKnobs(playbackService);
+                            },
+                            onStereoChanged: (val) {
+                              setState(() => _stereoValue = val);
+                              // stereo value affects visualizer width; no native EQ band needed
+                            },
+                            onBandChanged: (index, val) {
+                              setState(() {
+                                _eqBands[index] = val;
+                                _activePreset = 'Custom';
+                                _presets['Custom'] = List.from(_eqBands);
+                              });
+                              _applyEqualizerWithKnobs(playbackService);
+                            },
+                            onPresetSelected: (name, values) => _applyEqPreset(playbackService, name, values, activeSkin.textColor),
+                            onClose: () => setState(() => _showEqualizer = false),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -2794,6 +3559,354 @@ class _VisualizerPainter extends CustomPainter {
           }
         }
         break;
+
+      case VisualizerStyle.particleWaveFlow:
+        {
+          // Draw a gorgeous glowing bezier wave with colorful particles flowing on it
+          final Paint wavePaint = Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3.5
+            ..color = barColor;
+
+          final Path path = Path();
+          final double baseHeight = h * 0.5;
+          path.moveTo(0, baseHeight);
+
+          final int steps = 20;
+          final List<Offset> points = [];
+          for (int i = 0; i <= steps; i++) {
+            final double pct = i / steps;
+            final double dx = pct * w;
+            final double amp = amplitudes[i % 10] / 38.0;
+            
+            // Multiple sine overlays for high-complexity fluid physics look
+            final double dy = baseHeight - (amp * 45.0 * (1.0 + normalizedAmp)) - (math.sin(pct * 4 * math.pi + time * 3.0) * 20.0);
+            if (i == 0) {
+              path.moveTo(dx, dy);
+            } else {
+              path.lineTo(dx, dy);
+            }
+            points.add(Offset(dx, dy));
+          }
+          canvas.drawPath(path, wavePaint);
+
+          // Now paint floating energetic particles along the wave coordinates
+          final Paint particlePaint = Paint()..style = PaintingStyle.fill;
+          for (int i = 0; i < points.length; i++) {
+            final pt = points[i];
+            final double amp = amplitudes[i % 10] / 38.0;
+            final double particleSize = 3.0 + amp * 9.0;
+            
+            // Neon glowing particles
+            particlePaint.color = Color.lerp(barColor, peakColor, i / points.length)!
+                .withOpacity(0.4 + 0.6 * math.sin(time * 5 + i).abs());
+            
+            // Subtle floating offset
+            final double yOffset = math.sin(time * 4 + i) * (5.0 + amp * 12.0);
+            canvas.drawCircle(Offset(pt.dx, pt.dy + yOffset), particleSize, particlePaint);
+
+            // Double outline glow
+            canvas.drawCircle(
+              Offset(pt.dx, pt.dy + yOffset),
+              particleSize + 4.0,
+              Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 1.0
+                ..color = peakColor.withOpacity(0.25 * (1.0 - (i % 3) * 0.2)),
+            );
+          }
+        }
+        break;
+
+      case VisualizerStyle.cosmicTunnel:
+        {
+          final double cx = w / 2;
+          final double cy = h / 2;
+          final Paint starPaint = Paint()..style = PaintingStyle.fill;
+
+          // Paint cosmic vortex lines (tunnel guidelines)
+          final Paint linePaint = Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.8
+            ..color = barColor.withOpacity(0.12);
+          for (int i = 0; i < 8; i++) {
+            final double angle = (i / 8) * 2 * math.pi + time * 0.1;
+            canvas.drawLine(
+              Offset(cx, cy),
+              Offset(cx + math.cos(angle) * w, cy + math.sin(angle) * h),
+              linePaint,
+            );
+          }
+
+          // Render active reactive 3D starfield tunnel
+          for (final star in stars) {
+            // Update stars in real-time inside the painter directly!
+            star.update(normalizedAmp * 0.2);
+
+            if (star.z <= 0) continue;
+
+            // Project 3D coordinates onto 2D screen surface
+            final double screenX = cx + (star.x * w) / star.z;
+            final double screenY = cy + (star.y * h) / star.z;
+
+            // If coordinates bleed out of boundaries, skip rendering
+            if (screenX < 0 || screenX > w || screenY < 0 || screenY > h) continue;
+
+            // Depth calculation: closer stars are larger and brighter
+            final double size = (1.2 - star.z) * (3.5 + normalizedAmp * 8.0);
+            final double opacity = (1.0 - star.z).clamp(0.0, 1.0);
+
+            starPaint.color = Color.lerp(barColor, peakColor, (star.z * 2.0).clamp(0.0, 1.0))!
+                .withOpacity(opacity * (0.35 + normalizedAmp * 0.65));
+
+            canvas.drawCircle(Offset(screenX, screenY), size, starPaint);
+
+            // Glowing light trails for near/fast particles
+            if (star.z < 0.4) {
+              final double tailX = cx + (star.x * w) / (star.z + 0.05);
+              final double tailY = cy + (star.y * h) / (star.z + 0.05);
+              canvas.drawLine(
+                Offset(screenX, screenY),
+                Offset(tailX, tailY),
+                Paint()
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = size * 0.4
+                  ..color = peakColor.withOpacity(opacity * 0.35),
+              );
+            }
+          }
+        }
+        break;
+
+      case VisualizerStyle.orbitalGlow:
+        {
+          final double cx = w / 2;
+          final double cy = h / 2;
+          final int ringsCount = 4;
+          final Paint ringPaint = Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.0;
+
+          for (int i = 0; i < ringsCount; i++) {
+            final double amp = amplitudes[i % 10] / 38.0;
+            final double radius = 30.0 + i * 28.0 + (amp * 20.0) * (1.0 + normalizedAmp);
+            final double opacity = (0.8 - (i * 0.15)).clamp(0.1, 1.0);
+
+            ringPaint.color = Color.lerp(barColor, peakColor, i / (ringsCount - 1))!.withOpacity(opacity);
+            canvas.drawCircle(Offset(cx, cy), radius, ringPaint);
+
+            final int particlesOnRing = 3 + i * 2;
+            final Paint pPaint = Paint()..style = PaintingStyle.fill;
+            for (int j = 0; j < particlesOnRing; j++) {
+              final double angle = (j / particlesOnRing) * 2 * math.pi + time * (0.4 + i * 0.15);
+              final double px = cx + math.cos(angle) * radius;
+              final double py = cy + math.sin(angle) * radius;
+              pPaint.color = peakColor.withOpacity(opacity);
+              canvas.drawCircle(Offset(px, py), 3.5 + amp * 3.0, pPaint);
+
+              canvas.drawCircle(
+                Offset(px, py),
+                6.0 + amp * 5.0,
+                Paint()
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = 1.0
+                  ..color = barColor.withOpacity(opacity * 0.4),
+              );
+            }
+          }
+        }
+        break;
+
+      case VisualizerStyle.frequencyLaser:
+        {
+          final int numLasers = 12;
+          final double spacing = w / (numLasers + 1);
+
+          for (int i = 0; i < numLasers; i++) {
+            final double amp = amplitudes[i % 10] / 38.0;
+            final double dx = spacing * (i + 1);
+            final double laserHeight = h * 0.8 * amp * (0.5 + normalizedAmp * 0.5);
+
+            final Rect rect = Rect.fromLTRB(dx - 3, h - laserHeight, dx + 3, h);
+            final Paint beamPaint = Paint()
+              ..shader = ui.Gradient.linear(
+                Offset(dx, h - laserHeight),
+                Offset(dx, h),
+                [
+                  peakColor.withOpacity(0.9),
+                  barColor.withOpacity(0.4),
+                  Colors.transparent,
+                ],
+                [0.0, 0.7, 1.0],
+              );
+            canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(3)), beamPaint);
+
+            canvas.drawLine(
+              Offset(dx, h - laserHeight),
+              Offset(dx, h),
+              Paint()
+                ..color = Colors.white.withOpacity(0.9)
+                ..strokeWidth = 1.0
+                ..strokeCap = StrokeCap.round,
+            );
+
+            canvas.drawCircle(
+              Offset(dx, h),
+              8.0 + amp * 8.0,
+              Paint()..color = barColor.withOpacity(0.35 * (1.0 + normalizedAmp)),
+            );
+          }
+        }
+        break;
+
+      case VisualizerStyle.dnaHelix:
+        {
+          final double cx = w / 2;
+          final int nodes = 18;
+          final double nodeSpacing = h / (nodes + 1);
+          final Paint dotPaint = Paint()..style = PaintingStyle.fill;
+          final Paint linkPaint = Paint()..style = PaintingStyle.stroke..strokeWidth = 1.2;
+
+          for (int i = 0; i < nodes; i++) {
+            final double amp = amplitudes[i % 10] / 38.0;
+            final double dy = nodeSpacing * (i + 1);
+            final double angle = (i * 0.4) + time * 2.2;
+
+            final double offsetDist = 35.0 + amp * 25.0;
+            final double x1 = cx + math.cos(angle) * offsetDist;
+            final double x2 = cx - math.cos(angle) * offsetDist;
+
+            linkPaint.color = Color.lerp(barColor, peakColor, i / nodes)!.withOpacity(0.35);
+            canvas.drawLine(Offset(x1, dy), Offset(x2, dy), linkPaint);
+
+            dotPaint.color = barColor.withOpacity(0.85);
+            canvas.drawCircle(Offset(x1, dy), 4.0 + amp * 4.0, dotPaint);
+            canvas.drawCircle(
+              Offset(x1, dy),
+              8.0 + amp * 6.0,
+              Paint()..style = PaintingStyle.stroke..strokeWidth = 0.8..color = barColor.withOpacity(0.3),
+            );
+
+            dotPaint.color = peakColor.withOpacity(0.85);
+            canvas.drawCircle(Offset(x2, dy), 4.0 + amp * 4.0, dotPaint);
+            canvas.drawCircle(
+              Offset(x2, dy),
+              8.0 + amp * 6.0,
+              Paint()..style = PaintingStyle.stroke..strokeWidth = 0.8..color = peakColor.withOpacity(0.3),
+            );
+          }
+        }
+        break;
+
+      case VisualizerStyle.audioMatrixGrid:
+        {
+          final int cols = 10;
+          final int rows = 8;
+          final double gridW = w - 16;
+          final double cellW = gridW / cols;
+          final double cellH = h / rows;
+          final Paint cellPaint = Paint()..style = PaintingStyle.fill;
+
+          for (int col = 0; col < cols; col++) {
+            final double amp = amplitudes[col % 10] / 38.0;
+            final int activeRows = (amp * rows * (0.8 + normalizedAmp * 0.2)).round().clamp(1, rows);
+
+            for (int row = 0; row < rows; row++) {
+              final bool isActive = row < activeRows;
+              final double dx = 8.0 + col * cellW;
+              final double dy = h - (row + 1) * cellH;
+
+              final Rect cellRect = Rect.fromLTWH(dx + 2, dy + 2, cellW - 4, cellH - 4);
+              final double rowPct = row / rows;
+              final Color baseCellColor = Color.lerp(barColor, peakColor, rowPct)!;
+
+              if (isActive) {
+                cellPaint.color = baseCellColor.withOpacity(0.85);
+                canvas.drawRRect(RRect.fromRectAndRadius(cellRect, const Radius.circular(2)), cellPaint);
+                
+                canvas.drawRRect(
+                  RRect.fromRectAndRadius(cellRect.inflate(1.5), const Radius.circular(3)),
+                  Paint()
+                    ..style = PaintingStyle.stroke
+                    ..strokeWidth = 1.0
+                    ..color = baseCellColor.withOpacity(0.4),
+                );
+              } else {
+                cellPaint.color = baseCellColor.withOpacity(0.08);
+                canvas.drawRRect(RRect.fromRectAndRadius(cellRect, const Radius.circular(2)), cellPaint);
+              }
+            }
+          }
+        }
+        break;
+
+      case VisualizerStyle.blackHoleStars:
+        {
+          final double cx = w / 2;
+          final double cy = h / 2;
+          final double maxRadius = math.max(cx, cy) * 1.2;
+          
+          final double avgAmp = amplitudes.fold(0.0, (sum, val) => sum + val) / amplitudes.length;
+          final double amp = avgAmp / 38.0;
+          final double bhRadius = 15.0 + amp * 22.0;
+
+          // 1. Accretion Disk Glow (Layered concentric glowing pulses)
+          final Paint glowPaint = Paint()..style = PaintingStyle.fill;
+          glowPaint.color = barColor.withOpacity(0.12 + amp * 0.15);
+          canvas.drawCircle(Offset(cx, cy), bhRadius * 2.8, glowPaint);
+          
+          glowPaint.color = peakColor.withOpacity(0.24 + amp * 0.2);
+          canvas.drawCircle(Offset(cx, cy), bhRadius * 1.8, glowPaint);
+          
+          glowPaint.color = Colors.white.withOpacity(0.45);
+          canvas.drawCircle(Offset(cx, cy), bhRadius * 1.2, glowPaint);
+
+          // 2. Accretion Disk Swirling Gas Rings
+          final Paint ringPaint = Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5 + amp * 2.5
+            ..color = barColor.withOpacity(0.35 + amp * 0.3);
+          canvas.drawCircle(Offset(cx, cy), bhRadius + 4.0, ringPaint);
+
+          // 3. Falling Spaghettified Stars
+          final int starCount = 36;
+          final Paint starPaint = Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeCap = StrokeCap.round;
+
+          for (int i = 0; i < starCount; i++) {
+            final double starAmp = amplitudes[i % 10] / 38.0;
+            final double radius = (maxRadius - (time * (35.0 + starAmp * 85.0) + i * 22.0) % maxRadius);
+            
+            // Do not paint stars that are already consumed inside the event horizon
+            if (radius <= bhRadius + 2.0) continue;
+
+            final double angle = i * 0.8 + (maxRadius - radius) * 0.016 + time * 1.4;
+            
+            final double sx = cx + math.cos(angle) * radius;
+            final double sy = cy + math.sin(angle) * radius;
+
+            // Prev position for spaghettification tail stretching
+            final double radiusPrev = radius + 6.0 + starAmp * 15.0;
+            final double anglePrev = i * 0.8 + (maxRadius - radiusPrev) * 0.016 + time * 1.4;
+            final double sxPrev = cx + math.cos(anglePrev) * radiusPrev;
+            final double syPrev = cy + math.sin(anglePrev) * radiusPrev;
+
+            final double proximityFactor = (radius - bhRadius) / (maxRadius - bhRadius);
+            final double opacity = (proximityFactor * 0.8 + 0.2).clamp(0.0, 1.0);
+            
+            final Color starColor = Color.lerp(barColor, Colors.white, 0.45)!;
+            starPaint.color = starColor.withOpacity(opacity);
+            starPaint.strokeWidth = 1.0 + (1.0 - proximityFactor) * 2.5;
+
+            canvas.drawLine(Offset(sx, sy), Offset(sxPrev, syPrev), starPaint);
+          }
+
+          // 4. Central Singularity (Pure Void Event Horizon)
+          final Paint singularityPaint = Paint()..color = Colors.black..style = PaintingStyle.fill;
+          canvas.drawCircle(Offset(cx, cy), bhRadius, singularityPaint);
+        }
+        break;
     }
     canvas.restore();
   }
@@ -2855,6 +3968,10 @@ class _S60DpadCockpitConsole extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (dialStyle == DialStyle.digitalToggles) {
+      return _buildDigitalTogglesConsole(context);
+    }
+
     final bool isWide = dialStyle == DialStyle.rectangular;
     
     // If skeuomorphic (not flat) and circular, render the gorgeous iPod click-wheel console
@@ -2862,135 +3979,137 @@ class _S60DpadCockpitConsole extends StatelessWidget {
       return _buildSkeuomorphicClickWheel(context);
     }
 
-    final double width = isWide ? 320.0 : 260.0;
+    final double width = isWide ? 360.0 : 260.0;
     final double height = isWide ? 180.0 : 260.0;
     final Color iconCol = getDialIconColor();
 
     final double skipTop = (height - (isWide ? 38 : 50)) / 2;
 
-    return Container(
-      width: width,
-      height: height,
-      decoration: _buildOuterDialChassis(),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // North: Vol Up
-          Positioned(
-            top: isWide ? 2 : 4,
-            child: _DpadTactileButton(
-              icon: Icons.add_rounded,
-              color: iconCol,
-              buttonFaceColor: getDialButtonFaceColor(),
-              onTap: onVolumeUp,
-              tooltip: 'VOL +',
-              dense: isWide,
+    return Center(
+      child: Container(
+        width: width,
+        height: height,
+        decoration: _buildOuterDialChassis(),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // North: Vol Up
+            Positioned(
+              top: isWide ? 2 : 4,
+              child: _DpadTactileButton(
+                icon: Icons.add_rounded,
+                color: iconCol,
+                buttonFaceColor: getDialButtonFaceColor(),
+                onTap: onVolumeUp,
+                tooltip: 'VOL +',
+                dense: isWide,
+              ),
             ),
-          ),
 
-          // South: Vol Down
-          Positioned(
-            bottom: isWide ? 2 : 4,
-            child: _DpadTactileButton(
-              icon: Icons.remove_rounded,
-              color: iconCol,
-              buttonFaceColor: getDialButtonFaceColor(),
-              onTap: onVolumeDown,
-              tooltip: 'VOL -',
-              dense: isWide,
+            // South: Vol Down
+            Positioned(
+              bottom: isWide ? 2 : 4,
+              child: _DpadTactileButton(
+                icon: Icons.remove_rounded,
+                color: iconCol,
+                buttonFaceColor: getDialButtonFaceColor(),
+                onTap: onVolumeDown,
+                tooltip: 'VOL -',
+                dense: isWide,
+              ),
             ),
-          ),
 
-          // West: Prev skip (Vertically Centered)
-          Positioned(
-            left: isWide ? 2 : 4,
-            top: skipTop,
-            child: _DpadTactileButton(
-              icon: Icons.skip_previous_rounded,
-              color: iconCol,
-              buttonFaceColor: getDialButtonFaceColor(),
-              onTap: onSkipPrevious,
-              tooltip: 'PREV',
-              dense: isWide,
+            // West: Prev skip (Vertically Centered)
+            Positioned(
+              left: isWide ? 2 : 4,
+              top: skipTop,
+              child: _DpadTactileButton(
+                icon: Icons.skip_previous_rounded,
+                color: iconCol,
+                buttonFaceColor: getDialButtonFaceColor(),
+                onTap: onSkipPrevious,
+                tooltip: 'PREV',
+                dense: isWide,
+              ),
             ),
-          ),
 
-          // East: Next skip (Vertically Centered)
-          Positioned(
-            right: isWide ? 2 : 4,
-            top: skipTop,
-            child: _DpadTactileButton(
-              icon: Icons.skip_next_rounded,
-              color: iconCol,
-              buttonFaceColor: getDialButtonFaceColor(),
-              onTap: onSkipNext,
-              tooltip: 'NEXT',
-              dense: isWide,
+            // East: Next skip (Vertically Centered)
+            Positioned(
+              right: isWide ? 2 : 4,
+              top: skipTop,
+              child: _DpadTactileButton(
+                icon: Icons.skip_next_rounded,
+                color: iconCol,
+                buttonFaceColor: getDialButtonFaceColor(),
+                onTap: onSkipNext,
+                tooltip: 'NEXT',
+                dense: isWide,
+              ),
             ),
-          ),
 
-          // Diagonal top-left: Shuffle toggle (was EQ)
-          Positioned(
-            left: isWide ? 16 : 30,
-            top: isWide ? 4 : 30,
-            child: _DpadMicroToggle(
-              icon: Icons.shuffle_rounded,
-              color: isShuffle ? getDialTextColor() : getDialTextColor().withOpacity(0.35),
-              buttonFaceColor: getDialButtonFaceColor(),
-              onPressed: onToggleShuffle,
-              label: 'SHUF',
-              dense: isWide,
+            // Diagonal top-left: Shuffle toggle (was EQ)
+            Positioned(
+              left: isWide ? 16 : 30,
+              top: isWide ? 4 : 30,
+              child: _DpadMicroToggle(
+                icon: Icons.shuffle_rounded,
+                color: isShuffle ? getDialTextColor() : getDialTextColor().withOpacity(0.35),
+                buttonFaceColor: getDialButtonFaceColor(),
+                onPressed: onToggleShuffle,
+                label: 'SHUF',
+                dense: isWide,
+              ),
             ),
-          ),
 
-          // Diagonal top-right: Repeat toggle (was VIS)
-          Positioned(
-            right: isWide ? 16 : 30,
-            top: isWide ? 4 : 30,
-            child: _DpadMicroToggle(
-              icon: loopMode == ja.LoopMode.one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
-              color: loopMode != ja.LoopMode.off ? getDialTextColor() : getDialTextColor().withOpacity(0.35),
-              buttonFaceColor: getDialButtonFaceColor(),
-              onPressed: onToggleRepeat,
-              label: loopMode == ja.LoopMode.one ? 'REP 1' : (loopMode == ja.LoopMode.all ? 'REP ALL' : 'REP OFF'),
-              dense: isWide,
+            // Diagonal top-right: Repeat toggle (was VIS)
+            Positioned(
+              right: isWide ? 16 : 30,
+              top: isWide ? 4 : 30,
+              child: _DpadMicroToggle(
+                icon: loopMode == ja.LoopMode.one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
+                color: loopMode != ja.LoopMode.off ? getDialTextColor() : getDialTextColor().withOpacity(0.35),
+                buttonFaceColor: getDialButtonFaceColor(),
+                onPressed: onToggleRepeat,
+                label: loopMode == ja.LoopMode.one ? 'REP 1' : (loopMode == ja.LoopMode.all ? 'REP ALL' : 'REP OFF'),
+                dense: isWide,
+              ),
             ),
-          ),
 
-          // Diagonal bottom-left: Seek Rewind (Same size as EQ/VIS)
-          Positioned(
-            left: isWide ? 16 : 30,
-            bottom: isWide ? 4 : 30,
-            child: _DpadMicroToggle(
-              icon: Icons.fast_rewind_rounded,
-              color: getDialTextColor().withOpacity(0.85),
-              buttonFaceColor: getDialButtonFaceColor(),
-              onPressed: onFastRewind,
-              label: 'REW',
-              dense: isWide,
+            // Diagonal bottom-left: Seek Rewind (Same size as EQ/VIS)
+            Positioned(
+              left: isWide ? 16 : 30,
+              bottom: isWide ? 4 : 30,
+              child: _DpadMicroToggle(
+                icon: Icons.fast_rewind_rounded,
+                color: getDialTextColor().withOpacity(0.85),
+                buttonFaceColor: getDialButtonFaceColor(),
+                onPressed: onFastRewind,
+                label: 'REW',
+                dense: isWide,
+              ),
             ),
-          ),
 
-          // Diagonal bottom-right: Seek Forward (Same size as EQ/VIS)
-          Positioned(
-            right: isWide ? 16 : 30,
-            bottom: isWide ? 4 : 30,
-            child: _DpadMicroToggle(
-              icon: Icons.fast_forward_rounded,
-              color: getDialTextColor().withOpacity(0.85),
-              buttonFaceColor: getDialButtonFaceColor(),
-              onPressed: onFastForward,
-              label: 'FF',
-              dense: isWide,
+            // Diagonal bottom-right: Seek Forward (Same size as EQ/VIS)
+            Positioned(
+              right: isWide ? 16 : 30,
+              bottom: isWide ? 4 : 30,
+              child: _DpadMicroToggle(
+                icon: Icons.fast_forward_rounded,
+                color: getDialTextColor().withOpacity(0.85),
+                buttonFaceColor: getDialButtonFaceColor(),
+                onPressed: onFastForward,
+                label: 'FF',
+                dense: isWide,
+              ),
             ),
-          ),
 
-          // Play/Pause center button
-          Align(
-            alignment: Alignment.center,
-            child: _buildCenterPlayPad(),
-          ),
-        ],
+            // Play/Pause center button
+            Align(
+              alignment: Alignment.center,
+              child: _buildCenterPlayPad(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -3240,6 +4359,230 @@ class _S60DpadCockpitConsole extends StatelessWidget {
     );
   }
 
+  Widget _buildDigitalTogglesConsole(BuildContext context) {
+    final Color activeCol = getDialTextColor();
+    final Color iconCol = getDialIconColor();
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      height: 180,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: skin.panelBgColor.withOpacity(bgOpacity),
+        border: Border.all(color: skin.outerBorderColor, width: 2.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.45),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isShuffle ? activeCol : Colors.grey[800],
+                      boxShadow: isShuffle ? [BoxShadow(color: activeCol, blurRadius: 4)] : [],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'SHUF',
+                    style: TextStyle(fontFamily: 'monospace', fontSize: 8, color: isShuffle ? activeCol : activeCol.withOpacity(0.4), fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 14),
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: loopMode != ja.LoopMode.off ? activeCol : Colors.grey[800],
+                      boxShadow: loopMode != ja.LoopMode.off ? [BoxShadow(color: activeCol, blurRadius: 4)] : [],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'REP',
+                    style: TextStyle(fontFamily: 'monospace', fontSize: 8, color: loopMode != ja.LoopMode.off ? activeCol : activeCol.withOpacity(0.4), fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              GestureDetector(
+                onTap: onCycleDialStyle,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: activeCol.withOpacity(0.3), width: 0.8),
+                    color: Colors.black.withOpacity(0.3),
+                  ),
+                  child: Text(
+                    'SYNTH RACK',
+                    style: TextStyle(fontFamily: 'Orbitron', fontSize: 8, color: activeCol, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildDigitalRackButton(
+                icon: Icons.remove_rounded,
+                label: 'V-',
+                onTap: onVolumeDown,
+                color: activeCol,
+              ),
+              _buildDigitalRackButton(
+                icon: Icons.skip_previous_rounded,
+                label: 'PRV',
+                onTap: onSkipPrevious,
+                color: activeCol,
+              ),
+              GestureDetector(
+                onTap: onPlayPause,
+                child: Container(
+                  width: 58,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: getDialButtonFaceColor(),
+                    border: Border.all(color: activeCol, width: 2.0),
+                    boxShadow: [
+                      BoxShadow(
+                        color: activeCol.withOpacity(0.18),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      )
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isPlaying ? activeCol : Colors.transparent,
+                          border: Border.all(color: activeCol.withOpacity(0.5), width: 1.0),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Icon(
+                        isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                        color: activeCol,
+                        size: 28,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        isPlaying ? 'RUN' : 'HALT',
+                        style: TextStyle(fontFamily: 'monospace', fontSize: 8, color: activeCol, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              _buildDigitalRackButton(
+                icon: Icons.skip_next_rounded,
+                label: 'NXT',
+                onTap: onSkipNext,
+                color: activeCol,
+              ),
+              _buildDigitalRackButton(
+                icon: Icons.add_rounded,
+                label: 'V+',
+                onTap: onVolumeUp,
+                color: activeCol,
+              ),
+            ],
+          ),
+          const Spacer(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildRackMiniToggle(label: 'SHUF', isActive: isShuffle, onTap: onToggleShuffle, color: activeCol),
+              _buildRackMiniToggle(label: 'REW', isActive: false, onTap: onFastRewind, color: activeCol),
+              _buildRackMiniToggle(label: 'FF', isActive: false, onTap: onFastForward, color: activeCol),
+              _buildRackMiniToggle(label: 'LOOP', isActive: loopMode != ja.LoopMode.off, onTap: onToggleRepeat, color: activeCol),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDigitalRackButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    required Color color,
+  }) {
+    return _TactileButtonWrapper(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 70,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6),
+          color: getDialButtonFaceColor(),
+          border: Border.all(color: color.withOpacity(0.5), width: 1.0),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(fontFamily: 'monospace', fontSize: 8, color: color.withOpacity(0.8), fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRackMiniToggle({
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+    required Color color,
+  }) {
+    return _TactileButtonWrapper(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(4),
+          color: isActive ? color.withOpacity(0.12) : Colors.black.withOpacity(0.25),
+          border: Border.all(color: isActive ? color : color.withOpacity(0.35), width: 1.0),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 8,
+            color: isActive ? color : color.withOpacity(0.7),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
   BoxDecoration _buildOuterDialChassis() {
     if (skin.isFlat) {
       switch (dialStyle) {
@@ -3250,6 +4593,7 @@ class _S60DpadCockpitConsole extends StatelessWidget {
             color: skin.panelBgColor.withOpacity(bgOpacity),
           );
         case DialStyle.rectangular:
+        case DialStyle.digitalToggles:
           return BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: skin.outerBorderColor, width: 2),
@@ -3283,6 +4627,7 @@ class _S60DpadCockpitConsole extends StatelessWidget {
         );
 
       case DialStyle.rectangular:
+      case DialStyle.digitalToggles:
         return BoxDecoration(
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: skin.outerBorderColor, width: 3.5),
@@ -3400,6 +4745,10 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
   final Function(int, double) onBandChanged;
   final Function(String, List<double>) onPresetSelected;
   final VoidCallback onClose;
+  final double bassValue;    // 0.0-1.0 hardware knob
+  final double stereoValue;  // 0.0-1.0 hardware knob
+  final ValueChanged<double> onBassChanged;
+  final ValueChanged<double> onStereoChanged;
 
   const _SkeuomorphicEqualizerPanel({
     required this.skin,
@@ -3409,17 +4758,24 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
     required this.onBandChanged,
     required this.onPresetSelected,
     required this.onClose,
+    required this.bassValue,
+    required this.stereoValue,
+    required this.onBassChanged,
+    required this.onStereoChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     final frequencies = ['60Hz', '230Hz', '910Hz', '4kHz', '14kHz'];
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Container(
-      constraints: const BoxConstraints(maxHeight: 400),
+      width: isLandscape ? MediaQuery.of(context).size.width : null,
+      height: isLandscape ? MediaQuery.of(context).size.height : null,
+      constraints: BoxConstraints(maxHeight: isLandscape ? double.infinity : 460),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: skin.outerBorderColor, width: 2.5),
+        borderRadius: isLandscape ? BorderRadius.zero : BorderRadius.circular(20),
+        border: isLandscape ? null : Border.all(color: skin.outerBorderColor, width: 2.5),
         color: skin.panelBgColor,
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.85), blurRadius: 20),
@@ -3430,113 +4786,385 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
           end: Alignment.bottomCenter,
         ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'S60 GRAPHIC EQUALIZER',
-                style: TextStyle(color: skin.textColor, fontFamily: 'Orbitron', fontSize: 10.5, fontWeight: FontWeight.bold, letterSpacing: 0.8),
-              ),
-              GestureDetector(
-                onTap: onClose,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withOpacity(0.4)),
-                  child: Icon(Icons.close_rounded, color: skin.textColor, size: 12),
+      padding: EdgeInsets.only(
+        top: isLandscape ? (MediaQuery.of(context).padding.top + 8.0) : 12.0,
+        bottom: 12.0,
+        left: 14.0,
+        right: 14.0,
+      ),
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'S60 GRAPHIC EQUALIZER',
+                  style: TextStyle(color: skin.textColor, fontFamily: 'Orbitron', fontSize: 10.5, fontWeight: FontWeight.bold, letterSpacing: 0.8),
                 ),
+                GestureDetector(
+                  onTap: onClose,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withOpacity(0.4)),
+                    child: Icon(Icons.close_rounded, color: skin.textColor, size: 12),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Bass & Stereo hardware knobs row
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.35),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: skin.textColor.withOpacity(0.15), width: 0.8),
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(5, (index) {
-                return Column(
-                  children: [
-                    Text(
-                      '${bands[index].toInt() > 0 ? "+" : ""}${bands[index].toInt()}dB',
-                      style: TextStyle(color: skin.textColor, fontFamily: 'monospace', fontSize: 8, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    Expanded(
-                      child: RotatedBox(
-                        quarterTurns: 3,
-                        child: SliderTheme(
-                          data: SliderThemeData(
-                            trackHeight: 2.5,
-                            activeTrackColor: skin.textColor,
-                            inactiveTrackColor: Colors.black26,
-                            thumbColor: skin.textColor,
-                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
-                            overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
-                          ),
-                          child: Slider(
-                            value: bands[index].clamp(-12.0, 12.0),
-                            min: -12.0,
-                            max: 12.0,
-                            onChanged: (val) => onBandChanged(index, val),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _SkeuomorphicKnob(
+                    value: bassValue,
+                    label: 'BASS',
+                    accentColor: skin.textColor,
+                    onChanged: onBassChanged,
+                  ),
+                  Container(
+                    width: 1,
+                    height: 80,
+                    color: skin.textColor.withOpacity(0.12),
+                  ),
+                  _SkeuomorphicKnob(
+                    value: stereoValue,
+                    label: 'STEREO',
+                    accentColor: skin.textColor,
+                    onChanged: onStereoChanged,
+                  ),
+                  Container(
+                    width: 1,
+                    height: 80,
+                    color: skin.textColor.withOpacity(0.12),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'PRESET',
+                        style: TextStyle(
+                          color: skin.textColor.withOpacity(0.5),
+                          fontFamily: 'Orbitron',
+                          fontSize: 7,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: skin.textColor.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: skin.textColor.withOpacity(0.3), width: 0.8),
+                        ),
+                        child: Text(
+                          activePreset.toUpperCase(),
+                          style: TextStyle(
+                            color: skin.textColor,
+                            fontFamily: 'monospace',
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      frequencies[index],
-                      style: TextStyle(color: skin.textMutedColor, fontFamily: 'monospace', fontSize: 8.5, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                );
-              }),
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 28,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: presets.keys.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final presetName = presets.keys.elementAt(index);
-                final presetValues = presets[presetName]!;
-                final bool isSelected = presetName == activePreset;
-
-                return GestureDetector(
-                  onTap: () => onPresetSelected(presetName, presetValues),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(6),
-                      color: isSelected ? skin.textColor.withOpacity(0.2) : Colors.black.withOpacity(0.3),
-                      border: Border.all(
-                        color: isSelected ? skin.textColor : skin.textColor.withOpacity(0.15),
-                        width: isSelected ? 1.2 : 0.8,
-                      ),
-                      boxShadow: isSelected ? [BoxShadow(color: skin.textColor.withOpacity(0.2), blurRadius: 4)] : [],
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      presetName.toUpperCase(),
-                      style: TextStyle(
-                        color: isSelected ? skin.textColor : skin.textColor.withOpacity(0.7),
-                        fontFamily: 'monospace',
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    ],
                   ),
-                );
-              },
+                ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 160,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(5, (index) {
+                  return Column(
+                    children: [
+                      Text(
+                        '${bands[index].toInt() > 0 ? "+" : ""}${bands[index].toInt()}dB',
+                        style: TextStyle(color: skin.textColor, fontFamily: 'monospace', fontSize: 8, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Expanded(
+                        child: RotatedBox(
+                          quarterTurns: 3,
+                          child: SliderTheme(
+                            data: SliderThemeData(
+                              trackHeight: 2.5,
+                              activeTrackColor: skin.textColor,
+                              inactiveTrackColor: Colors.black26,
+                              thumbColor: skin.textColor,
+                              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+                              overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+                            ),
+                            child: Slider(
+                              value: bands[index].clamp(-12.0, 12.0),
+                              min: -12.0,
+                              max: 12.0,
+                              onChanged: (val) => onBandChanged(index, val),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        frequencies[index],
+                        style: TextStyle(color: skin.textMutedColor, fontFamily: 'monospace', fontSize: 8.5, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  );
+                }),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 28,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: presets.keys.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final presetName = presets.keys.elementAt(index);
+                  final presetValues = presets[presetName]!;
+                  final bool isSelected = presetName == activePreset;
+
+                  return GestureDetector(
+                    onTap: () => onPresetSelected(presetName, presetValues),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(6),
+                        color: isSelected ? skin.textColor.withOpacity(0.2) : Colors.black.withOpacity(0.3),
+                        border: Border.all(
+                          color: isSelected ? skin.textColor : skin.textColor.withOpacity(0.15),
+                          width: isSelected ? 1.2 : 0.8,
+                        ),
+                        boxShadow: isSelected ? [BoxShadow(color: skin.textColor.withOpacity(0.2), blurRadius: 4)] : [],
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        presetName.toUpperCase(),
+                        style: TextStyle(
+                          color: isSelected ? skin.textColor : skin.textColor.withOpacity(0.7),
+                          fontFamily: 'monospace',
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+}
+
+// ---------------------------------------------------------
+// Premium Rotating Hardware Knob (Bass & Stereo EQ controls)
+// ---------------------------------------------------------
+
+class _SkeuomorphicKnob extends StatefulWidget {
+  final double value;       // 0.0 to 1.0
+  final String label;
+  final Color accentColor;
+  final ValueChanged<double> onChanged;
+
+  const _SkeuomorphicKnob({
+    required this.value,
+    required this.label,
+    required this.accentColor,
+    required this.onChanged,
+  });
+
+  @override
+  State<_SkeuomorphicKnob> createState() => _SkeuomorphicKnobState();
+}
+
+class _SkeuomorphicKnobState extends State<_SkeuomorphicKnob> {
+  double _dragStart = 0.0;
+  double _valueStart = 0.0;
+
+  // Convert 0.0-1.0 value to rotation angle (-135° to +135°)
+  double get _rotationAngle {
+    return (-135 + widget.value * 270) * (math.pi / 180);
+  }
+
+  void _onPanStart(DragStartDetails details) {
+    _dragStart = details.localPosition.dy;
+    _valueStart = widget.value;
+    HapticFeedback.lightImpact();
+  }
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    final double delta = (_dragStart - details.localPosition.dy) / 120.0;
+    final double newValue = (_valueStart + delta).clamp(0.0, 1.0);
+    widget.onChanged(newValue);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Color glowColor = widget.accentColor;
+    final double percentDb = (widget.value - 0.5) * 24.0;
+    final String dbLabel = percentDb >= 0 ? '+${percentDb.toStringAsFixed(0)}dB' : '${percentDb.toStringAsFixed(0)}dB';
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Knob label
+        Text(
+          widget.label,
+          style: TextStyle(
+            color: glowColor.withOpacity(0.7),
+            fontFamily: 'Orbitron',
+            fontSize: 8,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(height: 6),
+        // Knob body with drag gesture
+        GestureDetector(
+          onPanStart: _onPanStart,
+          onPanUpdate: _onPanUpdate,
+          child: SizedBox(
+            width: 76,
+            height: 76,
+            child: CustomPaint(
+              painter: _KnobPainter(
+                rotation: _rotationAngle,
+                value: widget.value,
+                accentColor: glowColor,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        // dB value below knob
+        Text(
+          dbLabel,
+          style: TextStyle(
+            color: glowColor.withOpacity(0.9),
+            fontFamily: 'monospace',
+            fontSize: 8,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// CustomPainter that draws a premium skeuomorphic rotary knob
+class _KnobPainter extends CustomPainter {
+  final double rotation;
+  final double value;
+  final Color accentColor;
+
+  _KnobPainter({required this.rotation, required this.value, required this.accentColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double cx = size.width / 2;
+    final double cy = size.height / 2;
+    final double radius = math.min(cx, cy) - 2;
+
+    // 1. Outer chrome ring with glow
+    final Paint ringPaint = Paint()
+      ..shader = ui.Gradient.radial(
+        Offset(cx, cy),
+        radius,
+        [
+          Colors.white.withOpacity(0.05),
+          accentColor.withOpacity(0.25),
+          Colors.black.withOpacity(0.6),
+        ],
+        [0.0, 0.6, 1.0],
+      )
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(cx, cy), radius, ringPaint);
+
+    // 2. Knob body (metallic dark with subtle sweep gradient)
+    final Paint bodyPaint = Paint()
+      ..shader = ui.Gradient.radial(
+        Offset(cx - radius * 0.2, cy - radius * 0.2),
+        radius * 0.95,
+        [
+          const Color(0xFF555555),
+          const Color(0xFF222222),
+          const Color(0xFF111111),
+        ],
+        [0.0, 0.6, 1.0],
+      )
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(cx, cy), radius * 0.85, bodyPaint);
+
+    // 3. Active arc track (120 degree range indicator)
+    final Paint trackPaint = Paint()
+      ..color = accentColor.withOpacity(0.15)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round;
+    const double startAngle = 135 * (math.pi / 180);
+    const double sweepAngle = 270 * (math.pi / 180);
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(cx, cy), radius: radius * 0.88),
+      startAngle,
+      sweepAngle,
+      false,
+      trackPaint,
+    );
+
+    // 4. Active fill arc (green/accent colored portion)
+    final Paint activePaint = Paint()
+      ..shader = ui.Gradient.sweep(
+        Offset(cx, cy),
+        [accentColor.withOpacity(0.8), accentColor.withOpacity(0.4)],
+        [0.0, 1.0],
+      )
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(cx, cy), radius: radius * 0.88),
+      startAngle,
+      sweepAngle * value,
+      false,
+      activePaint,
+    );
+
+    // 5. Glowing indicator needle (rotates with value)
+    final double indicatorX = cx + (radius * 0.55) * math.cos(rotation - math.pi / 2);
+    final double indicatorY = cy + (radius * 0.55) * math.sin(rotation - math.pi / 2);
+    final Paint needlePaint = Paint()
+      ..color = accentColor
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(cx, cy), Offset(indicatorX, indicatorY), needlePaint);
+
+    // 6. Center dot
+    final Paint dotPaint = Paint()
+      ..color = accentColor.withOpacity(0.9)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(cx, cy), 3.5, dotPaint);
+  }
+
+  @override
+  bool shouldRepaint(_KnobPainter oldDelegate) =>
+      oldDelegate.rotation != rotation || oldDelegate.value != value;
 }
 
 // Sub-widgets

@@ -5,7 +5,6 @@ import 'package:path/path.dart' as p;
 
 import 'audio_handler.dart';
 import 'storage_service.dart';
-import 'media_query_service.dart';
 
 // Expose the global audio handler. This will be overridden in main.dart on startup.
 final audioHandlerProvider = Provider<UltraAudioHandler>((ref) {
@@ -15,16 +14,14 @@ final audioHandlerProvider = Provider<UltraAudioHandler>((ref) {
 final playbackServiceProvider = Provider<PlaybackService>((ref) {
   final handler = ref.watch(audioHandlerProvider);
   final storage = ref.watch(storageServiceProvider);
-  final mediaQuery = ref.watch(mediaQueryServiceProvider);
-  return PlaybackService(handler, storage, mediaQuery);
+  return PlaybackService(handler, storage);
 });
 
 class PlaybackService {
   final UltraAudioHandler _handler;
   final StorageService _storage;
-  final MediaQueryService _mediaQuery;
 
-  PlaybackService(this._handler, this._storage, this._mediaQuery);
+  PlaybackService(this._handler, this._storage);
 
   UltraAudioHandler get handler => _handler;
 
@@ -35,13 +32,17 @@ class PlaybackService {
   Stream<PlaybackState> get playbackStateStream => _handler.playbackState;
 
   // Stream combining current progress and duration cleanly
-  Stream<PositionState> get positionStateStream => Rx.combineLatest2<Duration?, Duration, PositionState>(
+  Stream<PositionState> get positionStateStream => Rx.combineLatest3<Duration?, Duration?, MediaItem?, PositionState>(
     _handler.positionStream,
-    _handler.mediaItem.map((item) => item?.duration ?? Duration.zero),
-    (position, duration) => PositionState(
-      position: position ?? Duration.zero,
-      duration: duration,
-    ),
+    _handler.playerInstance.durationStream,
+    _handler.mediaItem,
+    (position, playerDuration, mediaItem) {
+      final duration = playerDuration ?? mediaItem?.duration ?? Duration.zero;
+      return PositionState(
+        position: position ?? Duration.zero,
+        duration: duration,
+      );
+    },
   );
 
   // Play a local file with complete OS-level metadata tagging

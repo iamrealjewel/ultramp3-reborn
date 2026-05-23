@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:async';
+import 'dart:io';
 
 import 'package:ultramp3/core/theme/app_colors.dart';
 import 'package:ultramp3/core/theme/app_theme.dart';
 import 'package:ultramp3/core/services/media_query_service.dart';
+import 'package:ultramp3/core/services/playback_service.dart';
+import 'package:ultramp3/core/routing/routes.dart';
+import 'package:ultramp3/features/playlists/presentation/providers/playlist_providers.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -77,6 +82,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final theme = Theme.of(context);
     final themeExtension = theme.extension<AppThemeExtension>()!;
 
+    final physicalSongsAsync = ref.watch(physicalSongsProvider);
+    final recentlyPlayed = ref.watch(recentlyPlayedProvider);
+    final favorites = ref.watch(favoritesProvider);
+
+    final allSongs = physicalSongsAsync.value ?? [];
+
+    final recentTracks = recentlyPlayed.map((filePath) {
+      return allSongs.firstWhere(
+        (song) => song.filePath == filePath,
+        orElse: () => AppTrack(
+          id: filePath,
+          title: filePath.split(Platform.pathSeparator).last.toUpperCase(),
+          artist: 'Unknown Artist',
+          album: 'Unknown Album',
+          filePath: filePath,
+          duration: Duration.zero,
+          size: 0,
+        ),
+      );
+    }).toList();
+
+    final favoriteTracks = favorites.map((filePath) {
+      return allSongs.firstWhere(
+        (song) => song.filePath == filePath,
+        orElse: () => AppTrack(
+          id: filePath,
+          title: filePath.split(Platform.pathSeparator).last.toUpperCase(),
+          artist: 'Unknown Artist',
+          album: 'Unknown Album',
+          filePath: filePath,
+          duration: Duration.zero,
+          size: 0,
+        ),
+      );
+    }).toList();
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -105,6 +146,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 floating: true,
                 pinned: false,
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.music_note_rounded, color: AppColors.neonGreen),
+                    onPressed: () => GoRouter.of(context).push(AppRoutes.player),
+                    tooltip: 'Open Playback Cockpit',
+                  ),
+                ],
               ),
 
               // Digital Clock Section
@@ -194,15 +242,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               SliverToBoxAdapter(
                 child: SizedBox(
                   height: 160,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    itemCount: 5,
-                    itemBuilder: (context, index) {
-                      return _buildRecentTrackCard(index);
-                    },
-                  ),
+                  child: recentTracks.isEmpty
+                      ? Center(
+                          child: Text(
+                            'NO RECENTLY PLAYED TRACKS',
+                            style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontFamily: 'monospace',
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          itemCount: recentTracks.length,
+                          itemBuilder: (context, index) {
+                            final track = recentTracks[index];
+                            return _buildRecentTrackCard(track, recentTracks);
+                          },
+                        ),
                 ),
               ),
 
@@ -221,17 +282,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
 
-              // Favorites vertical mockup list
+              // Favorites vertical list
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, kBottomNavigationBarHeight + 100),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      return _buildFavoriteListTile(index);
-                    },
-                    childCount: 3,
-                  ),
-                ),
+                sliver: favoriteTracks.isEmpty
+                    ? SliverToBoxAdapter(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 32),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'NO FAVORITES REGISTERED',
+                            style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontFamily: 'monospace',
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      )
+                    : SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final track = favoriteTracks[index];
+                            return _buildFavoriteListTile(track, favoriteTracks);
+                          },
+                          childCount: favoriteTracks.length,
+                        ),
+                      ),
               ),
             ],
           ),
@@ -287,71 +365,88 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildRecentTrackCard(int index) {
-    final titles = ['Neurodancer', 'Cybernetic Pulse', 'Neon Dreams', 'Laser Voyager', 'Vektor Force'];
-    final artists = ['Tokyo Grid', 'Synth Racer', 'Vector Boy', 'Hologram City', 'Pixel Gladiator'];
+  Widget _buildRecentTrackCard(AppTrack track, List<AppTrack> queue) {
+    final playbackService = ref.read(playbackServiceProvider);
 
-    return Container(
-      width: 120,
-      margin: const EdgeInsets.only(right: 12.0),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceCard.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.glassBorder.withOpacity(0.08), width: 0.8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Album Art Frame
-          Container(
-            height: 96,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: AppColors.obsidianDark,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              border: const Border(bottom: BorderSide(color: AppColors.glassBorder, width: 0.5)),
+    return GestureDetector(
+      onTap: () async {
+        await playbackService.playTrack(
+          filePath: track.filePath,
+          title: track.title,
+          artist: track.artist,
+          album: track.album,
+          duration: track.duration,
+          queue: queue.map((t) => t.filePath).toList(),
+        );
+        if (mounted) {
+          GoRouter.of(context).push(AppRoutes.player);
+        }
+      },
+      child: Container(
+        width: 120,
+        margin: const EdgeInsets.only(right: 12.0),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceCard.withOpacity(0.4),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.glassBorder.withOpacity(0.08), width: 0.8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Album Art Frame
+            Container(
+              height: 96,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: AppColors.obsidianDark,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                border: const Border(bottom: BorderSide(color: AppColors.glassBorder, width: 0.5)),
+              ),
+              child: Icon(
+                Icons.music_video_rounded,
+                color: AppColors.textMuted.withOpacity(0.4),
+                size: 40,
+              ),
             ),
-            child: Icon(
-              Icons.music_video_rounded,
-              color: AppColors.textMuted.withOpacity(0.4),
-              size: 40,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  titles[index],
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    track.title,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  artists[index],
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 10,
+                  Text(
+                    track.artist,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 10,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildFavoriteListTile(int index) {
-    final titles = ['Retro Overdrive', 'Vector Horizon', 'Outrun Skyline'];
-    final durations = ['4:32', '3:58', '5:12'];
+  Widget _buildFavoriteListTile(AppTrack track, List<AppTrack> queue) {
+    final playbackService = ref.read(playbackServiceProvider);
+
+    final minutes = track.duration.inMinutes.toString();
+    final seconds = (track.duration.inSeconds % 60).toString().padLeft(2, '0');
+    final durationStr = '$minutes:$seconds';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8.0),
@@ -361,6 +456,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         border: Border.all(color: AppColors.glassBorder.withOpacity(0.05), width: 0.8),
       ),
       child: ListTile(
+        onTap: () async {
+          await playbackService.playTrack(
+            filePath: track.filePath,
+            title: track.title,
+            artist: track.artist,
+            album: track.album,
+            duration: track.duration,
+            queue: queue.map((t) => t.filePath).toList(),
+          );
+          if (mounted) {
+            GoRouter.of(context).push(AppRoutes.player);
+          }
+        },
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         leading: Container(
           width: 40,
@@ -372,22 +480,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: const Icon(Icons.music_note, color: AppColors.cyberPink, size: 20),
         ),
         title: Text(
-          titles[index],
+          track.title,
           style: const TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
             fontSize: 14,
           ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
-        subtitle: const Text(
-          'UltraMP3 Synthwave Syndicate',
-          style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+        subtitle: Text(
+          track.artist,
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              durations[index],
+              durationStr,
               style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
             const SizedBox(width: 8),

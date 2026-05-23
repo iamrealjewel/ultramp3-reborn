@@ -394,6 +394,198 @@ class PlayerSkin {
     isFlat: true,
   );
 
+  // 18. Flat Neon Sunset
+  static const PlayerSkin flatNeonSunset = PlayerSkin(
+    name: 'Flat Neon Sunset',
+    outerBorderColor: Color(0xFF3D133D),
+    panelBgColor: Color(0xFF1F0825),
+    metallicGradients: [
+      Color(0xFF1F0825),
+      Color(0xFF1F0825),
+      Color(0xFF1F0825),
+      Color(0xFF1F0825),
+    ],
+    lcdBgColor: Color(0xFF100214),
+    lcdBorderColor: Color(0xFFFF007F),
+    textColor: Color(0xFFFF9000),
+    textMutedColor: Color(0xFF9C1F8C),
+    visualizerColor: Color(0xFFFF9000),
+    visualizerPeakColor: Color(0xFFFF007F),
+    buttonFaceColor: Color(0xFF2C0B35),
+    buttonIconColor: Color(0xFFFF9000),
+    statusLedColor: Color(0xFFFF9000),
+    bgAssetPath: 'assets/images/bg_starry.png',
+    isFlat: true,
+  );
+
+  // 19. Flat Sakura Pastel
+  static const PlayerSkin flatSakuraPastel = PlayerSkin(
+    name: 'Flat Sakura Pastel',
+    outerBorderColor: Color(0xFF4C2A34),
+    panelBgColor: Color(0xFF29151A),
+    metallicGradients: [
+      Color(0xFF29151A),
+      Color(0xFF29151A),
+      Color(0xFF29151A),
+      Color(0xFF29151A),
+    ],
+    lcdBgColor: Color(0xFF180A0D),
+    lcdBorderColor: Color(0xFFFF85A2),
+    textColor: Color(0xFFFFB7B2),
+    textMutedColor: Color(0xFFC05C7E),
+    visualizerColor: Color(0xFFFFB7B2),
+    visualizerPeakColor: Color(0xFFFF85A2),
+    buttonFaceColor: Color(0xFF381C23),
+    buttonIconColor: Color(0xFFFFB7B2),
+    statusLedColor: Color(0xFFFFB7B2),
+    bgAssetPath: 'assets/images/bg_nature.png',
+    isFlat: true,
+  );
+
+  // 20. Flat Glassmorphic
+  static const PlayerSkin flatGlassmorphic = PlayerSkin(
+    name: 'Flat Glassmorphic',
+    outerBorderColor: Color(0xFF0F2B48),
+    panelBgColor: Color(0xFF091424),
+    metallicGradients: [
+      Color(0xFF091424),
+      Color(0xFF091424),
+      Color(0xFF091424),
+      Color(0xFF091424),
+    ],
+    lcdBgColor: Color(0xFF040A12),
+    lcdBorderColor: Color(0xFF00FFCC),
+    textColor: Color(0xFF00E5FF),
+    textMutedColor: Color(0xFF138A8A),
+    visualizerColor: Color(0xFF00E5FF),
+    visualizerPeakColor: Color(0xFFFF007F),
+    buttonFaceColor: Color(0xFF0D1F36),
+    buttonIconColor: Color(0xFF00E5FF),
+    statusLedColor: Color(0xFF00FFCC),
+    bgAssetPath: 'assets/images/bg_scifi.png',
+    isFlat: true,
+  );
+
+  // 21. Flat Lo-Fi Rain
+  static const PlayerSkin flatLofiRain = PlayerSkin(
+    name: 'Flat Lo-Fi Rain',
+    outerBorderColor: Color(0xFF1E293B),
+    panelBgColor: Color(0xFF0F172A),
+    metallicGradients: [
+      Color(0xFF0F172A),
+      Color(0xFF0F172A),
+      Color(0xFF0F172A),
+      Color(0xFF0F172A),
+    ],
+    lcdBgColor: Color(0xFF020617),
+    lcdBorderColor: Color(0xFF818CF8),
+    textColor: Color(0xFFC7D2FE),
+    textMutedColor: Color(0xFF475569),
+    visualizerColor: Color(0xFF818CF8),
+    visualizerPeakColor: Color(0xFFC7D2FE),
+    buttonFaceColor: Color(0xFF1E293B),
+    buttonIconColor: Color(0xFFC7D2FE),
+    statusLedColor: Color(0xFF818CF8),
+    bgAssetPath: 'assets/images/bg_starry.png',
+    isFlat: true,
+  );
+
+  // 22. Flat Minimal Techno
+  static const PlayerSkin flatMinimalTechno = PlayerSkin(
+    name: 'Flat Minimal Techno',
+    outerBorderColor: Color(0xFF1F2937),
+    panelBgColor: Color(0xFF111827),
+    metallicGradients: [
+      Color(0xFF111827),
+      Color(0xFF111827),
+      Color(0xFF111827),
+      Color(0xFF111827),
+    ],
+    lcdBgColor: Color(0xFF030712),
+    lcdBorderColor: Color(0xFF10B981),
+    textColor: Color(0xFF34D399),
+    textMutedColor: Color(0xFF4B5563),
+    visualizerColor: Color(0xFF10B981),
+    visualizerPeakColor: Color(0xFF6EE7B7),
+    buttonFaceColor: Color(0xFF1F2937),
+    buttonIconColor: Color(0xFF34D399),
+    statusLedColor: Color(0xFF10B981),
+    bgAssetPath: 'assets/images/bg_scifi.png',
+    isFlat: true,
+  );
+
+  // 23. Flat Vinyl Noir
+  static const PlayerSkin flatVinylNoir = PlayerSkin(
+    name: 'Flat Vinyl Noir',
+    outerBorderColor: Color(0xFF27272A),
+    panelBgColor: Color(0xFF09090B),
+    metallicGradients: [
+      Color(0xFF09090B),
+      Color(0xFF09090B),
+      Color(0xFF09090B),
+      Color(0xFF09090B),
+    ],
+    lcdBgColor: Color(0xFF000000),
+    lcdBorderColor: Color(0xFFEAB308),
+    textColor: Color(0xFFFACC15),
+    textMutedColor: Color(0xFF52525B),
+    visualizerColor: Color(0xFFEAB308),
+    visualizerPeakColor: Color(0xFFFDE047),
+    buttonFaceColor: Color(0xFF18181B),
+    buttonIconColor: Color(0xFFFACC15),
+    statusLedColor: Color(0xFFEAB308),
+    bgAssetPath: 'assets/images/bg_ferrari.png',
+    isFlat: true,
+  );
+
+  // 24. Flat Pastel Lavender
+  static const PlayerSkin flatPastelLavender = PlayerSkin(
+    name: 'Flat Pastel Lavender',
+    outerBorderColor: Color(0xFFDDD6FE),
+    panelBgColor: Color(0xFFF5F3FF),
+    metallicGradients: [
+      Color(0xFFF5F3FF),
+      Color(0xFFF5F3FF),
+      Color(0xFFF5F3FF),
+      Color(0xFFF5F3FF),
+    ],
+    lcdBgColor: Color(0xFFFFFFFF),
+    lcdBorderColor: Color(0xFF8B5CF6),
+    textColor: Color(0xFF6D28D9),
+    textMutedColor: Color(0xFFC084FC),
+    visualizerColor: Color(0xFF8B5CF6),
+    visualizerPeakColor: Color(0xFFEC4899),
+    buttonFaceColor: Color(0xFFEDE9FE),
+    buttonIconColor: Color(0xFF6D28D9),
+    statusLedColor: Color(0xFF8B5CF6),
+    bgAssetPath: 'assets/images/bg_nature.png',
+    isFlat: true,
+  );
+
+  // 25. Flat Sakura Light
+  static const PlayerSkin flatSakuraLight = PlayerSkin(
+    name: 'Flat Sakura Light',
+    outerBorderColor: Color(0xFFFCE7F3),
+    panelBgColor: Color(0xFFFFF1F2),
+    metallicGradients: [
+      Color(0xFFFFF1F2),
+      Color(0xFFFFF1F2),
+      Color(0xFFFFF1F2),
+      Color(0xFFFFF1F2),
+    ],
+    lcdBgColor: Color(0xFFFFFFFF),
+    lcdBorderColor: Color(0xFFF43F5E),
+    textColor: Color(0xFFBE123C),
+    textMutedColor: Color(0xFFF472B6),
+    visualizerColor: Color(0xFFF43F5E),
+    visualizerPeakColor: Color(0xFFFB7185),
+    buttonFaceColor: Color(0xFFFFE4E6),
+    buttonIconColor: Color(0xFFBE123C),
+    statusLedColor: Color(0xFFF43F5E),
+    bgAssetPath: 'assets/images/bg_nature.png',
+    isFlat: true,
+  );
+
   static const List<PlayerSkin> all = [
     classicBlue,
     s60Grey,
@@ -410,5 +602,13 @@ class PlayerSkin {
     flatAmethyst,
     flatAmber,
     flatPolar,
+    flatNeonSunset,
+    flatSakuraPastel,
+    flatGlassmorphic,
+    flatLofiRain,
+    flatMinimalTechno,
+    flatVinylNoir,
+    flatPastelLavender,
+    flatSakuraLight,
   ];
 }
