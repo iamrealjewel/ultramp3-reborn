@@ -56,12 +56,16 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   
-  # Configure assets for beautiful retro default icons or covers
   assets:
     - assets/images/
     - assets/icons/
 
+  shaders:
+    - shaders/apps_ring.frag
+    - shaders/cosmic_tunnel.frag
+    - shaders/liquid_fluid.frag
+    - shaders/solar_flares.frag
+
 flutter_launcher_icons:
   android: "ic_launcher"
   image_path: "assets/icons/app_icon.png"
-

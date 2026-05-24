@@ -7,6 +7,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart' as ja;
 import 'dart:math' as math;
 import 'dart:async';
+import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import 'package:ultramp3/core/services/playback_service.dart';
@@ -39,6 +40,13 @@ enum VisualizerStyle {
   dnaHelix,
   audioMatrixGrid,
   blackHoleStars, // [NEW] 3D gravitational starfall vortex swallowing stars into a central singing singularity
+
+  // GPU shader visualizers (Android-only for now)
+  shaderAppsRing,
+  shaderDsRing,
+  shaderSteamBars,
+  shaderPrismRing,
+  shaderBlobOrbit,
 }
 
 // Supported Skeuomorphic Dial Styles
@@ -80,6 +88,8 @@ class PlayerScreen extends ConsumerStatefulWidget {
 
 class _PlayerScreenState extends ConsumerState<PlayerScreen>
     with TickerProviderStateMixin {
+  static bool _sessionRestored = false;
+
   late AnimationController _visualizerController;
   late AnimationController _vinylRotationController;
 
@@ -98,11 +108,28 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   // Real-time stars list for Astro Starfield style
   late final List<_AstroStar> _stars;
 
+  // Background particles list for Obsidian Void & Glacier Crystalline Ice celestial background
+  final List<_AstroStar> _bgCelestialStars =
+      List.generate(40, (_) => _AstroStar());
+
   // Active configurations
   VisualizerStyle _visualizerStyle = VisualizerStyle.spectrumBars;
   int _visualizerVariation = 0; // Cycles from 0 to 4 depending on style!
   DialStyle _dialStyle = DialStyle.circular;
   bool _showEqualizer = false;
+
+  bool _isShaderStyle(VisualizerStyle style) {
+    switch (style) {
+      case VisualizerStyle.shaderAppsRing:
+      case VisualizerStyle.shaderDsRing:
+      case VisualizerStyle.shaderSteamBars:
+      case VisualizerStyle.shaderPrismRing:
+      case VisualizerStyle.shaderBlobOrbit:
+        return true;
+      default:
+        return false;
+    }
+  }
 
   // EQ Hardware Knobs (0.0 = min/neutral, 1.0 = max)
   double _bassValue = 0.5; // Boosts 60Hz + 230Hz bands via native EQ
@@ -111,30 +138,106 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   String? _statusMessage;
   Timer? _statusTimer;
 
-  // Equalizer 5-Band presets
+  // Equalizer presets (mapped onto actual Android EQ band layout when supported)
   String _activePreset = 'Flat';
 
-  final Map<String, List<double>> _presets = {
-    'Flat': [0.0, 0.0, 0.0, 0.0, 0.0],
-    'Rock': [4.0, 2.5, -1.5, 2.0, 5.0],
-    'Pop': [-1.5, 1.5, 3.0, 1.0, -1.0],
-    'Jazz': [3.0, 1.5, -1.5, 1.5, 3.0],
-    'Bass & Treble': [7.0, 4.0, 0.0, 4.0, 7.0],
-    'Mids': [-3.0, -1.0, 6.0, 4.0, -2.0],
-    'Classic': [4.5, 3.0, 0.0, 2.5, 4.0],
-    'Live': [-1.0, 2.0, 3.0, 3.0, 2.0],
-    'Dance': [5.5, 7.0, 3.5, 0.0, 5.0],
-    'Soft': [2.5, 1.0, 0.0, 1.5, 3.0],
-    'No Bass': [-12.0, -12.0, 0.0, 0.0, 0.0],
-    'No Mids': [0.0, 0.0, -12.0, -12.0, 0.0],
-    'No Treble': [0.0, 0.0, 0.0, -12.0, -12.0],
-    'Custom': [0.0, 0.0, 0.0, 0.0, 0.0],
-  };
+  static const List<String> _presetNames = [
+    'Flat',
+    'Rock',
+    'Pop',
+    'Jazz',
+    'Bass & Treble',
+    'Mids',
+    'Classic',
+    'Live',
+    'Dance',
+    'Soft',
+    'No Bass',
+    'No Mids',
+    'No Treble',
+    'Custom',
+  ];
 
-  // Equalizer 5-Band values (in dB, -12.0 to +12.0)
-  final List<double> _eqBands = [0.0, 0.0, 0.0, 0.0, 0.0];
+  // Default EQ UI is a recognizable 5-band layout (per equalizer.md).
+  // These are the UI bands we persist and edit.
+  static const List<double> _eqUiCentersHz = <double>[
+    60,
+    230,
+    910,
+    3600,
+    14000,
+  ];
+  static const List<String> _eqUiLabels = <String>[
+    '60Hz',
+    '230Hz',
+    '910Hz',
+    '3.6kHz',
+    '14kHz',
+  ];
+
+  // UI gains (5-band) in dB.
+  final List<double> _eqBands = List.filled(5, 0.0);
+
+  // Android device EQ parameters (used for mapping/clamping).
+  double _eqMinDb = -12.0;
+  double _eqMaxDb = 12.0;
+  List<double> _deviceEqCentersHz = const [];
 
   StreamSubscription<Duration>? _positionSubscription;
+  StreamSubscription<List<double>>? _visualizerBandsSub;
+  List<double>? _latestRealBands01;
+  double _latestBeatPulse = 0.0;
+
+  // Cache technical metadata (best-effort) per file path.
+  final Map<String, _AudioTechInfo> _techInfoCache = {};
+  final Map<String, Future<_AudioTechInfo?>> _techInfoInflight = {};
+
+  ui.FragmentProgram? _appsRingProgram;
+  ui.FragmentProgram? _dsRingProgram;
+  ui.FragmentProgram? _steamBarsProgram;
+  ui.FragmentProgram? _prismRingProgram;
+  ui.FragmentProgram? _blobOrbitProgram;
+  ui.FragmentProgram? _cosmicTunnelProgram;
+  ui.FragmentProgram? _liquidFluidProgram;
+  ui.FragmentProgram? _solarFlaresProgram;
+
+  Future<ui.FragmentProgram?> _tryLoadProgram(String asset) async {
+    try {
+      return await ui.FragmentProgram.fromAsset(asset);
+    } catch (e, st) {
+      // Don't let one shader failure break all shader loading.
+      // Keep this as debug-only signal.
+      assert(() {
+        debugPrint('Shader load failed ($asset): $e');
+        debugPrint('$st');
+        return true;
+      }());
+      return null;
+    }
+  }
+
+  Future<void> _loadShaderPrograms() async {
+    final apps = await _tryLoadProgram('shaders/apps_ring.frag');
+    final ds = await _tryLoadProgram('shaders/ds_ring.frag');
+    final steam = await _tryLoadProgram('shaders/steam_bars.frag');
+    final prism = await _tryLoadProgram('shaders/prism_ring.frag');
+    final blob = await _tryLoadProgram('shaders/blob_orbit.frag');
+    final tunnel = await _tryLoadProgram('shaders/cosmic_tunnel.frag');
+    final fluid = await _tryLoadProgram('shaders/liquid_fluid.frag');
+    final solar = await _tryLoadProgram('shaders/solar_flares.frag');
+
+    if (!mounted) return;
+    setState(() {
+      _appsRingProgram = apps;
+      _dsRingProgram = ds;
+      _steamBarsProgram = steam;
+      _prismRingProgram = prism;
+      _blobOrbitProgram = blob;
+      _cosmicTunnelProgram = tunnel;
+      _liquidFluidProgram = fluid;
+      _solarFlaresProgram = solar;
+    });
+  }
 
   @override
   void initState() {
@@ -151,6 +254,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     _vinylRotationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
+    );
+
+    _loadShaderPrograms();
+
+    // Real audio-driven visualizer (Android): subscribe once and let _tickVisualizer
+    // use the latest bands when available.
+    _visualizerBandsSub =
+        ref.read(playbackServiceProvider).handler.visualizerBandsStream.listen(
+      (bands) {
+        _latestRealBands01 = bands;
+        _latestBeatPulse =
+            ref.read(playbackServiceProvider).handler.latestBeatPulse;
+      },
     );
 
     // 1. Load initial visualizer & dial & equalizer settings synchronously from storage
@@ -171,12 +287,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     );
 
     _activePreset = storage.getEqualizerPreset();
-    final savedBands = storage.getEqualizerBands();
-    for (int i = 0; i < 5; i++) {
-      if (i < savedBands.length) {
-        _eqBands[i] = savedBands[i];
-      }
-    }
 
     // 2. Restore active playback session in a post-frame callback
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -191,50 +301,123 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
       final playbackService = ref.read(playbackServiceProvider);
       final player = playbackService.handler.playerInstance;
 
-      // A. Restore Shuffle & Loop
+      // A. Restore Queue & Active Song & Position (ONLY if nothing is playing and not yet restored)
+      if (!_sessionRestored) {
+        _sessionRestored = true;
+        if (player.sequenceState == null) {
+          final queueList = storage.getSavedQueueList();
+          final activeSongId = storage.getSavedActiveSongId();
+          final positionMs = storage.getSavedPositionMs();
+
+          if (queueList.isNotEmpty && activeSongId != null) {
+            final activeSongItem = MediaItem(
+              id: activeSongId,
+              title: p.basenameWithoutExtension(activeSongId),
+              artist: 'Unknown Artist',
+            );
+
+            final fullQueueItems = queueList.map((id) {
+              if (id == activeSongId) return activeSongItem;
+              return MediaItem(
+                id: id,
+                title: p.basenameWithoutExtension(id),
+                artist: 'Unknown Artist',
+              );
+            }).toList();
+
+            await playbackService.handler
+                .loadQueueItem(activeSongItem, fullQueue: fullQueueItems);
+
+            if (positionMs > 0) {
+              await player.seek(Duration(milliseconds: positionMs));
+            }
+          }
+        }
+      }
+
+      // Always keep a 10-band UI model. On Android, map to device EQ bands.
+      final eqParams = await playbackService.handler.equalizerParameters;
+      final savedBands = storage.getEqualizerBands();
+
+      if (eqParams != null) {
+        _eqMinDb = eqParams.minDecibels;
+        _eqMaxDb = eqParams.maxDecibels;
+        _deviceEqCentersHz = eqParams.bands
+            .map((b) => b.centerFrequency / 1000.0)
+            .toList(growable: false);
+      } else {
+        _eqMinDb = -12.0;
+        _eqMaxDb = 12.0;
+        _deviceEqCentersHz = const [];
+      }
+
+      // Restore persisted gains into the 5-band UI model.
+      // If the active preset is a known predefined preset (not 'Custom' and not 'Flat'),
+      // we load the fresh code-defined bands to ensure any preset tuning updates (like the 60Hz Pop fix) are immediately applied and saved.
+      final List<double> bandsToRestore;
+      if (_activePreset != 'Custom' && _activePreset != 'Flat') {
+        bandsToRestore = _computePresetForFiveBands(_activePreset);
+        storage.setEqualizerBands(bandsToRestore);
+      } else {
+        bandsToRestore = savedBands;
+      }
+
+      // Migration rules:
+      // - if saved/restore is 5: direct restore
+      // - if saved/restore is 10: migrate from 10 to 5 by frequency interpolation using 10 centers
+      // - otherwise: best-effort copy/truncate
+      if (bandsToRestore.length == 5) {
+        for (int i = 0; i < 5; i++) {
+          _eqBands[i] = bandsToRestore[i];
+        }
+      } else if (bandsToRestore.length == 10) {
+        const legacyHz = <double>[
+          31,
+          62,
+          125,
+          250,
+          500,
+          1000,
+          2000,
+          4000,
+          8000,
+          16000
+        ];
+        for (int i = 0; i < 5; i++) {
+          _eqBands[i] = _interpDb(
+            x: _eqUiCentersHz[i],
+            xs: legacyHz,
+            ys: bandsToRestore,
+          );
+        }
+      } else {
+        for (int i = 0; i < 5; i++) {
+          _eqBands[i] = i < bandsToRestore.length ? bandsToRestore[i] : 0.0;
+        }
+      }
+
+      // B. Restore Shuffle & Loop (best-effort; only valid after a source exists)
       final shuffleOn = storage.getShuffleEnabled();
-      await player.setShuffleModeEnabled(shuffleOn);
+      try {
+        await player.setShuffleModeEnabled(shuffleOn);
+      } catch (_) {}
 
       final loopModeStr = storage.getLoopMode();
       final loopMode = ja.LoopMode.values.firstWhere(
         (e) => e.name == loopModeStr,
         orElse: () => ja.LoopMode.off,
       );
-      await player.setLoopMode(loopMode);
+      try {
+        await player.setLoopMode(loopMode);
+      } catch (_) {}
 
-      // B. Restore Volume & Equalizer Bands in the service
+      // C. Restore Volume & Equalizer Bands in the service
       final vol = storage.getVolumeLevel();
-      await player.setVolume(vol);
-      await playbackService.setEqualizerBands(_eqBands);
-
-      // C. Restore Queue & Active Song & Position
-      final queueList = storage.getSavedQueueList();
-      final activeSongId = storage.getSavedActiveSongId();
-      final positionMs = storage.getSavedPositionMs();
-
-      if (queueList.isNotEmpty && activeSongId != null) {
-        final activeSongItem = MediaItem(
-          id: activeSongId,
-          title: p.basenameWithoutExtension(activeSongId),
-          artist: 'Unknown Artist',
-        );
-
-        final fullQueueItems = queueList.map((id) {
-          if (id == activeSongId) return activeSongItem;
-          return MediaItem(
-            id: id,
-            title: p.basenameWithoutExtension(id),
-            artist: 'Unknown Artist',
-          );
-        }).toList();
-
-        await playbackService.handler
-            .loadQueueItem(activeSongItem, fullQueue: fullQueueItems);
-
-        if (positionMs > 0) {
-          await player.seek(Duration(milliseconds: positionMs));
-        }
-      }
+      try {
+        await player.setVolume(vol);
+      } catch (_) {}
+      // Apply mapped EQ to the underlying engine.
+      await _applyEqualizerNow(playbackService);
 
       // D. Register position subscription for real-time throttled persistence
       int lastSavedMs = 0;
@@ -247,7 +430,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
         }
       });
     } catch (e) {
-      print('Error restoring playback session: $e');
+      debugPrint('Error restoring playback session: $e');
+      if (mounted) {
+        final skin = ref.read(playerSkinProvider);
+        _showFeedbackGlow(context, 'RESTORE FAILED', skin.textColor);
+      }
     }
   }
 
@@ -256,6 +443,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
         overlays: SystemUiOverlay.values);
     _positionSubscription?.cancel();
+    _visualizerBandsSub?.cancel();
     _visualizerController.dispose();
     _vinylRotationController.dispose();
     _statusTimer?.cancel();
@@ -312,7 +500,42 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
         _vinylRotationController.repeat();
       }
 
-      // ━━━━━ REAL-TIME TRANSIENT BEAT ENERGY SIMULATOR ━━━━━
+      // Prefer real audio-reactive visualizer bands when available (Android).
+      final realBands01 = _latestRealBands01;
+      if (realBands01 != null && realBands01.length == 10) {
+        final beat = _latestBeatPulse.clamp(0.0, 1.0);
+        _beatEnergy = beat;
+        for (int i = 0; i < 10; i++) {
+          // Scale 0..1 roughly into 4..38.
+          var targetHeight = 4.0 + (realBands01[i].clamp(0.0, 1.0) * 34.0);
+
+          // Beat pulse: emphasize lower bands, subtle on higher bands.
+          final beatBoost = i < 4 ? (1.0 + beat * 0.75) : (1.0 + beat * 0.20);
+          targetHeight *= beatBoost;
+
+          // Optional: keep the UI EQ influencing visuals (not audio) for style cohesion.
+          if (_eqBands.isNotEmpty) {
+            final int bandIndex = (i / 2).floor().clamp(0, _eqBands.length - 1);
+            final double gain = _eqBands[bandIndex];
+            final double eqFactor = 1.0 + (gain / 12.0) * 0.8;
+            targetHeight *= eqFactor;
+          }
+
+          targetHeight = targetHeight.clamp(4.0, 38.0);
+          // Stronger smoothing so movement follows musical phrasing more.
+          _visualizerHeights[i] =
+              _visualizerHeights[i] * 0.78 + targetHeight * 0.22;
+
+          if (_visualizerHeights[i] >= _peakHeights[i]) {
+            _peakHeights[i] = _visualizerHeights[i];
+          } else {
+            _peakHeights[i] = math.max(4.0, _peakHeights[i] - 0.6);
+          }
+        }
+        return;
+      }
+
+      // ━━━━━ REAL-TIME TRANSIENT BEAT ENERGY SIMULATOR (fallback) ━━━━━
       // Exponential decay of beat transient energies
       _beatEnergy = _beatEnergy * 0.85;
       _snareEnergy = _snareEnergy * 0.82;
@@ -403,6 +626,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
       case VisualizerStyle.dnaHelix:
       case VisualizerStyle.audioMatrixGrid:
       case VisualizerStyle.blackHoleStars:
+      case VisualizerStyle.shaderAppsRing:
+      case VisualizerStyle.shaderDsRing:
+      case VisualizerStyle.shaderSteamBars:
+      case VisualizerStyle.shaderPrismRing:
+      case VisualizerStyle.shaderBlobOrbit:
         return 4; // All newer styles support 4 variations
     }
   }
@@ -486,14 +714,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     }
   }
 
-  void _applyEqPreset(
-      PlaybackService service, String name, List<double> bands, Color color) {
+  void _applyEqPreset(PlaybackService service, String name, Color color) async {
+    // Always apply presets to the 5-band UI model.
+    // Android audio output is handled by mapping UI->device bands when applying.
+    final target = _computePresetForFiveBands(name);
+
     setState(() {
       _activePreset = name;
-      for (int i = 0; i < 5; i++) {
-        _eqBands[i] = bands[i];
+      for (int i = 0; i < _eqBands.length && i < target.length; i++) {
+        _eqBands[i] = target[i];
       }
     });
+
+    // Persist immediately so relaunch restores the same sound.
+    ref.read(storageServiceProvider).setEqualizerPreset(name);
+    ref.read(storageServiceProvider).setEqualizerBands(List.from(_eqBands));
+
     _applyEqualizerWithKnobs(service);
     _showFeedbackGlow(context, 'EQ PRESET: ${name.toUpperCase()}', color);
   }
@@ -502,12 +738,118 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   void _applyEqualizerWithKnobs(PlaybackService service) {
     // Compute bass boost from knob: 0.5 = neutral (0dB), 1.0 = +12dB boost, 0.0 = -12dB cut
     final double bassBoostDb = (_bassValue - 0.5) * 24.0; // ±12dB range
-    final List<double> bandsToSend = List.from(_eqBands);
-    bandsToSend[0] =
-        (bandsToSend[0] + bassBoostDb * 1.0).clamp(-12.0, 12.0); // 60Hz
-    bandsToSend[1] =
-        (bandsToSend[1] + bassBoostDb * 0.7).clamp(-12.0, 12.0); // 230Hz
-    service.setEqualizerBands(bandsToSend);
+    final uiBands = List<double>.from(_eqBands);
+    // Apply bass knob into the low-end UI bands (60Hz and 230Hz).
+    uiBands[0] = (uiBands[0] + bassBoostDb * 1.0).clamp(_eqMinDb, _eqMaxDb);
+    uiBands[1] = (uiBands[1] + bassBoostDb * 0.8).clamp(_eqMinDb, _eqMaxDb);
+
+    // Persist UI state.
+    ref.read(storageServiceProvider).setEqualizerBands(List.from(_eqBands));
+
+    // Map UI -> device and apply.
+    final deviceBands = _mapUiToDeviceBands(uiBands);
+    service.setEqualizerBands(deviceBands);
+  }
+
+  Future<void> _applyEqualizerNow(PlaybackService service) async {
+    final uiBands = List<double>.from(_eqBands);
+    final deviceBands = _mapUiToDeviceBands(uiBands);
+    await service.setEqualizerBands(deviceBands);
+  }
+
+  List<double> _mapUiToDeviceBands(List<double> uiBands) {
+    // If we don't have device band centers, just pass UI bands through.
+    // (Non-Android platforms will ignore anyway.)
+    if (_deviceEqCentersHz.isEmpty) return uiBands;
+
+    return _deviceEqCentersHz
+        .map((hz) => _interpDb(x: hz, xs: _eqUiCentersHz, ys: uiBands))
+        .map((v) => v.clamp(_eqMinDb, _eqMaxDb))
+        .toList(growable: false);
+  }
+
+  double _interpDb({
+    required double x,
+    required List<double> xs,
+    required List<double> ys,
+  }) {
+    if (xs.isEmpty || ys.isEmpty) return 0.0;
+    if (xs.length != ys.length) return 0.0;
+    if (x <= xs.first) return ys.first.toDouble();
+    if (x >= xs.last) return ys.last.toDouble();
+
+    // Interpolate in log-frequency space.
+    final lx = math.log(x);
+    for (int i = 0; i < xs.length - 1; i++) {
+      final x0 = xs[i];
+      final x1 = xs[i + 1];
+      if (x >= x0 && x <= x1) {
+        final t = (lx - math.log(x0)) / (math.log(x1) - math.log(x0));
+        final y0 = ys[i];
+        final y1 = ys[i + 1];
+        return y0 + (y1 - y0) * t;
+      }
+    }
+    return ys.last.toDouble();
+  }
+
+  String _formatHzLabel(double hz) {
+    if (hz >= 1000) {
+      final khz = hz / 1000.0;
+      final s = khz >= 10 ? khz.toStringAsFixed(0) : khz.toStringAsFixed(1);
+      return '${s}kHz';
+    }
+    return '${hz.round()}Hz';
+  }
+
+  List<double> _computePresetForAndroid(
+      String name, ja.AndroidEqualizerParameters params) {
+    // Build a 5-band UI preset first, then map it onto the device EQ layout.
+    final ui = _computePresetForFiveBands(name);
+    final mapped = _deviceEqCentersHz.isNotEmpty
+        ? _mapUiToDeviceBands(ui)
+        : params.bands
+            .map((b) => _interpDb(
+                x: b.centerFrequency / 1000.0, xs: _eqUiCentersHz, ys: ui))
+            .toList(growable: false);
+    return mapped
+        .map((v) => v.clamp(_eqMinDb, _eqMaxDb))
+        .toList(growable: false);
+  }
+
+  List<double> _computePresetForFiveBands(String name) {
+    // Simple recognizable curves across 5 bands.
+    // Order: 60Hz, 230Hz, 910Hz, 3.6kHz, 14kHz
+    switch (name) {
+      case 'Rock':
+        return [4.0, 2.0, -1.0, 2.0, 4.0];
+      case 'Pop':
+        return [2.0, 2.0, -1.0, 1.0, 1.0];
+      case 'Jazz':
+        return [3.0, 1.5, -1.5, 1.5, 3.0];
+      case 'Bass & Treble':
+        return [7.0, 4.0, 0.0, 4.0, 7.0];
+      case 'Mids':
+        return [1.0, -1.0, 6.0, 4.0, -2.0];
+      case 'Classic':
+        return [4.5, 3.0, 0.0, 2.5, 4.0];
+      case 'Live':
+        return [1.5, 2.0, 3.0, 3.0, 2.0];
+      case 'Dance':
+        return [5.5, 7.0, 3.5, 0.0, 5.0];
+      case 'Soft':
+        return [2.5, 1.0, 0.0, 1.5, 3.0];
+      case 'No Bass':
+        return [-12.0, -12.0, 0.0, 0.0, 0.0];
+      case 'No Mids':
+        return [2.0, 2.0, -12.0, -12.0, 0.0];
+      case 'No Treble':
+        return [2.0, 2.0, 0.0, -12.0, -12.0];
+      case 'Flat':
+      case 'Custom':
+      default:
+        return List.filled(5, 0.0);
+    }
   }
 
   void _showFeedbackGlow(
@@ -791,11 +1133,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     return ClipRRect(
       borderRadius: BorderRadius.zero,
       child: SizedBox(
-        height: isLandscape ? double.infinity : (activeSkin.isFlat ? 280 : 210),
+        height: isLandscape ? double.infinity : (activeSkin.isFlat ? 280 : 240),
         width: double.infinity,
         child: GestureDetector(
           onTap: () {
-            if (!settings.showAlbumArt) {
+            // When album art is enabled, we still allow shader visualizers to
+            // cycle variations (since shaders can render behind the art).
+            if (!settings.showAlbumArt || _isShaderStyle(_visualizerStyle)) {
               setState(() {
                 final int maxVars = _getMaxVariations(_visualizerStyle);
                 _visualizerVariation = (_visualizerVariation + 1) % maxVars;
@@ -827,29 +1171,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                         ),
                       ),
 
-                      // CustomPaint or AlbumArt wrapped in Padding to keep distance from overlays
-                      if (settings.showAlbumArt)
+                      // Visualizer (always rendered for shader styles).
+                      if (!settings.showAlbumArt || _isShaderStyle(_visualizerStyle))
                         Positioned.fill(
                           child: Padding(
-                            padding: isLandscape
-                                ? EdgeInsets.zero
-                                : const EdgeInsets.only(top: 38, bottom: 18),
-                            child: Container(
-                              padding: isLandscape
-                                  ? EdgeInsets.zero
-                                  : const EdgeInsets.all(8),
-                              alignment: Alignment.center,
-                              child:
-                                  _buildAlbumArtWidget(mediaItem, activeSkin),
-                            ),
-                          ),
-                        )
-                      else
-                        Positioned.fill(
-                          child: Padding(
-                            padding: isLandscape
-                                ? EdgeInsets.zero
-                                : const EdgeInsets.only(top: 38, bottom: 22),
+                            padding: const EdgeInsets.only(bottom: 46),
                             child: CustomPaint(
                               size: Size.infinite,
                               painter: _VisualizerPainter(
@@ -861,34 +1187,41 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                                 stars: _stars,
                                 barColor: activeSkin.visualizerColor,
                                 peakColor: activeSkin.visualizerPeakColor,
-                                hasTrack: _isPlaying,
+                                hasTrack: _hasTrack,
+                                appsRingProgram: _appsRingProgram,
+                                dsRingProgram: _dsRingProgram,
+                                steamBarsProgram: _steamBarsProgram,
+                                prismRingProgram: _prismRingProgram,
+                                blobOrbitProgram: _blobOrbitProgram,
+                                cosmicTunnelProgram: _cosmicTunnelProgram,
+                                liquidFluidProgram: _liquidFluidProgram,
+                                solarFlaresProgram: _solarFlaresProgram,
+                                beat: _latestBeatPulse,
                               ),
                             ),
                           ),
                         ),
 
-                      // Top Status Overlay: Bitrate and Sample Rate badges
-                      Positioned(
-                        top: isLandscape ? 14 : 10,
-                        left: 12,
-                        right: 12,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _BacklitLCDBadge(
-                              text: '320 KBPS',
-                              color: activeSkin.textColor,
+                      // Album art overlay.
+                      if (settings.showAlbumArt)
+                        Positioned.fill(
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 46),
+                            child: Opacity(
+                              // Let shader visualizers show through.
+                              opacity: _isShaderStyle(_visualizerStyle) ? 0.82 : 1.0,
+                              child: Container(
+                                padding: isLandscape
+                                    ? EdgeInsets.zero
+                                    : const EdgeInsets.all(8),
+                                alignment: Alignment.center,
+                                child: _buildAlbumArtWidget(mediaItem, activeSkin),
+                              ),
                             ),
-                            const SizedBox(width: 16),
-                            _BacklitLCDBadge(
-                              text: '44.1 KHZ',
-                              color: activeSkin.textColor,
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
 
-                      // Bottom Controls Overlay: Equalizer selected badge & Volume level bar
+                      // Bottom Controls Overlay: Bitrate/Sample badges, Equalizer preset & Volume level bar
                       Positioned(
                         bottom: isLandscape ? 4 : 2,
                         left: 8,
@@ -1006,7 +1339,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 50), // Move trackname & progressbar down by at least 50px
+                const SizedBox(
+                    height:
+                        50), // Move trackname & progressbar down by at least 50px
 
                 // Track name
                 StreamBuilder<MediaItem?>(
@@ -1106,7 +1441,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                       initialData: player.shuffleModeEnabled,
                       builder: (context, shuffleSnap) {
                         final isShuffle = shuffleSnap.data ?? false;
-                        final double designWidth = 360.0; // Uniform 360px design width so all match perfectly
+                        final double designWidth =
+                            360.0; // Uniform 360px design width so all match perfectly
                         final double designHeight = activeSkin.isFlat
                             ? 145.0
                             : (_dialStyle == DialStyle.rectangular
@@ -1117,11 +1453,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
 
                         return Center(
                           child: SizedBox(
-                            height: activeSkin.isFlat
-                                ? 92
-                                : (_dialStyle == DialStyle.rectangular
-                                    ? 130
-                                    : 180),
+                            height: designHeight,
                             child: FittedBox(
                               fit: BoxFit.contain,
                               child: SizedBox(
@@ -1169,7 +1501,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
 
     return Padding(
       padding: isLandscape
-          ? const EdgeInsets.symmetric(horizontal: 10, vertical: 0)
+          ? const EdgeInsets.symmetric(horizontal: 5, vertical: 0)
           : const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(30),
@@ -1177,7 +1509,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
           filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
             padding: isLandscape
-                ? const EdgeInsets.symmetric(horizontal: 16, vertical: 4)
+                ? const EdgeInsets.symmetric(horizontal: 5, vertical: 4)
                 : const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
               color: activeSkin.panelBgColor.withOpacity(0.65),
@@ -1382,47 +1714,79 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Left side: Selected Equalizer preset name as a backlit interactive badge
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _showEqualizer = !_showEqualizer;
-                  });
-                },
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8.0, vertical: 4.0),
-                      decoration: BoxDecoration(
-                        color: skin.textColor.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                            color: skin.textColor.withOpacity(0.35),
-                            width: 1.0),
-                      ),
-                      child: Row(
+              // Left side: Bitrate/Sample badges + Selected Equalizer preset
+              StreamBuilder<MediaItem?>(
+                stream: service.currentMediaItemStream,
+                builder: (context, mediaSnap) {
+                  final mediaItem = mediaSnap.data;
+                  final sourceId = mediaItem?.id;
+
+                  Future<_AudioTechInfo?>? techFuture;
+                  if (sourceId != null && !sourceId.startsWith('http')) {
+                    techFuture = _getTechInfo(sourceId);
+                  }
+
+                  return FutureBuilder<_AudioTechInfo?>(
+                    future: techFuture,
+                    builder: (context, techSnap) {
+                      final info = techSnap.data;
+                      final bitrateText = info?.bitrateKbps != null
+                          ? '${info!.bitrateKbps} KBPS'
+                          : '-- KBPS';
+                      final sampleText = info?.sampleRateHz != null
+                          ? '${(info!.sampleRateHz! / 1000).toStringAsFixed(1)} KHZ'
+                          : '-- KHZ';
+
+                      return Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.equalizer_rounded,
-                              color: skin.textColor, size: 12),
-                          const SizedBox(width: 5),
-                          Text(
-                            'EQ: ${_activePreset.toUpperCase()}',
-                            style: TextStyle(
-                              color: skin.textColor,
-                              fontFamily: 'monospace',
-                              fontSize: 10.0,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
+                          _BacklitLCDBadge(
+                              text: bitrateText, color: skin.textColor),
+                          const SizedBox(width: 6),
+                          _BacklitLCDBadge(
+                              text: sampleText, color: skin.textColor),
+                          const SizedBox(width: 6),
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _showEqualizer = !_showEqualizer;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8.0, vertical: 4.0),
+                              decoration: BoxDecoration(
+                                color: skin.textColor.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                    color: skin.textColor.withOpacity(0.35),
+                                    width: 1.0),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.equalizer_rounded,
+                                      color: skin.textColor, size: 12),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'EQ: ${_activePreset.toUpperCase()}',
+                                    style: TextStyle(
+                                      color: skin.textColor,
+                                      fontFamily: 'monospace',
+                                      fontSize: 10.0,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                  ],
-                ),
+                      );
+                    },
+                  );
+                },
               ),
 
               // Right side: Persistent gradual heights Volume Bar
@@ -1739,6 +2103,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                           styleIcon = Icons.apps_rounded;
                         if (style == VisualizerStyle.blackHoleStars)
                           styleIcon = Icons.blur_on_rounded;
+                        if (style == VisualizerStyle.shaderAppsRing)
+                          styleIcon = Icons.auto_awesome_motion_rounded;
+                        if (style == VisualizerStyle.shaderDsRing)
+                          styleIcon = Icons.donut_large_rounded;
+                        if (style == VisualizerStyle.shaderSteamBars)
+                          styleIcon = Icons.equalizer_rounded;
+                        if (style == VisualizerStyle.shaderPrismRing)
+                          styleIcon = Icons.tonality_rounded;
+                        if (style == VisualizerStyle.shaderBlobOrbit)
+                          styleIcon = Icons.brightness_high_rounded;
 
                         return GestureDetector(
                           onTap: () {
@@ -2041,6 +2415,25 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                 ),
               ),
 
+              // 2. Dynamic animated celestial backgrounds (Skeuomorphic Void / Glacier)
+              if (!activeSkin.isFlat &&
+                  (activeSkin.name.contains('Void') ||
+                      activeSkin.name.contains('Glacier')))
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _CelestialBackgroundPainter(
+                      style: activeSkin.name.contains('Void')
+                          ? CelestialStyle.blackHole
+                          : CelestialStyle.milkyWay,
+                      time: _animationTime,
+                      bassEnergy: _beatEnergy,
+                      stars: _bgCelestialStars,
+                      coreColor: activeSkin.visualizerColor,
+                      accentColor: activeSkin.visualizerPeakColor,
+                    ),
+                  ),
+                ),
+
               Column(
                 children: [
                   // 2. Tucked Top Bar (full-width flat container at the very top edge with dynamic notch padding, compact in landscape)
@@ -2052,7 +2445,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                           : (MediaQuery.of(context).padding.top + 4),
                       left: 16,
                       right: 16,
-                      bottom: isLandscape ? 4 : 6,
+                      bottom: 2,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.9),
@@ -2220,6 +2613,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                   Expanded(
                     child: SafeArea(
                       top: false,
+                      left: !isLandscape,
+                      right: !isLandscape,
+                      bottom: !isLandscape,
                       child: () {
                         if (isLandscape) {
                           // ━━━━━ LANDSCAPE: Two-column cockpit ━━━━━
@@ -2229,7 +2625,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
 
                         // ━━━━━ PORTRAIT: Standard vertical layout ━━━━━
                         return SingleChildScrollView(
-                          physics: const BouncingScrollPhysics(),
+                          physics: const NeverScrollableScrollPhysics(),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
@@ -2241,8 +2637,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                                 player: player,
                                 isLandscape: false,
                               ),
+                              // The flat visualizer is taller; pulling this section up causes
+                              // the transient status message to overlap the visualizer.
                               Transform.translate(
-                                offset: const Offset(0, -10),
+                                offset: Offset(0, activeSkin.isFlat ? 0 : -10),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 10.0),
@@ -2281,7 +2679,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                                         ),
                                       ),
 
-                                      const SizedBox(height: 4),
+                                      // Extra breathing room so the transient status message
+                                      // doesn't crowd the track marquee.
+                                      const SizedBox(height: 10),
                                       // 4. Track name marquee + Quick Actions above progress bar
                                       StreamBuilder<MediaItem?>(
                                         stream: playbackService
@@ -2746,22 +3146,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                                                                         overflow:
                                                                             TextOverflow.ellipsis,
                                                                       ),
-                                                                      Text(
-                                                                        item.artist ??
-                                                                            '',
-                                                                        style:
-                                                                            TextStyle(
-                                                                          color: activeSkin
-                                                                              .textColor
-                                                                              .withOpacity(0.45),
-                                                                          fontSize:
-                                                                              10,
-                                                                        ),
-                                                                        maxLines:
-                                                                            1,
-                                                                        overflow:
-                                                                            TextOverflow.ellipsis,
-                                                                      ),
+                                                                      // Flat mode: keep the queue compact and single-line.
                                                                     ],
                                                                   ),
                                                                 ),
@@ -2976,7 +3361,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                                                 height: 260 + navHeight);
                                           } else {
                                             return SizedBox(
-                                                height: 180 + navHeight + 20);
+                                                height: 180 + navHeight - 10);
                                           }
                                         }
                                       }(),
@@ -3004,10 +3389,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                     if (activeSkin.isFlat || _dialStyle == DialStyle.circular) {
                       return _dialStyle == DialStyle.circular
                           ? navHeight - 57
-                          : navHeight - 30; // Move flat dialer down by 30px
+                          : navHeight - 60; // Flat dialer: shifted down by 20px
                     } else {
-                      return navHeight +
-                          20; // Safe distance above bottom navigation bar
+                      return navHeight -
+                          10; // Skeuomorphic rectangular/synth: shifted down from navHeight + 20 by 30px
                     }
                   }(),
                   child: StreamBuilder<ja.LoopMode>(
@@ -3054,7 +3439,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                             skin: activeSkin,
                             bands: _eqBands,
                             activePreset: _activePreset,
-                            presets: _presets,
                             bassValue: _bassValue,
                             stereoValue: _stereoValue,
                             onBassChanged: (val) {
@@ -3063,23 +3447,30 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                             },
                             onStereoChanged: (val) {
                               setState(() => _stereoValue = val);
-                              // stereo value affects visualizer width; no native EQ band needed
+                              // Real Android stereo widening via native Virtualizer.
+                              playbackService.setStereoStrength(_stereoValue);
                             },
                             onBandChanged: (index, val) {
                               setState(() {
                                 _eqBands[index] = val;
                                 _activePreset = 'Custom';
-                                _presets['Custom'] = List.from(_eqBands);
                               });
+                              ref
+                                  .read(storageServiceProvider)
+                                  .setEqualizerPreset('Custom');
+                              ref
+                                  .read(storageServiceProvider)
+                                  .setEqualizerBands(List.from(_eqBands));
                               _applyEqualizerWithKnobs(playbackService);
                             },
-                            onPresetSelected: (name, values) => _applyEqPreset(
-                                playbackService,
-                                name,
-                                values,
-                                activeSkin.textColor),
+                            onPresetSelected: (name) => _applyEqPreset(
+                                playbackService, name, activeSkin.textColor),
                             onClose: () =>
                                 setState(() => _showEqualizer = false),
+                            minDb: _eqMinDb,
+                            maxDb: _eqMaxDb,
+                            frequencyLabels: _eqUiLabels,
+                            presetNames: _presetNames,
                           ),
                         ),
                       ),
@@ -3092,6 +3483,243 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
       ),
     );
   }
+
+  Future<_AudioTechInfo?> _getTechInfo(String filePath) {
+    final cached = _techInfoCache[filePath];
+    if (cached != null) return Future.value(cached);
+
+    final inflight = _techInfoInflight[filePath];
+    if (inflight != null) return inflight;
+
+    final future = _readAudioTechInfo(filePath).then((info) {
+      if (info != null) {
+        _techInfoCache[filePath] = info;
+      }
+      _techInfoInflight.remove(filePath);
+      return info;
+    });
+
+    _techInfoInflight[filePath] = future;
+    return future;
+  }
+
+  Future<_AudioTechInfo?> _readAudioTechInfo(String filePath) async {
+    // Best-effort: currently only parses MP3 frame header.
+    if (!filePath.toLowerCase().endsWith('.mp3')) return null;
+    try {
+      final file = File(filePath);
+      if (!await file.exists()) return null;
+
+      final raf = await file.open();
+      try {
+        int offset = 0;
+
+        // Skip ID3v2 tag if present.
+        final header = await raf.read(10);
+        if (header.length == 10 &&
+            header[0] == 0x49 &&
+            header[1] == 0x44 &&
+            header[2] == 0x33) {
+          final tagSize = ((header[6] & 0x7F) << 21) |
+              ((header[7] & 0x7F) << 14) |
+              ((header[8] & 0x7F) << 7) |
+              (header[9] & 0x7F);
+          offset = 10 + tagSize;
+          await raf.setPosition(offset);
+        } else {
+          // No ID3: rewind.
+          await raf.setPosition(0);
+        }
+
+        // Scan forward for a frame sync (0xFFE).
+        const maxScan = 64 * 1024;
+        final start = await raf.position();
+        while ((await raf.position()) - start < maxScan) {
+          final b = await raf.read(2);
+          if (b.length < 2) break;
+          if (b[0] == 0xFF && (b[1] & 0xE0) == 0xE0) {
+            // Candidate sync; read remaining 2 bytes of the header.
+            final rest = await raf.read(2);
+            if (rest.length < 2) break;
+            final h0 = b[0];
+            final h1 = b[1];
+            final h2 = rest[0];
+            final h3 = rest[1];
+            final info = _parseMp3FrameHeader(h0, h1, h2, h3);
+            if (info != null) return info;
+            // Not valid, step back 3 bytes and keep scanning.
+            final pos = await raf.position();
+            await raf.setPosition(pos - 3);
+          } else {
+            // Step back 1 byte so we slide window by one.
+            final pos = await raf.position();
+            await raf.setPosition(pos - 1);
+          }
+        }
+      } finally {
+        await raf.close();
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
+  }
+
+  _AudioTechInfo? _parseMp3FrameHeader(int h0, int h1, int h2, int h3) {
+    // Validate sync (11 bits 1).
+    if (h0 != 0xFF || (h1 & 0xE0) != 0xE0) return null;
+
+    final versionId = (h1 >> 3) & 0x03;
+    final layerId = (h1 >> 1) & 0x03;
+    final bitrateIdx = (h2 >> 4) & 0x0F;
+    final sampleIdx = (h2 >> 2) & 0x03;
+
+    // Exclude reserved values.
+    if (versionId == 0x01) return null;
+    if (layerId == 0x00) return null;
+    if (bitrateIdx == 0x00 || bitrateIdx == 0x0F) return null;
+    if (sampleIdx == 0x03) return null;
+
+    final isMpeg1 = versionId == 0x03;
+    // Layer mapping: 01=Layer III, 10=Layer II, 11=Layer I
+    final layer = switch (layerId) {
+      0x03 => 1,
+      0x02 => 2,
+      0x01 => 3,
+      _ => 0,
+    };
+    if (layer == 0) return null;
+
+    final sampleRateHz = _mp3SampleRateHz(versionId, sampleIdx);
+    if (sampleRateHz == null) return null;
+
+    final bitrateKbps =
+        _mp3BitrateKbps(isMpeg1: isMpeg1, layer: layer, idx: bitrateIdx);
+    if (bitrateKbps == null) return null;
+
+    return _AudioTechInfo(bitrateKbps: bitrateKbps, sampleRateHz: sampleRateHz);
+  }
+
+  int? _mp3SampleRateHz(int versionId, int sampleIdx) {
+    // versionId: 00=MPEG2.5, 10=MPEG2, 11=MPEG1
+    const mpeg1 = [44100, 48000, 32000];
+    const mpeg2 = [22050, 24000, 16000];
+    const mpeg25 = [11025, 12000, 8000];
+    return switch (versionId) {
+      0x03 => mpeg1[sampleIdx],
+      0x02 => mpeg2[sampleIdx],
+      0x00 => mpeg25[sampleIdx],
+      _ => null,
+    };
+  }
+
+  int? _mp3BitrateKbps(
+      {required bool isMpeg1, required int layer, required int idx}) {
+    // idx is 1..14 here.
+    // Tables from MPEG audio spec; layer: 1=Layer I, 2=Layer II, 3=Layer III.
+    const mpeg1L1 = [
+      32,
+      64,
+      96,
+      128,
+      160,
+      192,
+      224,
+      256,
+      288,
+      320,
+      352,
+      384,
+      416,
+      448
+    ];
+    const mpeg1L2 = [
+      32,
+      48,
+      56,
+      64,
+      80,
+      96,
+      112,
+      128,
+      160,
+      192,
+      224,
+      256,
+      320,
+      384
+    ];
+    const mpeg1L3 = [
+      32,
+      40,
+      48,
+      56,
+      64,
+      80,
+      96,
+      112,
+      128,
+      160,
+      192,
+      224,
+      256,
+      320
+    ];
+    const mpeg2L1 = [
+      32,
+      48,
+      56,
+      64,
+      80,
+      96,
+      112,
+      128,
+      144,
+      160,
+      176,
+      192,
+      224,
+      256
+    ];
+    const mpeg2L2L3 = [
+      8,
+      16,
+      24,
+      32,
+      40,
+      48,
+      56,
+      64,
+      80,
+      96,
+      112,
+      128,
+      144,
+      160
+    ];
+
+    final table = isMpeg1
+        ? switch (layer) {
+            1 => mpeg1L1,
+            2 => mpeg1L2,
+            3 => mpeg1L3,
+            _ => null,
+          }
+        : switch (layer) {
+            1 => mpeg2L1,
+            2 || 3 => mpeg2L2L3,
+            _ => null,
+          };
+    if (table == null) return null;
+    return table[idx - 1];
+  }
+}
+
+class _AudioTechInfo {
+  final int? bitrateKbps;
+  final int? sampleRateHz;
+
+  const _AudioTechInfo({required this.bitrateKbps, required this.sampleRateHz});
 }
 
 // ---------------------------------------------------------
@@ -3108,6 +3736,15 @@ class _VisualizerPainter extends CustomPainter {
   final Color barColor;
   final Color peakColor;
   final bool hasTrack;
+  final ui.FragmentProgram? appsRingProgram;
+  final ui.FragmentProgram? dsRingProgram;
+  final ui.FragmentProgram? steamBarsProgram;
+  final ui.FragmentProgram? prismRingProgram;
+  final ui.FragmentProgram? blobOrbitProgram;
+  final ui.FragmentProgram? cosmicTunnelProgram;
+  final ui.FragmentProgram? liquidFluidProgram;
+  final ui.FragmentProgram? solarFlaresProgram;
+  final double beat;
 
   _VisualizerPainter({
     required this.style,
@@ -3119,6 +3756,15 @@ class _VisualizerPainter extends CustomPainter {
     required this.barColor,
     required this.peakColor,
     required this.hasTrack,
+    this.appsRingProgram,
+    this.dsRingProgram,
+    this.steamBarsProgram,
+    this.prismRingProgram,
+    this.blobOrbitProgram,
+    this.cosmicTunnelProgram,
+    this.liquidFluidProgram,
+    this.solarFlaresProgram,
+    this.beat = 0.0,
   });
 
   @override
@@ -3605,84 +4251,50 @@ class _VisualizerPainter extends CustomPainter {
         }
         break;
 
-      // 5. LIQUID / FLUID VISUALIZER
       case VisualizerStyle.liquidFluid:
-        final int fluidMode =
-            0; // Force 0 to bypass V2 & V3 (Bezier Swirl, Hot Lava Flow)
-        final double midY = h / 2;
+        {
+          final program = liquidFluidProgram;
+          if (program != null) {
+            final shader = program.fragmentShader();
+            shader.setFloat(0, w);
+            shader.setFloat(1, h);
+            shader.setFloat(2, time);
+            shader.setFloat(3, beat.clamp(0.0, 1.0));
+            for (int i = 0; i < 10; i++) {
+              final v = (i < amplitudes.length)
+                  ? (amplitudes[i] / 38.0).clamp(0.0, 1.0)
+                  : 0.0;
+              shader.setFloat(4 + i, v);
+            }
+            final paint = Paint()..shader = shader;
+            canvas.drawRect(Rect.fromLTWH(0, 0, w, h), paint);
+          } else {
+            // Fallback: wave plasma fluid
+            final double midY = h / 2;
+            final Path fluidPath = Path();
+            fluidPath.moveTo(0, h);
+            fluidPath.lineTo(0, midY);
 
-        if (fluidMode == 0) {
-          // Wave plasma fluid
-          final Path fluidPath = Path();
-          fluidPath.moveTo(0, h);
-          fluidPath.lineTo(0, midY);
+            for (int x = 0; x <= w; x += 5) {
+              final double pct = x / w;
+              final double wave1 = math.sin(pct * 3 * math.pi + time * 4.5) *
+                  8.0 *
+                  (1 + normalizedAmp);
+              final double wave2 =
+                  math.cos(pct * 6 * math.pi - time * 3.0) * 4.0 * normalizedAmp;
+              fluidPath.lineTo(x.toDouble(), midY + wave1 + wave2);
+            }
+            fluidPath.lineTo(w, h);
+            fluidPath.close();
 
-          for (int x = 0; x <= w; x += 5) {
-            final double pct = x / w;
-            final double wave1 = math.sin(pct * 3 * math.pi + time * 4.5) *
-                8.0 *
-                (1 + normalizedAmp);
-            final double wave2 =
-                math.cos(pct * 6 * math.pi - time * 3.0) * 4.0 * normalizedAmp;
-            fluidPath.lineTo(x.toDouble(), midY + wave1 + wave2);
-          }
-          fluidPath.lineTo(w, h);
-          fluidPath.close();
-
-          final Paint fluidPaint = Paint()
-            ..shader = ui.Gradient.linear(
-              Offset(w / 2, midY - 10),
-              Offset(w / 2, h),
-              [barColor.withOpacity(0.55), barColor.withOpacity(0.1)],
-            )
-            ..style = PaintingStyle.fill;
-          canvas.drawPath(fluidPath, fluidPaint);
-        } else if (fluidMode == 1) {
-          // Bezier Swirl
-          final Paint swirlPaint = Paint()
-            ..color = barColor.withOpacity(0.35)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2.0;
-
-          final double cx = w / 2;
-          final double cy = h / 2;
-          final Path path = Path();
-          final int segments = 45;
-
-          for (int i = 0; i <= segments; i++) {
-            final double pct = i / segments;
-            final double angle = pct * 4 * math.pi + time * 3.0;
-            final double radius =
-                (4.0 + normalizedAmp * 24.0) * (1.0 + pct * 0.5);
-            final double dx = cx + math.cos(angle) * radius * 1.5;
-            final double dy = cy + math.sin(angle) * radius * 0.95;
-
-            if (i == 0)
-              path.moveTo(dx, dy);
-            else
-              path.lineTo(dx, dy);
-          }
-          canvas.drawPath(path, swirlPaint);
-        } else {
-          // Hot Lava Flow
-          final Paint lavaPaint = Paint()..style = PaintingStyle.fill;
-          for (int i = 0; i < 12; i++) {
-            final double scale = 0.4 + (i % 3) * 0.3;
-            final double dx = (i * (w / 11));
-            final double lavaH = 6.0 + (amplitudes[i % 10] / 38.0) * h * 0.7;
-            final double dy = h - lavaH;
-
-            lavaPaint.color = HSLColor.fromAHSL(
-              0.38,
-              15.0 + normalizedAmp * 35.0, // Hot orange/red spectrum
-              0.95,
-              0.55,
-            ).toColor();
-
-            canvas.drawOval(
-              Rect.fromLTWH(dx - 12, dy - 8, 24, lavaH * 2),
-              lavaPaint,
-            );
+            final Paint fluidPaint = Paint()
+              ..shader = ui.Gradient.linear(
+                Offset(w / 2, midY - 10),
+                Offset(w / 2, h),
+                [barColor.withOpacity(0.55), barColor.withOpacity(0.1)],
+              )
+              ..style = PaintingStyle.fill;
+            canvas.drawPath(fluidPath, fluidPaint);
           }
         }
         break;
@@ -4095,51 +4707,64 @@ class _VisualizerPainter extends CustomPainter {
 
       case VisualizerStyle.solarFlares:
         {
-          final double cx = w / 2;
-          final double cy = h / 2;
-          final double baseRadius = 32.0 + normalizedAmp * 12.0;
+          final program = solarFlaresProgram;
+          if (program != null) {
+            final shader = program.fragmentShader();
+            shader.setFloat(0, w);
+            shader.setFloat(1, h);
+            shader.setFloat(2, time);
+            shader.setFloat(3, beat.clamp(0.0, 1.0));
+            for (int i = 0; i < 10; i++) {
+              final v = (i < amplitudes.length)
+                  ? (amplitudes[i] / 38.0).clamp(0.0, 1.0)
+                  : 0.0;
+              shader.setFloat(4 + i, v);
+            }
+            final paint = Paint()..shader = shader;
+            canvas.drawRect(Rect.fromLTWH(0, 0, w, h), paint);
+          } else {
+            // Fallback: concentric solar flares
+            final double cx = w / 2;
+            final double cy = h / 2;
+            final double baseRadius = 32.0 + normalizedAmp * 12.0;
 
-          // Paint outer glow
-          final Paint glowPaint = Paint()
-            ..color = peakColor.withOpacity(0.12 * normalizedAmp)
-            ..style = PaintingStyle.fill;
-          canvas.drawCircle(Offset(cx, cy), baseRadius + 30, glowPaint);
+            final Paint glowPaint = Paint()
+              ..color = peakColor.withOpacity(0.12 * normalizedAmp)
+              ..style = PaintingStyle.fill;
+            canvas.drawCircle(Offset(cx, cy), baseRadius + 30, glowPaint);
 
-          // Draw concentric rings
-          final Paint ringPaint = Paint()
-            ..color = barColor.withOpacity(0.85)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2.0;
-          canvas.drawCircle(Offset(cx, cy), baseRadius, ringPaint);
-          canvas.drawCircle(Offset(cx, cy), baseRadius - 8,
-              ringPaint..color = peakColor.withOpacity(0.6));
+            final Paint ringPaint = Paint()
+              ..color = barColor.withOpacity(0.85)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2.0;
+            canvas.drawCircle(Offset(cx, cy), baseRadius, ringPaint);
+            canvas.drawCircle(Offset(cx, cy), baseRadius - 8,
+                ringPaint..color = peakColor.withOpacity(0.6));
 
-          // Draw radial explosive solar flare spikes (like design 10)
-          final int numSpikes = 64;
-          final Paint flarePaint = Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.8
-            ..strokeCap = StrokeCap.round;
+            final int numSpikes = 64;
+            final Paint flarePaint = Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1.8
+              ..strokeCap = StrokeCap.round;
 
-          for (int i = 0; i < numSpikes; i++) {
-            final double angle = (i / numSpikes) * 2 * math.pi + time * 0.2;
-            final double amp = amplitudes[i % 10] / 38.0;
-            // Flare spikes are highly reactive and explosive on beats
-            final double flareLength =
-                8.0 + amp * 32.0 * (1.0 + normalizedAmp * 0.5);
+            for (int i = 0; i < numSpikes; i++) {
+              final double angle = (i / numSpikes) * 2 * math.pi + time * 0.2;
+              final double amp = amplitudes[i % 10] / 38.0;
+              final double flareLength =
+                  8.0 + amp * 32.0 * (1.0 + normalizedAmp * 0.5);
 
-            final double startX = cx + math.cos(angle) * baseRadius;
-            final double startY = cy + math.sin(angle) * baseRadius;
-            final double endX =
-                cx + math.cos(angle) * (baseRadius + flareLength);
-            final double endY =
-                cy + math.sin(angle) * (baseRadius + flareLength);
+              final double startX = cx + math.cos(angle) * baseRadius;
+              final double startY = cy + math.sin(angle) * baseRadius;
+              final double endX =
+                  cx + math.cos(angle) * (baseRadius + flareLength);
+              final double endY =
+                  cy + math.sin(angle) * (baseRadius + flareLength);
 
-            // Gradient effect: shift from cyan to neon pink or orange
-            flarePaint.color = Color.lerp(barColor, peakColor, (i % 8) / 8.0)!
-                .withOpacity(0.85);
-            canvas.drawLine(
-                Offset(startX, startY), Offset(endX, endY), flarePaint);
+              flarePaint.color = Color.lerp(barColor, peakColor, (i % 8) / 8.0)!
+                  .withOpacity(0.85);
+              canvas.drawLine(
+                  Offset(startX, startY), Offset(endX, endY), flarePaint);
+            }
           }
         }
         break;
@@ -4285,61 +4910,73 @@ class _VisualizerPainter extends CustomPainter {
 
       case VisualizerStyle.cosmicTunnel:
         {
-          final double cx = w / 2;
-          final double cy = h / 2;
-          final Paint starPaint = Paint()..style = PaintingStyle.fill;
+          final program = cosmicTunnelProgram;
+          if (program != null) {
+            final shader = program.fragmentShader();
+            shader.setFloat(0, w);
+            shader.setFloat(1, h);
+            shader.setFloat(2, time);
+            shader.setFloat(3, beat.clamp(0.0, 1.0));
+            for (int i = 0; i < 10; i++) {
+              final v = (i < amplitudes.length)
+                  ? (amplitudes[i] / 38.0).clamp(0.0, 1.0)
+                  : 0.0;
+              shader.setFloat(4 + i, v);
+            }
+            final paint = Paint()..shader = shader;
+            canvas.drawRect(Rect.fromLTWH(0, 0, w, h), paint);
+          } else {
+            // Fallback: 3D starfield tunnel
+            final double cx = w / 2;
+            final double cy = h / 2;
+            final Paint starPaint = Paint()..style = PaintingStyle.fill;
 
-          // Paint cosmic vortex lines (tunnel guidelines)
-          final Paint linePaint = Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 0.8
-            ..color = barColor.withOpacity(0.12);
-          for (int i = 0; i < 8; i++) {
-            final double angle = (i / 8) * 2 * math.pi + time * 0.1;
-            canvas.drawLine(
-              Offset(cx, cy),
-              Offset(cx + math.cos(angle) * w, cy + math.sin(angle) * h),
-              linePaint,
-            );
-          }
-
-          // Render active reactive 3D starfield tunnel
-          for (final star in stars) {
-            // Update stars in real-time inside the painter directly!
-            star.update(normalizedAmp * 0.2);
-
-            if (star.z <= 0) continue;
-
-            // Project 3D coordinates onto 2D screen surface
-            final double screenX = cx + (star.x * w) / star.z;
-            final double screenY = cy + (star.y * h) / star.z;
-
-            // If coordinates bleed out of boundaries, skip rendering
-            if (screenX < 0 || screenX > w || screenY < 0 || screenY > h)
-              continue;
-
-            // Depth calculation: closer stars are larger and brighter
-            final double size = (1.2 - star.z) * (3.5 + normalizedAmp * 8.0);
-            final double opacity = (1.0 - star.z).clamp(0.0, 1.0);
-
-            starPaint.color =
-                Color.lerp(barColor, peakColor, (star.z * 2.0).clamp(0.0, 1.0))!
-                    .withOpacity(opacity * (0.35 + normalizedAmp * 0.65));
-
-            canvas.drawCircle(Offset(screenX, screenY), size, starPaint);
-
-            // Glowing light trails for near/fast particles
-            if (star.z < 0.4) {
-              final double tailX = cx + (star.x * w) / (star.z + 0.05);
-              final double tailY = cy + (star.y * h) / (star.z + 0.05);
+            // Paint cosmic vortex lines (tunnel guidelines)
+            final Paint linePaint = Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 0.8
+              ..color = barColor.withOpacity(0.12);
+            for (int i = 0; i < 8; i++) {
+              final double angle = (i / 8) * 2 * math.pi + time * 0.1;
               canvas.drawLine(
-                Offset(screenX, screenY),
-                Offset(tailX, tailY),
-                Paint()
-                  ..style = PaintingStyle.stroke
-                  ..strokeWidth = size * 0.4
-                  ..color = peakColor.withOpacity(opacity * 0.35),
+                Offset(cx, cy),
+                Offset(cx + math.cos(angle) * w, cy + math.sin(angle) * h),
+                linePaint,
               );
+            }
+
+            // Render active reactive 3D starfield tunnel
+            for (final star in stars) {
+              star.update(normalizedAmp * 0.2);
+              if (star.z <= 0) continue;
+
+              final double screenX = cx + (star.x * w) / star.z;
+              final double screenY = cy + (star.y * h) / star.z;
+
+              if (screenX < 0 || screenX > w || screenY < 0 || screenY > h)
+                continue;
+
+              final double size = (1.2 - star.z) * (3.5 + normalizedAmp * 8.0);
+              final double opacity = (1.0 - star.z).clamp(0.0, 1.0);
+
+              starPaint.color =
+                  Color.lerp(barColor, peakColor, (star.z * 2.0).clamp(0.0, 1.0))!
+                      .withOpacity(opacity * (0.35 + normalizedAmp * 0.65));
+
+              canvas.drawCircle(Offset(screenX, screenY), size, starPaint);
+
+              if (star.z < 0.4) {
+                final double tailX = cx + (star.x * w) / (star.z + 0.05);
+                final double tailY = cy + (star.y * h) / (star.z + 0.05);
+                canvas.drawLine(
+                  Offset(screenX, screenY),
+                  Offset(tailX, tailY),
+                  Paint()
+                    ..style = PaintingStyle.stroke
+                    ..strokeWidth = size * 0.4
+                    ..color = peakColor.withOpacity(opacity * 0.35),
+                );
+              }
             }
           }
         }
@@ -4608,6 +5245,191 @@ class _VisualizerPainter extends CustomPainter {
           canvas.drawCircle(Offset(cx, cy), bhRadius, singularityPaint);
         }
         break;
+
+      case VisualizerStyle.shaderAppsRing:
+        {
+          final program = appsRingProgram;
+          if (program != null) {
+            final shader = program.fragmentShader();
+            // Uniform order must match shaders/apps_ring.frag.
+            shader.setFloat(0, w);
+            shader.setFloat(1, h);
+            shader.setFloat(2, time);
+            shader.setFloat(3, beat.clamp(0.0, 1.0));
+            for (int i = 0; i < 10; i++) {
+              final v = (i < amplitudes.length)
+                  ? (amplitudes[i] / 38.0).clamp(0.0, 1.0)
+                  : 0.0;
+              shader.setFloat(4 + i, v);
+            }
+            final paint = Paint()..shader = shader;
+            canvas.drawRect(Rect.fromLTWH(0, 0, w, h), paint);
+          } else {
+            // Fallback: simple ring.
+            final double cx = w / 2;
+            final double cy = h / 2;
+            final double baseRadius = 40.0 + normalizedAmp * 15.0;
+            final Paint ringPaint = Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 3.0
+              ..color = barColor.withOpacity(0.8);
+            canvas.drawCircle(Offset(cx, cy), baseRadius, ringPaint);
+          }
+        }
+        break;
+
+      case VisualizerStyle.shaderDsRing:
+        {
+          final program = dsRingProgram;
+          if (program != null) {
+            final shader = program.fragmentShader();
+            // Uniform order must match shaders/ds_ring.frag.
+            shader.setFloat(0, w);
+            shader.setFloat(1, h);
+            shader.setFloat(2, time);
+            shader.setFloat(3, beat.clamp(0.0, 1.0));
+            for (int i = 0; i < 10; i++) {
+              final v = (i < amplitudes.length)
+                  ? (amplitudes[i] / 38.0).clamp(0.0, 1.0)
+                  : 0.0;
+              shader.setFloat(4 + i, v);
+            }
+            canvas.drawRect(
+                Rect.fromLTWH(0, 0, w, h), Paint()..shader = shader);
+          } else {
+            // Fallback: ring + bars.
+            final double cx = w / 2;
+            final double cy = h / 2;
+            final double baseR = math.min(w, h) * 0.18;
+            final Paint ringPaint = Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2.0
+              ..color = barColor.withOpacity(0.75);
+            canvas.drawCircle(Offset(cx, cy), baseR, ringPaint);
+          }
+        }
+        break;
+
+      case VisualizerStyle.shaderSteamBars:
+        {
+          final program = steamBarsProgram;
+          if (program != null) {
+            final shader = program.fragmentShader();
+            // Uniform order must match shaders/steam_bars.frag.
+            shader.setFloat(0, w);
+            shader.setFloat(1, h);
+            shader.setFloat(2, time);
+            shader.setFloat(3, beat.clamp(0.0, 1.0));
+            for (int i = 0; i < 10; i++) {
+              final v = (i < amplitudes.length)
+                  ? (amplitudes[i] / 38.0).clamp(0.0, 1.0)
+                  : 0.0;
+              shader.setFloat(4 + i, v);
+            }
+            canvas.drawRect(
+                Rect.fromLTWH(0, 0, w, h), Paint()..shader = shader);
+          } else {
+            // Fallback: classic mirrored bars.
+            final Paint p = Paint()
+              ..color = barColor.withOpacity(0.8)
+              ..style = PaintingStyle.fill;
+            final double midY = h * 0.52;
+            final int bars = 32;
+            final double bw = w / bars;
+            for (int i = 0; i < bars; i++) {
+              final double v = (amplitudes[i % amplitudes.length] / 38.0)
+                  .clamp(0.0, 1.0);
+              final double bh = (h * 0.35) * v;
+              final Rect top = Rect.fromLTWH(i * bw + 1, midY - bh, bw - 2, bh);
+              final Rect bot = Rect.fromLTWH(i * bw + 1, midY, bw - 2, bh);
+              canvas.drawRect(top, p);
+              canvas.drawRect(bot, p..color = barColor.withOpacity(0.25));
+            }
+          }
+        }
+        break;
+
+      case VisualizerStyle.shaderPrismRing:
+        {
+          final program = prismRingProgram;
+          if (program != null) {
+            final shader = program.fragmentShader();
+            // Uniform order must match shaders/prism_ring.frag.
+            shader.setFloat(0, w);
+            shader.setFloat(1, h);
+            shader.setFloat(2, time);
+            shader.setFloat(3, beat.clamp(0.0, 1.0));
+            for (int i = 0; i < 10; i++) {
+              final v = (i < amplitudes.length)
+                  ? (amplitudes[i] / 38.0).clamp(0.0, 1.0)
+                  : 0.0;
+              shader.setFloat(4 + i, v);
+            }
+            canvas.drawRect(
+                Rect.fromLTWH(0, 0, w, h), Paint()..shader = shader);
+          } else {
+            // Fallback: two-tone ring.
+            final double cx = w / 2;
+            final double cy = h / 2;
+            final double baseR = math.min(w, h) * 0.20;
+            final Paint ringPaint = Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 4.0;
+            ringPaint.color = Colors.redAccent.withOpacity(0.55);
+            canvas.drawArc(
+                Rect.fromCircle(center: Offset(cx, cy), radius: baseR),
+                -math.pi,
+                math.pi,
+                false,
+                ringPaint);
+            ringPaint.color = Colors.lightBlueAccent.withOpacity(0.55);
+            canvas.drawArc(
+                Rect.fromCircle(center: Offset(cx, cy), radius: baseR),
+                0,
+                math.pi,
+                false,
+                ringPaint);
+          }
+        }
+        break;
+
+      case VisualizerStyle.shaderBlobOrbit:
+        {
+          final program = blobOrbitProgram;
+          if (program != null) {
+            final shader = program.fragmentShader();
+            // Uniform order must match shaders/blob_orbit.frag.
+            shader.setFloat(0, w);
+            shader.setFloat(1, h);
+            shader.setFloat(2, time);
+            shader.setFloat(3, beat.clamp(0.0, 1.0));
+            for (int i = 0; i < 10; i++) {
+              final v = (i < amplitudes.length)
+                  ? (amplitudes[i] / 38.0).clamp(0.0, 1.0)
+                  : 0.0;
+              shader.setFloat(4 + i, v);
+            }
+            canvas.drawRect(
+                Rect.fromLTWH(0, 0, w, h), Paint()..shader = shader);
+          } else {
+            // Fallback: orbiting dots.
+            final double cx = w / 2;
+            final double cy = h / 2;
+            final double rr = math.min(w, h) * 0.22;
+            final Paint dot = Paint()..style = PaintingStyle.fill;
+            for (int i = 0; i < 8; i++) {
+              final double ang = time * 0.8 + i * (math.pi * 2 / 8);
+              final double amp = (amplitudes[i % amplitudes.length] / 38.0)
+                  .clamp(0.0, 1.0);
+              final Offset o = Offset(cx + math.cos(ang) * rr,
+                  cy + math.sin(ang) * rr * 0.75);
+              dot.color = Color.lerp(barColor, Colors.white, amp)!
+                  .withOpacity(0.75);
+              canvas.drawCircle(o, 6 + amp * 10, dot);
+            }
+          }
+        }
+        break;
     }
     canvas.restore();
   }
@@ -4682,7 +5504,7 @@ class _S60DpadCockpitConsole extends StatelessWidget {
 
     final bool isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
-    final double width = isLandscape ? 328.0 : (isWide ? 360.0 : 260.0);
+    final double width = isLandscape ? 350.0 : (isWide ? 360.0 : 260.0);
     final double height = isWide ? 180.0 : 260.0;
     final Color iconCol = getDialIconColor();
 
@@ -4831,16 +5653,11 @@ class _S60DpadCockpitConsole extends StatelessWidget {
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Container(
-      width: isLandscape ? 328.0 : double.infinity,
+      width: isLandscape ? 350.0 : double.infinity,
       height: 220.0,
       decoration: BoxDecoration(
         borderRadius: isLandscape
-            ? const BorderRadius.only(
-                topLeft: Radius.circular(20.0),
-                topRight: Radius.circular(20.0),
-                bottomLeft: Radius.zero,
-                bottomRight: Radius.zero,
-              )
+            ? const BorderRadius.all(Radius.circular(20.0))
             : const BorderRadius.only(
                 topLeft: Radius.circular(30.0),
                 topRight: Radius.circular(30.0),
@@ -5105,9 +5922,13 @@ class _S60DpadCockpitConsole extends StatelessWidget {
     final Color activeCol = getDialTextColor();
     final Color iconCol = getDialIconColor();
 
+    final bool isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      margin: isLandscape
+          ? const EdgeInsets.symmetric(horizontal: 5.0)
+          : const EdgeInsets.symmetric(horizontal: 16.0),
       height: 180,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
@@ -5538,20 +6359,22 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
   final PlayerSkin skin;
   final List<double> bands;
   final String activePreset;
-  final Map<String, List<double>> presets;
   final Function(int, double) onBandChanged;
-  final Function(String, List<double>) onPresetSelected;
+  final ValueChanged<String> onPresetSelected;
   final VoidCallback onClose;
   final double bassValue; // 0.0-1.0 hardware knob
   final double stereoValue; // 0.0-1.0 hardware knob
   final ValueChanged<double> onBassChanged;
   final ValueChanged<double> onStereoChanged;
+  final double minDb;
+  final double maxDb;
+  final List<String> frequencyLabels;
+  final List<String> presetNames;
 
   const _SkeuomorphicEqualizerPanel({
     required this.skin,
     required this.bands,
     required this.activePreset,
-    required this.presets,
     required this.onBandChanged,
     required this.onPresetSelected,
     required this.onClose,
@@ -5559,13 +6382,18 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
     required this.stereoValue,
     required this.onBassChanged,
     required this.onStereoChanged,
+    required this.minDb,
+    required this.maxDb,
+    required this.frequencyLabels,
+    required this.presetNames,
   });
 
   @override
   Widget build(BuildContext context) {
-    final frequencies = ['60Hz', '230Hz', '910Hz', '4kHz', '14kHz'];
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
+
+    const double knobSize = 88;
 
     return Container(
       width: isLandscape ? MediaQuery.of(context).size.width : null,
@@ -5640,60 +6468,66 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
                     value: bassValue,
                     label: 'BASS',
                     accentColor: skin.textColor,
+                    size: knobSize,
                     onChanged: onBassChanged,
-                  ),
-                  Container(
-                    width: 1,
-                    height: 80,
-                    color: skin.textColor.withOpacity(0.12),
                   ),
                   _SkeuomorphicKnob(
                     value: stereoValue,
                     label: 'STEREO',
                     accentColor: skin.textColor,
+                    size: knobSize,
                     onChanged: onStereoChanged,
                   ),
-                  Container(
-                    width: 1,
-                    height: 80,
-                    color: skin.textColor.withOpacity(0.12),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'PRESET',
-                        style: TextStyle(
-                          color: skin.textColor.withOpacity(0.5),
-                          fontFamily: 'Orbitron',
-                          fontSize: 7,
-                          fontWeight: FontWeight.bold,
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Preset selector row
+            SizedBox(
+              height: 36,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: presetNames.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final name = presetNames[index];
+                  final selected = name == activePreset;
+                  return GestureDetector(
+                    onTap: () => onPresetSelected(name),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? skin.textColor.withOpacity(0.18)
+                            : Colors.black.withOpacity(0.25),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: selected
+                              ? skin.textColor.withOpacity(0.55)
+                              : skin.textColor.withOpacity(0.15),
+                          width: selected ? 1.2 : 0.8,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: skin.textColor.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                              color: skin.textColor.withOpacity(0.3),
-                              width: 0.8),
-                        ),
+                      child: Center(
                         child: Text(
-                          activePreset.toUpperCase(),
+                          name.toUpperCase(),
                           style: TextStyle(
-                            color: skin.textColor,
+                            color: selected
+                                ? skin.textColor
+                                : skin.textColor.withOpacity(0.55),
                             fontFamily: 'monospace',
-                            fontSize: 8,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 8.5,
+                            fontWeight:
+                                selected ? FontWeight.bold : FontWeight.w600,
+                            letterSpacing: 0.6,
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  );
+                },
               ),
             ),
             const SizedBox(height: 10),
@@ -5701,7 +6535,7 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
               height: 160,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(5, (index) {
+                children: List.generate(bands.length, (index) {
                   return Column(
                     children: [
                       Text(
@@ -5728,9 +6562,9 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
                                   overlayRadius: 10),
                             ),
                             child: Slider(
-                              value: bands[index].clamp(-12.0, 12.0),
-                              min: -12.0,
-                              max: 12.0,
+                              value: bands[index].clamp(minDb, maxDb),
+                              min: minDb,
+                              max: maxDb,
                               onChanged: (val) => onBandChanged(index, val),
                             ),
                           ),
@@ -5738,7 +6572,9 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        frequencies[index],
+                        index < frequencyLabels.length
+                            ? frequencyLabels[index]
+                            : '',
                         style: TextStyle(
                             color: skin.textMutedColor,
                             fontFamily: 'monospace',
@@ -5748,59 +6584,6 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
                     ],
                   );
                 }),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 28,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: presets.keys.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final presetName = presets.keys.elementAt(index);
-                  final presetValues = presets[presetName]!;
-                  final bool isSelected = presetName == activePreset;
-
-                  return GestureDetector(
-                    onTap: () => onPresetSelected(presetName, presetValues),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 5),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(6),
-                        color: isSelected
-                            ? skin.textColor.withOpacity(0.2)
-                            : Colors.black.withOpacity(0.3),
-                        border: Border.all(
-                          color: isSelected
-                              ? skin.textColor
-                              : skin.textColor.withOpacity(0.15),
-                          width: isSelected ? 1.2 : 0.8,
-                        ),
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                    color: skin.textColor.withOpacity(0.2),
-                                    blurRadius: 4)
-                              ]
-                            : [],
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        presetName.toUpperCase(),
-                        style: TextStyle(
-                          color: isSelected
-                              ? skin.textColor
-                              : skin.textColor.withOpacity(0.7),
-                          fontFamily: 'monospace',
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  );
-                },
               ),
             ),
           ],
@@ -5819,12 +6602,14 @@ class _SkeuomorphicKnob extends StatefulWidget {
   final String label;
   final Color accentColor;
   final ValueChanged<double> onChanged;
+  final double size;
 
   const _SkeuomorphicKnob({
     required this.value,
     required this.label,
     required this.accentColor,
     required this.onChanged,
+    this.size = 76,
   });
 
   @override
@@ -5880,8 +6665,8 @@ class _SkeuomorphicKnobState extends State<_SkeuomorphicKnob> {
           onPanStart: _onPanStart,
           onPanUpdate: _onPanUpdate,
           child: SizedBox(
-            width: 76,
-            height: 76,
+            width: widget.size,
+            height: widget.size,
             child: CustomPaint(
               painter: _KnobPainter(
                 rotation: _rotationAngle,
@@ -6643,5 +7428,187 @@ class _TactileRoundToggle extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// ---------------------------------------------------------
+// DYNAMIC ANIMATED CELESTIAL BACKGROUNDS CUSTOM PAINTERS
+// ---------------------------------------------------------
+
+enum CelestialStyle {
+  milkyWay,
+  blackHole,
+}
+
+class _CelestialBackgroundPainter extends CustomPainter {
+  final CelestialStyle style;
+  final double time;
+  final double bassEnergy;
+  final List<_AstroStar> stars;
+  final Color coreColor;
+  final Color accentColor;
+
+  _CelestialBackgroundPainter({
+    required this.style,
+    required this.time,
+    required this.bassEnergy,
+    required this.stars,
+    required this.coreColor,
+    required this.accentColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+    final isLandscape = w > h;
+
+    // Dynamic Gravity Centers
+    final Offset center = isLandscape
+        ? Offset(w * 0.25, h * 0.5)
+        : Offset(w * 0.5, h * 0.22); // Under the visualizer screen in portrait
+
+    final double maxDim = math.max(w, h);
+
+    if (style == CelestialStyle.milkyWay) {
+      // 1. Twinkling Milky Way Spiral Galaxy
+      final corePaint = Paint()
+        ..style = PaintingStyle.fill
+        ..shader = ui.Gradient.radial(
+          center,
+          maxDim * 0.35,
+          [
+            coreColor.withOpacity(0.4 + bassEnergy * 0.2),
+            accentColor.withOpacity(0.15 + bassEnergy * 0.1),
+            Colors.transparent,
+          ],
+          [0.0, 0.55, 1.0],
+        );
+      canvas.drawCircle(center, maxDim * 0.35, corePaint);
+
+      // Spiral arms particles
+      final particlePaint = Paint()..style = PaintingStyle.fill;
+      final int armCount = 2;
+      final double rotAngle = time * 0.05;
+
+      for (int arm = 0; arm < armCount; arm++) {
+        final double baseAngle = arm * math.pi;
+        for (int i = 0; i < 40; i++) {
+          final double t = i / 40.0;
+          final double distance = t * maxDim * 0.45;
+          final double spiralAngle = baseAngle + t * 4.0 + rotAngle;
+
+          final double dx = center.dx + math.cos(spiralAngle) * distance;
+          final double dy = center.dy + math.sin(spiralAngle) * distance;
+
+          // React to bass for twinkling size and opacity
+          final double sparkle =
+              math.sin(time * 3 + i).abs() * (0.3 + bassEnergy * 0.7);
+          final double sizeVal = (1.5 + t * 2.0) * (0.8 + sparkle * 0.5);
+          final double opacityVal =
+              (0.2 + (1.0 - t) * 0.6) * (0.5 + sparkle * 0.5);
+
+          particlePaint.color = (i % 2 == 0 ? coreColor : accentColor)
+              .withOpacity(opacityVal.clamp(0.0, 1.0));
+          canvas.drawCircle(Offset(dx, dy), sizeVal, particlePaint);
+        }
+      }
+    } else {
+      // 2. Black Hole Gravitational Vortex
+      // Swirling accretion gas rings expanding/contracting with bass
+      final gasPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0
+        ..shader = ui.Gradient.radial(
+          center,
+          120.0 + bassEnergy * 40.0,
+          [
+            accentColor.withOpacity(0.35),
+            coreColor.withOpacity(0.1),
+            Colors.transparent,
+          ],
+          [0.0, 0.6, 1.0],
+        );
+
+      for (int r = 0; r < 3; r++) {
+        final double radius = 40.0 +
+            r * 25.0 +
+            math.sin(time * 2.0 + r).abs() * 15.0 * (1.0 + bassEnergy);
+        canvas.drawCircle(center, radius, gasPaint);
+      }
+
+      // Gravitational lens / accretion glow
+      final lensPaint = Paint()
+        ..style = PaintingStyle.fill
+        ..shader = ui.Gradient.radial(
+          center,
+          52.0 + bassEnergy * 15.0,
+          [
+            accentColor.withOpacity(0.55),
+            coreColor.withOpacity(0.2),
+            Colors.transparent,
+          ],
+          [0.0, 0.55, 1.0],
+        );
+      canvas.drawCircle(center, 52.0 + bassEnergy * 15.0, lensPaint);
+
+      // Singularity / Event Horizon (pure black void)
+      final eventHorizonPaint = Paint()
+        ..style = PaintingStyle.fill
+        ..color = Colors.black;
+      canvas.drawCircle(center, 22.0, eventHorizonPaint);
+
+      // Inward falling spaghettified stars
+      final starPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+
+      for (int i = 0; i < stars.length; i++) {
+        final star = stars[i];
+
+        // Convert star's 3D coordinates into spaghettified inward spiral
+        final double starTime = (time * 0.8 + i * 0.25) % 1.0;
+        final double currentRadius = (1.0 - starTime) * maxDim * 0.55;
+
+        if (currentRadius <= 22.0) {
+          // Swallow star when it crosses event horizon
+          continue;
+        }
+
+        final double angle = star.x * 2 * math.pi + starTime * 3.5;
+
+        // Draw stretching light tail (spaghettified trail)
+        final double tailLength =
+            10.0 + (1.0 - starTime) * 35.0 * (1.0 + bassEnergy * 2.0);
+        final Path tailPath = Path();
+
+        final double startX = center.dx + math.cos(angle) * currentRadius;
+        final double startY = center.dy + math.sin(angle) * currentRadius;
+
+        final double nextAngle = star.x * 2 * math.pi + (starTime - 0.05) * 3.5;
+        final double nextRadius = currentRadius + tailLength;
+        final double endX = center.dx + math.cos(nextAngle) * nextRadius;
+        final double endY = center.dy + math.sin(nextAngle) * nextRadius;
+
+        tailPath.moveTo(startX, startY);
+        tailPath.lineTo(endX, endY);
+
+        final double opacity =
+            ((currentRadius - 22.0) / (maxDim * 0.55)).clamp(0.0, 1.0);
+        starPaint
+          ..color = coreColor.withOpacity(opacity * 0.65)
+          ..strokeWidth =
+              (1.2 + (1.0 - starTime) * 2.5) * (1.0 + bassEnergy * 0.5);
+
+        canvas.drawPath(tailPath, starPaint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CelestialBackgroundPainter oldDelegate) {
+    return oldDelegate.time != time ||
+        oldDelegate.bassEnergy != bassEnergy ||
+        oldDelegate.style != style;
   }
 }

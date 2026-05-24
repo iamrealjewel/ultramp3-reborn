@@ -131,38 +131,14 @@ subprojects {
         }
     }
 
-    // Force both Java and Kotlin compile tasks to target JVM 17 for consistent compilation
-    tasks.configureEach {
-        if (this.javaClass.name.contains("JavaCompile")) {
-            try {
-                var setSource: java.lang.reflect.Method? = null
-                var setTarget: java.lang.reflect.Method? = null
-                try {
-                    setSource = this.javaClass.getMethod("setSourceCompatibility", Any::class.java)
-                    setTarget = this.javaClass.getMethod("setTargetCompatibility", Any::class.java)
-                } catch (ex: Exception) {
-                    try {
-                        setSource = this.javaClass.getMethod("setSourceCompatibility", String::class.java)
-                        setTarget = this.javaClass.getMethod("setTargetCompatibility", String::class.java)
-                    } catch (ex2: Exception) {
-                        for (method in this.javaClass.methods) {
-                            if (method.name == "setSourceCompatibility" && method.parameterCount == 1) {
-                                setSource = method
-                            }
-                            if (method.name == "setTargetCompatibility" && method.parameterCount == 1) {
-                                setTarget = method
-                            }
-                        }
-                    }
-                }
-                setSource?.invoke(this, "17")
-                setTarget?.invoke(this, "17")
-                logger.quiet("Force set Java compile compatibility to 17 for task :${project.name}:${this.name}")
-            } catch (e: Exception) {
-                // Ignore
-            }
-        }
+    // Force all Java compile tasks to target JVM 17 for consistent compilation
+    tasks.withType(org.gradle.api.tasks.compile.JavaCompile::class.java).configureEach {
+        sourceCompatibility = "17"
+        targetCompatibility = "17"
+        logger.quiet("Force set Java compile compatibility to 17 for task :${project.name}:${this.name}")
+    }
 
+    tasks.configureEach {
         if (this.name.startsWith("compile") && this.name.endsWith("Kotlin")) {
             try {
                 // For modern KGP versions (compilerOptions.jvmTarget Property)

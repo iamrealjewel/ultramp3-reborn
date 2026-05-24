@@ -104,6 +104,9 @@ class PlaybackService {
   Future<void> setEqualizerBands(List<double> gains) =>
       _handler.setEqualizerBands(gains);
 
+  Future<void> setStereoStrength(double value01) =>
+      _handler.setStereoStrength(value01);
+
   Future<void> skipToNext() => _handler.skipToNext();
 
   Future<void> skipToPrevious() => _handler.skipToPrevious();

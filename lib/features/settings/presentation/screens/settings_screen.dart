@@ -22,18 +22,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   final Map<String, List<double>> _presets = {
     'Flat': [0.0, 0.0, 0.0, 0.0, 0.0],
-    'Rock': [4.0, 2.5, -1.5, 2.0, 5.0],
-    'Pop': [-1.5, 1.5, 3.0, 1.0, -1.0],
+    'Rock': [4.0, 2.0, -1.0, 2.0, 4.0],
+    'Pop': [2.0, 2.0, -1.0, 1.0, 1.0],
     'Jazz': [3.0, 1.5, -1.5, 1.5, 3.0],
     'Bass & Treble': [7.0, 4.0, 0.0, 4.0, 7.0],
-    'Mids': [-3.0, -1.0, 6.0, 4.0, -2.0],
+    'Mids': [1.0, -1.0, 6.0, 4.0, -2.0],
     'Classic': [4.5, 3.0, 0.0, 2.5, 4.0],
-    'Live': [-1.0, 2.0, 3.0, 3.0, 2.0],
+    'Live': [1.5, 2.0, 3.0, 3.0, 2.0],
     'Dance': [5.5, 7.0, 3.5, 0.0, 5.0],
     'Soft': [2.5, 1.0, 0.0, 1.5, 3.0],
     'No Bass': [-12.0, -12.0, 0.0, 0.0, 0.0],
-    'No Mids': [0.0, 0.0, -12.0, -12.0, 0.0],
-    'No Treble': [0.0, 0.0, 0.0, -12.0, -12.0],
+    'No Mids': [2.0, 2.0, -12.0, -12.0, 0.0],
+    'No Treble': [2.0, 2.0, 0.0, -12.0, -12.0],
     'Custom': [0.0, 0.0, 0.0, 0.0, 0.0],
   };
 
@@ -48,7 +48,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _initEqualizer() {
     final storage = ref.read(storageServiceProvider);
     _activePreset = storage.getEqualizerPreset();
-    final bands = storage.getEqualizerBands();
+    List<double> bands;
+    if (_activePreset != 'Custom' &&
+        _activePreset != 'Flat' &&
+        _presets.containsKey(_activePreset)) {
+      bands = _presets[_activePreset]!;
+      storage.setEqualizerBands(bands);
+    } else {
+      bands = storage.getEqualizerBands();
+    }
     _loadSliderValues(bands);
     setState(() {});
   }
@@ -85,8 +93,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       bassDb, // 60Hz
       bassDb * 0.8, // 230Hz
       midDb, // 1kHz
-      midDb * 0.9, // 4kHz
-      trebleDb, // 15kHz
+      midDb * 0.9, // 3.6kHz-ish (mapped)
+      trebleDb, // 14-16kHz-ish (mapped)
     ];
 
     final storage = ref.read(storageServiceProvider);
@@ -255,7 +263,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           (val) => _updateEqualizerBands('bass', val)),
                       _buildEqualizerSlider('MID (1kHz)', _midValue,
                           (val) => _updateEqualizerBands('mid', val)),
-                      _buildEqualizerSlider('TREBLE (15kHz)', _trebleValue,
+                      _buildEqualizerSlider('TREBLE (14kHz)', _trebleValue,
                           (val) => _updateEqualizerBands('treble', val)),
                     ],
                   ),
