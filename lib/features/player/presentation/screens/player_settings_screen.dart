@@ -25,7 +25,8 @@ class PlayerSettingsScreen extends ConsumerWidget {
             Expanded(
               child: ListView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 children: [
                   // Section 1: Skin Architecture
                   _buildSettingsCard(
@@ -40,7 +41,9 @@ class PlayerSettingsScreen extends ConsumerWidget {
                               isActive: settings.skinType == 'classic',
                               onTap: () {
                                 settingsNotifier.setSkinType('classic');
-                                ref.read(playerSkinProvider.notifier).enforceSkinType('classic');
+                                ref
+                                    .read(playerSkinProvider.notifier)
+                                    .enforceSkinType('classic');
                               },
                             ),
                           ),
@@ -51,7 +54,9 @@ class PlayerSettingsScreen extends ConsumerWidget {
                               isActive: settings.skinType == 'flat',
                               onTap: () {
                                 settingsNotifier.setSkinType('flat');
-                                ref.read(playerSkinProvider.notifier).enforceSkinType('flat');
+                                ref
+                                    .read(playerSkinProvider.notifier)
+                                    .enforceSkinType('flat');
                               },
                             ),
                           ),
@@ -79,7 +84,8 @@ class PlayerSettingsScreen extends ConsumerWidget {
                             min: 0.15,
                             max: 1.0,
                             onChanged: settingsNotifier.setDialerOpacity,
-                            displayValue: '${(settings.dialerOpacity * 100).toInt()}%',
+                            displayValue:
+                                '${(settings.dialerOpacity * 100).toInt()}%',
                           ),
                         ],
                       ],
@@ -97,11 +103,13 @@ class PlayerSettingsScreen extends ConsumerWidget {
                         onChanged: settingsNotifier.toggleShowAlbumArt,
                       ),
                       if (settings.skinType != 'flat') ...[
-                        const Divider(color: Colors.white10, height: 24, thickness: 0.8),
+                        const Divider(
+                            color: Colors.white10, height: 24, thickness: 0.8),
                         _buildToggleRow(
                           label: 'Enable Visualizer Transparency',
                           value: settings.visualizerTransparencyEnabled,
-                          onChanged: settingsNotifier.toggleVisualizerTransparency,
+                          onChanged:
+                              settingsNotifier.toggleVisualizerTransparency,
                         ),
                         if (settings.visualizerTransparencyEnabled) ...[
                           const SizedBox(height: 12),
@@ -111,7 +119,8 @@ class PlayerSettingsScreen extends ConsumerWidget {
                             min: 0.0,
                             max: 1.0,
                             onChanged: settingsNotifier.setVisualizerOpacity,
-                            displayValue: '${(settings.visualizerOpacity * 100).toInt()}%',
+                            displayValue:
+                                '${(settings.visualizerOpacity * 100).toInt()}%',
                           ),
                         ],
                       ],
@@ -142,7 +151,8 @@ class PlayerSettingsScreen extends ConsumerWidget {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 24),
+            icon: const Icon(Icons.arrow_back_rounded,
+                color: Colors.white, size: 24),
             onPressed: () => Navigator.pop(context),
           ),
           const SizedBox(width: 8),
@@ -219,12 +229,12 @@ class PlayerSettingsScreen extends ConsumerWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         decoration: BoxDecoration(
-          color: isActive 
+          color: isActive
               ? Colors.white.withOpacity(0.08)
               : Colors.white.withOpacity(0.01),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isActive 
+            color: isActive
                 ? Colors.white.withOpacity(0.6)
                 : Colors.white.withOpacity(0.08),
             width: isActive ? 1.5 : 1.0,

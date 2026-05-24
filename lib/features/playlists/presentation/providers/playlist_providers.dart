@@ -22,11 +22,11 @@ class FavoritesNotifier extends StateNotifier<List<String>> {
   }
 }
 
-final favoritesProvider = StateNotifierProvider<FavoritesNotifier, List<String>>((ref) {
+final favoritesProvider =
+    StateNotifierProvider<FavoritesNotifier, List<String>>((ref) {
   final storage = ref.watch(storageServiceProvider);
   return FavoritesNotifier(storage);
 });
-
 
 // --- RECENTLY PLAYED STATE ---
 class RecentlyPlayedNotifier extends StateNotifier<List<String>> {
@@ -45,11 +45,11 @@ class RecentlyPlayedNotifier extends StateNotifier<List<String>> {
   }
 }
 
-final recentlyPlayedProvider = StateNotifierProvider<RecentlyPlayedNotifier, List<String>>((ref) {
+final recentlyPlayedProvider =
+    StateNotifierProvider<RecentlyPlayedNotifier, List<String>>((ref) {
   final storage = ref.watch(storageServiceProvider);
   return RecentlyPlayedNotifier(storage);
 });
-
 
 // --- PLAYLISTS STATE ---
 class PlaylistsNotifier extends StateNotifier<Map<String, List<String>>> {
@@ -83,7 +83,8 @@ class PlaylistsNotifier extends StateNotifier<Map<String, List<String>>> {
   }
 }
 
-final playlistsProvider = StateNotifierProvider<PlaylistsNotifier, Map<String, List<String>>>((ref) {
+final playlistsProvider =
+    StateNotifierProvider<PlaylistsNotifier, Map<String, List<String>>>((ref) {
   final storage = ref.watch(storageServiceProvider);
   return PlaylistsNotifier(storage);
 });

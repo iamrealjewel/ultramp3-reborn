@@ -8,7 +8,8 @@ import 'storage_service.dart';
 
 // Expose the global audio handler. This will be overridden in main.dart on startup.
 final audioHandlerProvider = Provider<UltraAudioHandler>((ref) {
-  throw UnimplementedError('audioHandlerProvider must be overridden in ProviderScope');
+  throw UnimplementedError(
+      'audioHandlerProvider must be overridden in ProviderScope');
 });
 
 final playbackServiceProvider = Provider<PlaybackService>((ref) {
@@ -32,18 +33,20 @@ class PlaybackService {
   Stream<PlaybackState> get playbackStateStream => _handler.playbackState;
 
   // Stream combining current progress and duration cleanly
-  Stream<PositionState> get positionStateStream => Rx.combineLatest3<Duration?, Duration?, MediaItem?, PositionState>(
-    _handler.positionStream,
-    _handler.playerInstance.durationStream,
-    _handler.mediaItem,
-    (position, playerDuration, mediaItem) {
-      final duration = playerDuration ?? mediaItem?.duration ?? Duration.zero;
-      return PositionState(
-        position: position ?? Duration.zero,
-        duration: duration,
+  Stream<PositionState> get positionStateStream =>
+      Rx.combineLatest3<Duration?, Duration?, MediaItem?, PositionState>(
+        _handler.positionStream,
+        _handler.playerInstance.durationStream,
+        _handler.mediaItem,
+        (position, playerDuration, mediaItem) {
+          final duration =
+              playerDuration ?? mediaItem?.duration ?? Duration.zero;
+          return PositionState(
+            position: position ?? Duration.zero,
+            duration: duration,
+          );
+        },
       );
-    },
-  );
 
   // Play a local file with complete OS-level metadata tagging
   Future<void> playTrack({
@@ -64,11 +67,14 @@ class PlaybackService {
 
     List<MediaItem>? fullQueueItems;
     if (queue != null && queue.isNotEmpty) {
-      // In a real app, you'd fetch all metadata for these IDs. 
+      // In a real app, you'd fetch all metadata for these IDs.
       // For now, let's just create placeholder MediaItems if not the active one.
       fullQueueItems = queue.map((id) {
         if (id == filePath) return mediaItem;
-        return MediaItem(id: id, title: p.basenameWithoutExtension(id), artist: 'Unknown Artist');
+        return MediaItem(
+            id: id,
+            title: p.basenameWithoutExtension(id),
+            artist: 'Unknown Artist');
       }).toList();
     }
 
@@ -78,7 +84,7 @@ class PlaybackService {
 
     // Persist recently played track ID
     await _storage.addRecentlyPlayed(filePath);
-    
+
     final finalQueue = queue ?? [filePath];
     await _storage.saveQueueState(
       songIds: finalQueue,
@@ -88,15 +94,16 @@ class PlaybackService {
   }
 
   Future<void> play() => _handler.play();
-  
+
   Future<void> pause() => _handler.pause();
-  
+
   Future<void> seek(Duration position) => _handler.seek(position);
 
   Future<void> stop() => _handler.stop();
 
-  Future<void> setEqualizerBands(List<double> gains) => _handler.setEqualizerBands(gains);
-  
+  Future<void> setEqualizerBands(List<double> gains) =>
+      _handler.setEqualizerBands(gains);
+
   Future<void> skipToNext() => _handler.skipToNext();
 
   Future<void> skipToPrevious() => _handler.skipToPrevious();

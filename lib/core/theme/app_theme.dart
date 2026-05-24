@@ -47,12 +47,15 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     if (other is! AppThemeExtension) return this;
     return AppThemeExtension(
       glassBgColor: Color.lerp(glassBgColor, other.glassBgColor, t)!,
-      glassBorderColor: Color.lerp(glassBorderColor, other.glassBorderColor, t)!,
+      glassBorderColor:
+          Color.lerp(glassBorderColor, other.glassBorderColor, t)!,
       greenGlow: other.greenGlow, // Complex structures lerp to other directly
       cyanGlow: other.cyanGlow,
       pinkGlow: other.pinkGlow,
-      digitalClockStyle: TextStyle.lerp(digitalClockStyle, other.digitalClockStyle, t)!,
-      trackTitleStyle: TextStyle.lerp(trackTitleStyle, other.trackTitleStyle, t)!,
+      digitalClockStyle:
+          TextStyle.lerp(digitalClockStyle, other.digitalClockStyle, t)!,
+      trackTitleStyle:
+          TextStyle.lerp(trackTitleStyle, other.trackTitleStyle, t)!,
     );
   }
 }

@@ -21,7 +21,7 @@ class MiniPlayer extends ConsumerWidget {
       stream: playbackService.currentMediaItemStream,
       builder: (context, mediaSnapshot) {
         final mediaItem = mediaSnapshot.data;
-        
+
         // Hide MiniPlayer completely if no audio is loaded/active
         if (mediaItem == null) {
           return const SizedBox.shrink();
@@ -41,7 +41,9 @@ class MiniPlayer extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: AppColors.obsidianDark.withOpacity(0.75),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: activeSkin.textColor.withOpacity(0.15), width: 0.8),
+                  border: Border.all(
+                      color: activeSkin.textColor.withOpacity(0.15),
+                      width: 0.8),
                   boxShadow: [
                     BoxShadow(
                       color: activeSkin.textColor.withOpacity(0.08),
@@ -54,7 +56,8 @@ class MiniPlayer extends ConsumerWidget {
                   children: [
                     // Layout
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12.0, vertical: 8.0),
                       child: Row(
                         children: [
                           // Rotating Vinyl Disc (skinned color outline)
@@ -64,17 +67,22 @@ class MiniPlayer extends ConsumerWidget {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: AppColors.voidBlack,
-                              border: Border.all(color: activeSkin.textColor, width: 1.5),
+                              border: Border.all(
+                                  color: activeSkin.textColor, width: 1.5),
                               boxShadow: [
-                                BoxShadow(color: activeSkin.textColor.withOpacity(0.3), blurRadius: 4),
+                                BoxShadow(
+                                    color:
+                                        activeSkin.textColor.withOpacity(0.3),
+                                    blurRadius: 4),
                               ],
                             ),
                             child: const Center(
-                              child: Icon(Icons.album_rounded, color: Colors.white24, size: 24),
+                              child: Icon(Icons.album_rounded,
+                                  color: Colors.white24, size: 24),
                             ),
                           ),
                           const SizedBox(width: 12),
-                          
+
                           // Song Info (Title & Artist)
                           Expanded(
                             child: Column(
@@ -90,7 +98,10 @@ class MiniPlayer extends ConsumerWidget {
                                     fontWeight: FontWeight.bold,
                                     letterSpacing: 0.5,
                                     shadows: [
-                                      Shadow(color: activeSkin.textColor.withOpacity(0.2), blurRadius: 4),
+                                      Shadow(
+                                          color: activeSkin.textColor
+                                              .withOpacity(0.2),
+                                          blurRadius: 4),
                                     ],
                                   ),
                                   maxLines: 1,
@@ -110,30 +121,35 @@ class MiniPlayer extends ConsumerWidget {
                               ],
                             ),
                           ),
-                          
+
                           // Control actions
                           IconButton(
-                            icon: const Icon(Icons.skip_previous_rounded, color: AppColors.textPrimary, size: 24),
+                            icon: const Icon(Icons.skip_previous_rounded,
+                                color: AppColors.textPrimary, size: 24),
                             onPressed: () => playbackService.skipToPrevious(),
                           ),
-                          
+
                           StreamBuilder<PlaybackState>(
                             stream: playbackService.playbackStateStream,
                             builder: (context, stateSnapshot) {
-                              final isPlaying = stateSnapshot.data?.playing ?? false;
+                              final isPlaying =
+                                  stateSnapshot.data?.playing ?? false;
                               return Container(
                                 width: 34,
                                 height: 34,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: activeSkin.textColor.withOpacity(0.1),
-                                  border: Border.all(color: activeSkin.textColor, width: 1.0),
+                                  border: Border.all(
+                                      color: activeSkin.textColor, width: 1.0),
                                 ),
                                 child: Center(
                                   child: IconButton(
                                     padding: EdgeInsets.zero,
                                     icon: Icon(
-                                      isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, 
+                                      isPlaying
+                                          ? Icons.pause_rounded
+                                          : Icons.play_arrow_rounded,
                                       color: activeSkin.textColor,
                                       size: 20,
                                     ),
@@ -149,15 +165,16 @@ class MiniPlayer extends ConsumerWidget {
                               );
                             },
                           ),
-                          
+
                           IconButton(
-                            icon: const Icon(Icons.skip_next_rounded, color: AppColors.textPrimary, size: 24),
+                            icon: const Icon(Icons.skip_next_rounded,
+                                color: AppColors.textPrimary, size: 24),
                             onPressed: () => playbackService.skipToNext(),
                           ),
                         ],
                       ),
                     ),
-                    
+
                     // Micro timeline progress line
                     Positioned(
                       left: 0,
@@ -170,9 +187,10 @@ class MiniPlayer extends ConsumerWidget {
                           final position = posData?.position ?? Duration.zero;
                           final duration = posData?.duration ?? Duration.zero;
                           double progressFactor = 0.0;
-                          
+
                           if (duration.inMilliseconds > 0) {
-                            progressFactor = position.inMilliseconds / duration.inMilliseconds;
+                            progressFactor = position.inMilliseconds /
+                                duration.inMilliseconds;
                           }
 
                           return Container(

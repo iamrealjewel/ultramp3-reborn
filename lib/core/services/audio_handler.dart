@@ -63,25 +63,29 @@ class UltraAudioHandler extends BaseAudioHandler
   }
 
   // Bridging: Load a song with full metadata details into the background notifications
-  Future<void> loadQueueItem(MediaItem item, {List<MediaItem>? fullQueue}) async {
+  Future<void> loadQueueItem(MediaItem item,
+      {List<MediaItem>? fullQueue}) async {
     mediaItem.add(item);
 
     if (fullQueue != null) {
       queue.add(fullQueue);
       final index = fullQueue.indexWhere((element) => element.id == item.id);
-      
+
       final playlist = ConcatenatingAudioSource(
         children: fullQueue.map((m) {
-          if (m.id.startsWith('http')) return AudioSource.uri(Uri.parse(m.id), tag: m);
+          if (m.id.startsWith('http'))
+            return AudioSource.uri(Uri.parse(m.id), tag: m);
           return AudioSource.file(m.id, tag: m);
         }).toList(),
       );
-      
-      await _player.setAudioSource(playlist, initialIndex: index >= 0 ? index : 0);
+
+      await _player.setAudioSource(playlist,
+          initialIndex: index >= 0 ? index : 0);
     } else {
       try {
         if (item.id.startsWith('http') || item.id.startsWith('asset')) {
-          await _player.setAudioSource(AudioSource.uri(Uri.parse(item.id), tag: item));
+          await _player
+              .setAudioSource(AudioSource.uri(Uri.parse(item.id), tag: item));
         } else {
           await _player.setAudioSource(AudioSource.file(item.id, tag: item));
         }

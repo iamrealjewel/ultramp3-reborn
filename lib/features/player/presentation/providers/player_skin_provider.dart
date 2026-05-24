@@ -24,7 +24,8 @@ class PlayerSkinNotifier extends StateNotifier<PlayerSkin> {
   // Cycle through available skins based on selected skinType in round-robin fashion
   void cycleSkin(String skinType) {
     final isTargetFlat = skinType == 'flat';
-    final filteredSkins = PlayerSkin.all.where((s) => s.isFlat == isTargetFlat).toList();
+    final filteredSkins =
+        PlayerSkin.all.where((s) => s.isFlat == isTargetFlat).toList();
     if (filteredSkins.isEmpty) return;
 
     final currentIndex = filteredSkins.indexOf(state);
@@ -43,7 +44,8 @@ class PlayerSkinNotifier extends StateNotifier<PlayerSkin> {
   void enforceSkinType(String skinType) {
     final isTargetFlat = skinType == 'flat';
     if (state.isFlat != isTargetFlat) {
-      final filteredSkins = PlayerSkin.all.where((s) => s.isFlat == isTargetFlat).toList();
+      final filteredSkins =
+          PlayerSkin.all.where((s) => s.isFlat == isTargetFlat).toList();
       if (filteredSkins.isNotEmpty) {
         state = filteredSkins.first;
         _saveSkin(filteredSkins.first);
@@ -69,7 +71,8 @@ class PlayerSkinNotifier extends StateNotifier<PlayerSkin> {
 }
 
 // Global provider for referencing and listening to active skeuomorphic skin changes
-final playerSkinProvider = StateNotifierProvider<PlayerSkinNotifier, PlayerSkin>((ref) {
+final playerSkinProvider =
+    StateNotifierProvider<PlayerSkinNotifier, PlayerSkin>((ref) {
   final storageService = ref.watch(storageServiceProvider);
   return PlayerSkinNotifier(storageService);
 });

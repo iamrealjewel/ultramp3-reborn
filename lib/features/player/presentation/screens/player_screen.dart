@@ -20,20 +20,20 @@ import 'package:ultramp3/features/playlists/presentation/providers/playlist_prov
 
 // Supported 14 Visualization Styles
 enum VisualizerStyle {
-  spectrumBars,     // Center-out, Rounded capsule, Retro Winamp, Floating
-  waveform,         // Continuous, Oscilloscope, Bezier, Symmetrical
+  spectrumBars, // Center-out, Rounded capsule, Retro Winamp, Floating
+  waveform, // Continuous, Oscilloscope, Bezier, Symmetrical
   circularSpectrum, // Rotating particles, Pulsing radius
   particleReactive, // Dust, Galaxy, Smoke, Energy field
-  liquidFluid,      // Fluid simulation reacting to music
-  breathingRings,   // Expanding concentric circles
-  retroWinamp,      // Classical Winamp green/yellow grid
+  liquidFluid, // Fluid simulation reacting to music
+  breathingRings, // Expanding concentric circles
+  retroWinamp, // Classical Winamp green/yellow grid
   albumArtReactive, // Glow, Blur pulse, Dynamic shadow heartbeat
-  combinedUltra,    // Waveform+Spectrum, Circular+Album, Particles+Pulse, BackgroundBlur+Glow, Ultra Combo
-  solarFlares,      // [NEW] Concentric laser rings & solar flares
-  vortexOrbit,      // [NEW] Vocal double helix orbit dots
-  rippleWaves,      // [NEW] Multi-layered translucent overlapping waves
+  combinedUltra, // Waveform+Spectrum, Circular+Album, Particles+Pulse, BackgroundBlur+Glow, Ultra Combo
+  solarFlares, // [NEW] Concentric laser rings & solar flares
+  vortexOrbit, // [NEW] Vocal double helix orbit dots
+  rippleWaves, // [NEW] Multi-layered translucent overlapping waves
   particleWaveFlow, // [NEW] Beautiful flowing particles on dynamic spectrum wave
-  cosmicTunnel,     // [NEW] 3D radial warp starfield vortex tunnel
+  cosmicTunnel, // [NEW] 3D radial warp starfield vortex tunnel
   orbitalGlow,
   frequencyLaser,
   dnaHelix,
@@ -78,16 +78,18 @@ class PlayerScreen extends ConsumerStatefulWidget {
   ConsumerState<PlayerScreen> createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProviderStateMixin {
+class _PlayerScreenState extends ConsumerState<PlayerScreen>
+    with TickerProviderStateMixin {
   late AnimationController _visualizerController;
   late AnimationController _vinylRotationController;
-  
+
   final List<double> _visualizerHeights = List.filled(10, 4.0);
   final List<double> _peakHeights = List.filled(10, 4.0);
   final math.Random _random = math.Random();
-  
+
   bool _isPlaying = false;
-  bool _hasTrack = false; // Empty state safeguard: freeze visualizer when no track
+  bool _hasTrack =
+      false; // Empty state safeguard: freeze visualizer when no track
   double _animationTime = 0.0;
   double _lastBeatTime = 0.0;
   double _beatEnergy = 0.0;
@@ -103,7 +105,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
   bool _showEqualizer = false;
 
   // EQ Hardware Knobs (0.0 = min/neutral, 1.0 = max)
-  double _bassValue = 0.5;   // Boosts 60Hz + 230Hz bands via native EQ
+  double _bassValue = 0.5; // Boosts 60Hz + 230Hz bands via native EQ
   double _stereoValue = 0.5; // Simulates stereo widening in visualizer
 
   String? _statusMessage;
@@ -153,13 +155,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
 
     // 1. Load initial visualizer & dial & equalizer settings synchronously from storage
     final storage = ref.read(storageServiceProvider);
-    
+
     final styleStr = storage.getVisualizerStyle();
     _visualizerStyle = VisualizerStyle.values.firstWhere(
       (e) => e.name == styleStr,
       orElse: () => VisualizerStyle.spectrumBars,
     );
-    
+
     _visualizerVariation = storage.getVisualizerVariation();
 
     final dialStyleStr = storage.getDialStyle();
@@ -226,8 +228,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
           );
         }).toList();
 
-        await playbackService.handler.loadQueueItem(activeSongItem, fullQueue: fullQueueItems);
-        
+        await playbackService.handler
+            .loadQueueItem(activeSongItem, fullQueue: fullQueueItems);
+
         if (positionMs > 0) {
           await player.seek(Duration(milliseconds: positionMs));
         }
@@ -250,7 +253,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
 
   @override
   void dispose() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+        overlays: SystemUiOverlay.values);
     _positionSubscription?.cancel();
     _visualizerController.dispose();
     _vinylRotationController.dispose();
@@ -260,10 +264,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
 
   void _tickVisualizer() {
     if (!mounted) return;
-    
+
     setState(() {
       _animationTime += 0.033;
-      
+
       // Freeze everything flat when no track is loaded
       if (!_hasTrack) {
         for (int i = 0; i < 10; i++) {
@@ -275,7 +279,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
         }
         return;
       }
-      
+
       if (!_isPlaying) {
         // Drifting stars and elegant breathing waves when idle/paused
         for (var star in _stars) {
@@ -288,7 +292,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
         for (int i = 0; i < 10; i++) {
           final double waveOffset = math.sin(_animationTime * 2.0 + i) * 3.0;
           final double targetHeight = 4.0 + (pulse * 8.0) + waveOffset;
-          _visualizerHeights[i] = _visualizerHeights[i] * 0.7 + targetHeight.clamp(4.0, 18.0) * 0.3;
+          _visualizerHeights[i] =
+              _visualizerHeights[i] * 0.7 + targetHeight.clamp(4.0, 18.0) * 0.3;
 
           if (_visualizerHeights[i] >= _peakHeights[i]) {
             _peakHeights[i] = _visualizerHeights[i];
@@ -314,12 +319,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
 
       // Kick drum beat (occurs every ~460ms -> ~130 BPM, standard punchy track)
       if (_animationTime - _lastBeatTime >= 0.46) {
-        _beatEnergy = 1.0 + _random.nextDouble() * 0.3; // Randomize velocity slightly for natural feel
+        _beatEnergy = 1.0 +
+            _random.nextDouble() *
+                0.3; // Randomize velocity slightly for natural feel
         _lastBeatTime = _animationTime;
       }
 
       // Snare drum beat (hi-hat/snare hits shifted 230ms off the kick drum)
-      if ((_animationTime - _lastBeatTime - 0.23).abs() <= 0.02 && _snareEnergy < 0.2) {
+      if ((_animationTime - _lastBeatTime - 0.23).abs() <= 0.02 &&
+          _snareEnergy < 0.2) {
         _snareEnergy = 0.8 + _random.nextDouble() * 0.25;
       }
 
@@ -328,16 +336,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
 
         if (i < 3) {
           // Low Bass bands kick heavily with beat energy transients
-          targetHeight = 4.0 + (_beatEnergy * 28.0) + (_random.nextDouble() * 4.0);
+          targetHeight =
+              4.0 + (_beatEnergy * 28.0) + (_random.nextDouble() * 4.0);
         } else if (i < 7) {
           // Mid vocal/snare bands react to hi-hat/snare hits
-          targetHeight = 4.0 + (_snareEnergy * 22.0) + (math.sin(_animationTime * 14.0 + i).abs() * 8.0);
+          targetHeight = 4.0 +
+              (_snareEnergy * 22.0) +
+              (math.sin(_animationTime * 14.0 + i).abs() * 8.0);
         } else {
           // Treble bands have high frequency sharp sparks and noise spikes
           if (_random.nextDouble() > 0.82) {
-            targetHeight = 4.0 + (_random.nextDouble() * 24.0); // crisp high-hat tick!
+            targetHeight =
+                4.0 + (_random.nextDouble() * 24.0); // crisp high-hat tick!
           } else {
-            targetHeight = 4.0 + (math.sin(_animationTime * 36.0 + i).abs() * 8.0);
+            targetHeight =
+                4.0 + (math.sin(_animationTime * 36.0 + i).abs() * 8.0);
           }
         }
 
@@ -348,7 +361,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
         targetHeight = targetHeight * eqFactor;
 
         targetHeight = targetHeight.clamp(4.0, 38.0);
-        _visualizerHeights[i] = _visualizerHeights[i] * 0.45 + targetHeight * 0.55;
+        _visualizerHeights[i] =
+            _visualizerHeights[i] * 0.45 + targetHeight * 0.55;
 
         if (_visualizerHeights[i] >= _peakHeights[i]) {
           _peakHeights[i] = _visualizerHeights[i];
@@ -399,7 +413,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
     final targetVol = (currentVol + 0.1).clamp(0.0, 1.0);
     await player.setVolume(targetVol);
     if (mounted) {
-      _showFeedbackGlow(context, 'VOLUME: ${(targetVol * 100).toInt()}%', skin.textColor);
+      _showFeedbackGlow(
+          context, 'VOLUME: ${(targetVol * 100).toInt()}%', skin.textColor);
     }
   }
 
@@ -409,7 +424,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
     final targetVol = (currentVol - 0.1).clamp(0.0, 1.0);
     await player.setVolume(targetVol);
     if (mounted) {
-      _showFeedbackGlow(context, 'VOLUME: ${(targetVol * 100).toInt()}%', skin.textColor);
+      _showFeedbackGlow(
+          context, 'VOLUME: ${(targetVol * 100).toInt()}%', skin.textColor);
     }
   }
 
@@ -460,7 +476,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
     final player = service.handler.playerInstance;
     final targetShuffle = !player.shuffleModeEnabled;
     await player.setShuffleModeEnabled(targetShuffle);
-    
+
     if (mounted) {
       _showFeedbackGlow(
         context,
@@ -470,7 +486,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
     }
   }
 
-  void _applyEqPreset(PlaybackService service, String name, List<double> bands, Color color) {
+  void _applyEqPreset(
+      PlaybackService service, String name, List<double> bands, Color color) {
     setState(() {
       _activePreset = name;
       for (int i = 0; i < 5; i++) {
@@ -486,12 +503,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
     // Compute bass boost from knob: 0.5 = neutral (0dB), 1.0 = +12dB boost, 0.0 = -12dB cut
     final double bassBoostDb = (_bassValue - 0.5) * 24.0; // ±12dB range
     final List<double> bandsToSend = List.from(_eqBands);
-    bandsToSend[0] = (bandsToSend[0] + bassBoostDb * 1.0).clamp(-12.0, 12.0);   // 60Hz
-    bandsToSend[1] = (bandsToSend[1] + bassBoostDb * 0.7).clamp(-12.0, 12.0);   // 230Hz
+    bandsToSend[0] =
+        (bandsToSend[0] + bassBoostDb * 1.0).clamp(-12.0, 12.0); // 60Hz
+    bandsToSend[1] =
+        (bandsToSend[1] + bassBoostDb * 0.7).clamp(-12.0, 12.0); // 230Hz
     service.setEqualizerBands(bandsToSend);
   }
 
-  void _showFeedbackGlow(BuildContext context, String message, Color glowColor) {
+  void _showFeedbackGlow(
+      BuildContext context, String message, Color glowColor) {
     _statusTimer?.cancel();
     setState(() {
       _statusMessage = message.toUpperCase();
@@ -507,7 +527,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
 
   Widget _buildAlbumArtWidget(MediaItem? mediaItem, PlayerSkin activeSkin) {
     final artUri = mediaItem?.artUri;
-    
+
     return Center(
       child: Container(
         width: 140,
@@ -538,7 +558,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                     if (loadingProgress == null) return child;
                     return Center(
                       child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(activeSkin.textColor),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(activeSkin.textColor),
                       ),
                     );
                   },
@@ -647,13 +668,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                 color: isActive ? activeColor : activeColor.withOpacity(0.15),
                 width: isActive ? 1.5 : 1.0,
               ),
-              boxShadow: isActive ? [
-                BoxShadow(
-                  color: activeColor.withOpacity(0.3),
-                  blurRadius: 6,
-                  spreadRadius: 0.5,
-                )
-              ] : [],
+              boxShadow: isActive
+                  ? [
+                      BoxShadow(
+                        color: activeColor.withOpacity(0.3),
+                        blurRadius: 6,
+                        spreadRadius: 0.5,
+                      )
+                    ]
+                  : [],
             ),
             child: Icon(
               icon,
@@ -676,7 +699,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
     );
   }
 
-  Widget _buildSkeuomorphicVolumeBar(double volume, ja.AudioPlayer player, PlayerSkin skin) {
+  Widget _buildSkeuomorphicVolumeBar(
+      double volume, ja.AudioPlayer player, PlayerSkin skin) {
     final activeColor = skin.textColor;
     final numSegments = 10;
 
@@ -696,7 +720,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
       },
       child: Container(
         width: 90,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
         decoration: const BoxDecoration(
           color: Colors.transparent,
         ),
@@ -716,15 +740,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                   width: 4.5,
                   height: segmentHeight,
                   decoration: BoxDecoration(
-                    color: isActive ? activeColor : activeColor.withOpacity(0.15),
+                    color:
+                        isActive ? activeColor : activeColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(1),
-                    boxShadow: isActive ? [
-                      BoxShadow(
-                        color: activeColor.withOpacity(0.4),
-                        blurRadius: 4,
-                        spreadRadius: 0.2,
-                      )
-                    ] : [],
+                    boxShadow: isActive
+                        ? [
+                            BoxShadow(
+                              color: activeColor.withOpacity(0.4),
+                              blurRadius: 4,
+                              spreadRadius: 0.2,
+                            )
+                          ]
+                        : [],
                   ),
                 );
               }),
@@ -762,9 +789,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
             : 1.0);
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.zero,
       child: SizedBox(
-        height: isLandscape ? double.infinity : (activeSkin.isFlat ? 300 : 230),
+        height: isLandscape ? double.infinity : (activeSkin.isFlat ? 280 : 210),
         width: double.infinity,
         child: GestureDetector(
           onTap: () {
@@ -799,23 +826,30 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                           color: activeSkin.lcdBgColor.withOpacity(visOpacity),
                         ),
                       ),
-                      
+
                       // CustomPaint or AlbumArt wrapped in Padding to keep distance from overlays
                       if (settings.showAlbumArt)
                         Positioned.fill(
                           child: Padding(
-                            padding: const EdgeInsets.only(top: 38, bottom: 44),
+                            padding: isLandscape
+                                ? EdgeInsets.zero
+                                : const EdgeInsets.only(top: 38, bottom: 18),
                             child: Container(
-                              padding: const EdgeInsets.all(8),
+                              padding: isLandscape
+                                  ? EdgeInsets.zero
+                                  : const EdgeInsets.all(8),
                               alignment: Alignment.center,
-                              child: _buildAlbumArtWidget(mediaItem, activeSkin),
+                              child:
+                                  _buildAlbumArtWidget(mediaItem, activeSkin),
                             ),
                           ),
                         )
                       else
                         Positioned.fill(
                           child: Padding(
-                            padding: const EdgeInsets.only(top: 38, bottom: 60),
+                            padding: isLandscape
+                                ? EdgeInsets.zero
+                                : const EdgeInsets.only(top: 38, bottom: 22),
                             child: CustomPaint(
                               size: Size.infinite,
                               painter: _VisualizerPainter(
@@ -856,10 +890,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
 
                       // Bottom Controls Overlay: Equalizer selected badge & Volume level bar
                       Positioned(
-                        bottom: 6,
+                        bottom: isLandscape ? 4 : 2,
                         left: 8,
                         right: 8,
-                        child: _buildVisualizerControls(playbackService, activeSkin, player),
+                        child: _buildVisualizerControls(
+                            playbackService, activeSkin, player),
                       ),
                     ],
                   );
@@ -899,7 +934,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
         },
       );
     } else {
-      final bgOpacity = settings.dialerTransparencyEnabled ? settings.dialerOpacity : 1.0;
+      final bgOpacity =
+          settings.dialerTransparencyEnabled ? settings.dialerOpacity : 1.0;
       return _S60DpadCockpitConsole(
         skin: activeSkin,
         isPlaying: _isPlaying,
@@ -921,8 +957,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
         onSkipNext: () => playbackService.skipToNext(),
         onFastRewind: () => _fastRewind(playbackService, activeSkin),
         onFastForward: () => _fastForward(playbackService, activeSkin),
-        onToggleShuffle: () => _toggleShuffle(playbackService, activeSkin.textColor),
-        onToggleRepeat: () => _toggleRepeat(playbackService, activeSkin.textColor),
+        onToggleShuffle: () =>
+            _toggleShuffle(playbackService, activeSkin.textColor),
+        onToggleRepeat: () =>
+            _toggleRepeat(playbackService, activeSkin.textColor),
         onCycleDialStyle: () => _showDialerSwitcherSheet(context),
         onCycleSkin: () => _showSkinSwitcherSheet(context),
       );
@@ -944,16 +982,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
         // ══ Left column: Visualizer (flex 11) ══
         Expanded(
           flex: 11,
-          child: Padding(
-            padding: const EdgeInsets.only(left: 8, top: 12, bottom: 8, right: 4),
-            child: _buildVisualizerSection(
-              context: context,
-              activeSkin: activeSkin,
-              playbackService: playbackService,
-              settings: settings,
-              player: player,
-              isLandscape: true,
-            ),
+          child: _buildVisualizerSection(
+            context: context,
+            activeSkin: activeSkin,
+            playbackService: playbackService,
+            settings: settings,
+            player: player,
+            isLandscape: true,
           ),
         ),
 
@@ -961,117 +996,157 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
         Expanded(
           flex: 10,
           child: Padding(
-            padding: const EdgeInsets.only(left: 4, right: 8, top: 12, bottom: 12),
+            padding: const EdgeInsets.only(
+              left: 4,
+              right: 8,
+              top: 4,
+              bottom:
+                  16, // All dialers sit exactly 16px above bottom screen edge
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const SizedBox(height: 50), // Move trackname & progressbar down by at least 50px
+
                 // Track name
-                  StreamBuilder<MediaItem?>(
-                    stream: playbackService.currentMediaItemStream,
-                    builder: (context, mediaSnap) {
-                      final mediaItem = mediaSnap.data;
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: activeSkin.isFlat ? Colors.black.withOpacity(0.3) : activeSkin.lcdBgColor,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: activeSkin.isFlat ? activeSkin.textColor.withOpacity(0.15) : activeSkin.lcdBorderColor, width: 1.0),
-                        ),
-                        child: _ScrollingMarqueeText(
-                          title: mediaItem?.title ?? 'No Track Loaded',
-                          artist: mediaItem?.artist ?? 'UltraMP3 Reborn',
-                          textColor: activeSkin.textColor,
-                        ),
-                      );
-                    },
-                  ),
+                StreamBuilder<MediaItem?>(
+                  stream: playbackService.currentMediaItemStream,
+                  builder: (context, mediaSnap) {
+                    final mediaItem = mediaSnap.data;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: activeSkin.isFlat
+                            ? Colors.black.withOpacity(0.3)
+                            : activeSkin.lcdBgColor,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: activeSkin.isFlat
+                                ? activeSkin.textColor.withOpacity(0.15)
+                                : activeSkin.lcdBorderColor,
+                            width: 1.0),
+                      ),
+                      child: _ScrollingMarqueeText(
+                        title: mediaItem?.title ?? 'No Track Loaded',
+                        artist: mediaItem?.artist ?? 'UltraMP3 Reborn',
+                        textColor: activeSkin.textColor,
+                      ),
+                    );
+                  },
+                ),
 
-                  const SizedBox(height: 6),
+                const SizedBox(height: 6), // Spacer
 
-                  // Progress bar
-                  StreamBuilder<PositionState>(
-                    stream: playbackService.positionStateStream,
-                    builder: (context, posSnapshot) {
-                      final posData = posSnapshot.data;
-                      final position = posData?.position ?? Duration.zero;
-                      final duration = posData?.duration ?? Duration.zero;
-                      final double progress = duration.inMilliseconds > 0
-                          ? (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0)
-                          : 0.0;
-                      return Column(
-                        children: [
-                          SliderTheme(
-                            data: SliderThemeData(
-                              trackHeight: 2.5,
-                              activeTrackColor: activeSkin.textColor,
-                              inactiveTrackColor: activeSkin.textColor.withOpacity(0.15),
-                              thumbColor: activeSkin.textColor,
-                              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4.0),
-                              overlayShape: const RoundSliderOverlayShape(overlayRadius: 8),
-                            ),
-                            child: Slider(
-                              value: progress,
-                              onChanged: (val) {
-                                final ms = (val * duration.inMilliseconds).toInt();
-                                playbackService.seek(Duration(milliseconds: ms));
-                              },
-                            ),
+                // Progress bar
+                StreamBuilder<PositionState>(
+                  stream: playbackService.positionStateStream,
+                  builder: (context, posSnapshot) {
+                    final posData = posSnapshot.data;
+                    final position = posData?.position ?? Duration.zero;
+                    final duration = posData?.duration ?? Duration.zero;
+                    final double progress = duration.inMilliseconds > 0
+                        ? (position.inMilliseconds / duration.inMilliseconds)
+                            .clamp(0.0, 1.0)
+                        : 0.0;
+                    return Column(
+                      children: [
+                        SliderTheme(
+                          data: SliderThemeData(
+                            trackHeight: 2.5,
+                            activeTrackColor: activeSkin.textColor,
+                            inactiveTrackColor:
+                                activeSkin.textColor.withOpacity(0.15),
+                            thumbColor: activeSkin.textColor,
+                            thumbShape: const RoundSliderThumbShape(
+                                enabledThumbRadius: 4.0),
+                            overlayShape:
+                                const RoundSliderOverlayShape(overlayRadius: 8),
                           ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(_formatDuration(position), style: TextStyle(color: activeSkin.textColor, fontFamily: 'Orbitron', fontSize: 9, fontWeight: FontWeight.bold)),
-                              Text(_formatDuration(duration), style: TextStyle(color: activeSkin.textColor.withOpacity(0.6), fontFamily: 'Orbitron', fontSize: 9)),
-                            ],
+                          child: Slider(
+                            value: progress,
+                            onChanged: (val) {
+                              final ms =
+                                  (val * duration.inMilliseconds).toInt();
+                              playbackService.seek(Duration(milliseconds: ms));
+                            },
                           ),
-                        ],
-                      );
-                    },
-                  ),
-                         const Spacer(),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(_formatDuration(position),
+                                style: TextStyle(
+                                    color: activeSkin.textColor,
+                                    fontFamily: 'Orbitron',
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold)),
+                            Text(_formatDuration(duration),
+                                style: TextStyle(
+                                    color:
+                                        activeSkin.textColor.withOpacity(0.6),
+                                    fontFamily: 'Orbitron',
+                                    fontSize: 9)),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const Spacer(),
 
-                  // Configured dialer console
-                  StreamBuilder<ja.LoopMode>(
-                    stream: player.loopModeStream,
-                    initialData: player.loopMode,
-                    builder: (context, loopSnap) {
-                      final loopMode = loopSnap.data ?? ja.LoopMode.off;
-                      return StreamBuilder<bool>(
-                        stream: player.shuffleModeEnabledStream,
-                        initialData: player.shuffleModeEnabled,
-                        builder: (context, shuffleSnap) {
-                          final isShuffle = shuffleSnap.data ?? false;
-                          final double designWidth = 360.0;
-                          final double designHeight = activeSkin.isFlat ? 145 : (_dialStyle == DialStyle.rectangular ? 180 : (_dialStyle == DialStyle.circular ? 260 : 180));
+                // Configured dialer console
+                StreamBuilder<ja.LoopMode>(
+                  stream: player.loopModeStream,
+                  initialData: player.loopMode,
+                  builder: (context, loopSnap) {
+                    final loopMode = loopSnap.data ?? ja.LoopMode.off;
+                    return StreamBuilder<bool>(
+                      stream: player.shuffleModeEnabledStream,
+                      initialData: player.shuffleModeEnabled,
+                      builder: (context, shuffleSnap) {
+                        final isShuffle = shuffleSnap.data ?? false;
+                        final double designWidth = 360.0; // Uniform 360px design width so all match perfectly
+                        final double designHeight = activeSkin.isFlat
+                            ? 145.0
+                            : (_dialStyle == DialStyle.rectangular
+                                ? 180.0
+                                : (_dialStyle == DialStyle.circular
+                                    ? 220.0
+                                    : 180.0));
 
-                          return Center(
-                            child: SizedBox(
-                              height: activeSkin.isFlat ? 100 : (_dialStyle == DialStyle.rectangular ? 130 : 180),
-                              child: FittedBox(
-                                fit: BoxFit.contain,
-                                child: SizedBox(
-                                  width: designWidth,
-                                  height: designHeight,
-                                  child: _buildConfiguredDialer(
-                                    context: context,
-                                    activeSkin: activeSkin,
-                                    playbackService: playbackService,
-                                    player: player,
-                                    settings: settings,
-                                    isShuffle: isShuffle,
-                                    loopMode: loopMode,
-                                  ),
+                        return Center(
+                          child: SizedBox(
+                            height: activeSkin.isFlat
+                                ? 92
+                                : (_dialStyle == DialStyle.rectangular
+                                    ? 130
+                                    : 180),
+                            child: FittedBox(
+                              fit: BoxFit.contain,
+                              child: SizedBox(
+                                width: designWidth,
+                                height: designHeight,
+                                child: _buildConfiguredDialer(
+                                  context: context,
+                                  activeSkin: activeSkin,
+                                  playbackService: playbackService,
+                                  player: player,
+                                  settings: settings,
+                                  isShuffle: isShuffle,
+                                  loopMode: loopMode,
                                 ),
                               ),
                             ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ],
-              ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ],
             ),
+          ),
         ),
       ],
     );
@@ -1089,18 +1164,26 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
     final accentColor = activeSkin.textColor;
     final disabledColor = accentColor.withOpacity(0.25);
 
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: isLandscape
+          ? const EdgeInsets.symmetric(horizontal: 10, vertical: 0)
+          : const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(30),
         child: BackdropFilter(
           filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: isLandscape
+                ? const EdgeInsets.symmetric(horizontal: 16, vertical: 4)
+                : const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
               color: activeSkin.panelBgColor.withOpacity(0.65),
               borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: activeSkin.textColor.withOpacity(0.22), width: 1.5),
+              border: Border.all(
+                  color: activeSkin.textColor.withOpacity(0.22), width: 1.5),
               boxShadow: [
                 BoxShadow(
                   color: activeSkin.textColor.withOpacity(0.12),
@@ -1121,29 +1204,39 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                     IconButton(
                       icon: Icon(
                         Icons.shuffle_rounded,
-                        color: isShuffle ? accentColor : accentColor.withOpacity(0.35),
+                        color: isShuffle
+                            ? accentColor
+                            : accentColor.withOpacity(0.35),
                         size: 24,
                       ),
-                      onPressed: hasTrack ? () => _toggleShuffle(playbackService, accentColor) : null,
+                      onPressed: hasTrack
+                          ? () => _toggleShuffle(playbackService, accentColor)
+                          : null,
                       tooltip: 'Shuffle',
                       padding: EdgeInsets.zero,
                     ),
                     // Skip Prev
                     IconButton(
-                      icon: Icon(Icons.skip_previous_rounded, color: hasTrack ? accentColor : disabledColor, size: 32),
-                      onPressed: hasTrack ? () => playbackService.skipToPrevious() : null,
+                      icon: Icon(Icons.skip_previous_rounded,
+                          color: hasTrack ? accentColor : disabledColor,
+                          size: 32),
+                      onPressed: hasTrack
+                          ? () => playbackService.skipToPrevious()
+                          : null,
                       tooltip: 'Previous',
                       padding: EdgeInsets.zero,
                     ),
                     // Central floating neon play button
                     GestureDetector(
-                      onTap: hasTrack ? () {
-                        if (_isPlaying) {
-                          playbackService.pause();
-                        } else {
-                          playbackService.play();
-                        }
-                      } : null,
+                      onTap: hasTrack
+                          ? () {
+                              if (_isPlaying) {
+                                playbackService.pause();
+                              } else {
+                                playbackService.play();
+                              }
+                            }
+                          : null,
                       child: Container(
                         width: 58,
                         height: 58,
@@ -1167,73 +1260,104 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                           ],
                         ),
                         child: Icon(
-                          _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                          color: accentColor.computeLuminance() > 0.5 ? Colors.black87 : Colors.white,
+                          _isPlaying
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
+                          color: accentColor.computeLuminance() > 0.5
+                              ? Colors.black87
+                              : Colors.white,
                           size: 34,
                         ),
                       ),
                     ),
                     // Skip Next
                     IconButton(
-                      icon: Icon(Icons.skip_next_rounded, color: hasTrack ? accentColor : disabledColor, size: 32),
-                      onPressed: hasTrack ? () => playbackService.skipToNext() : null,
+                      icon: Icon(Icons.skip_next_rounded,
+                          color: hasTrack ? accentColor : disabledColor,
+                          size: 32),
+                      onPressed:
+                          hasTrack ? () => playbackService.skipToNext() : null,
                       tooltip: 'Next',
                       padding: EdgeInsets.zero,
                     ),
                     // Repeat
                     IconButton(
                       icon: Icon(
-                        loopMode == ja.LoopMode.one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
-                        color: loopMode != ja.LoopMode.off ? accentColor : accentColor.withOpacity(0.35),
+                        loopMode == ja.LoopMode.one
+                            ? Icons.repeat_one_rounded
+                            : Icons.repeat_rounded,
+                        color: loopMode != ja.LoopMode.off
+                            ? accentColor
+                            : accentColor.withOpacity(0.35),
                         size: 24,
                       ),
-                      onPressed: hasTrack ? () => _toggleRepeat(playbackService, accentColor) : null,
+                      onPressed: hasTrack
+                          ? () => _toggleRepeat(playbackService, accentColor)
+                          : null,
                       tooltip: 'Repeat',
                       padding: EdgeInsets.zero,
                     ),
                   ],
                 ),
-                
+
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 4),
                   child: Divider(color: Colors.transparent, height: 4),
                 ),
-                
+
                 // Bottom Row: Helper controls (Volume down, Fast Rewind, Fast Forward, Volume up)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     // Volume Down
                     IconButton(
-                      icon: Icon(Icons.volume_down_rounded, color: accentColor.withOpacity(0.65), size: 20),
+                      icon: Icon(Icons.volume_down_rounded,
+                          color: accentColor.withOpacity(0.65), size: 20),
                       onPressed: () => _volumeDown(playbackService, activeSkin),
                       tooltip: 'Volume Down',
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
                     ),
                     // Fast Rewind
                     IconButton(
-                      icon: Icon(Icons.fast_rewind_rounded, color: hasTrack ? accentColor.withOpacity(0.8) : disabledColor, size: 22),
-                      onPressed: hasTrack ? () => _fastRewind(playbackService, activeSkin) : null,
+                      icon: Icon(Icons.fast_rewind_rounded,
+                          color: hasTrack
+                              ? accentColor.withOpacity(0.8)
+                              : disabledColor,
+                          size: 22),
+                      onPressed: hasTrack
+                          ? () => _fastRewind(playbackService, activeSkin)
+                          : null,
                       tooltip: 'Rewind',
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
                     ),
                     // Fast Forward
                     IconButton(
-                      icon: Icon(Icons.fast_forward_rounded, color: hasTrack ? accentColor.withOpacity(0.8) : disabledColor, size: 22),
-                      onPressed: hasTrack ? () => _fastForward(playbackService, activeSkin) : null,
+                      icon: Icon(Icons.fast_forward_rounded,
+                          color: hasTrack
+                              ? accentColor.withOpacity(0.8)
+                              : disabledColor,
+                          size: 22),
+                      onPressed: hasTrack
+                          ? () => _fastForward(playbackService, activeSkin)
+                          : null,
                       tooltip: 'Fast Forward',
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
                     ),
                     // Volume Up
                     IconButton(
-                      icon: Icon(Icons.volume_up_rounded, color: accentColor.withOpacity(0.65), size: 20),
+                      icon: Icon(Icons.volume_up_rounded,
+                          color: accentColor.withOpacity(0.65), size: 20),
                       onPressed: () => _volumeUp(playbackService, activeSkin),
                       tooltip: 'Volume Up',
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
                     ),
                   ],
                 ),
@@ -1245,7 +1369,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
     );
   }
 
-  Widget _buildVisualizerControls(PlaybackService service, PlayerSkin skin, ja.AudioPlayer player) {
+  Widget _buildVisualizerControls(
+      PlaybackService service, PlayerSkin skin, ja.AudioPlayer player) {
     return StreamBuilder<double>(
       stream: player.volumeStream,
       initialData: player.volume,
@@ -1253,7 +1378,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
         final volume = volumeSnapshot.data ?? 1.0;
 
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 0.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1268,16 +1393,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8.0, vertical: 4.0),
                       decoration: BoxDecoration(
                         color: skin.textColor.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: skin.textColor.withOpacity(0.35), width: 1.0),
+                        border: Border.all(
+                            color: skin.textColor.withOpacity(0.35),
+                            width: 1.0),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.equalizer_rounded, color: skin.textColor, size: 12),
+                          Icon(Icons.equalizer_rounded,
+                              color: skin.textColor, size: 12),
                           const SizedBox(width: 5),
                           Text(
                             'EQ: ${_activePreset.toUpperCase()}',
@@ -1307,8 +1436,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
 
   void _showSkinSwitcherSheet(BuildContext context) {
     final activeSkin = ref.read(playerSkinProvider);
-    final displayedSkins = PlayerSkin.all.where((s) => s.isFlat == activeSkin.isFlat).toList();
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final displayedSkins =
+        PlayerSkin.all.where((s) => s.isFlat == activeSkin.isFlat).toList();
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
     showModalBottomSheet(
       context: context,
@@ -1316,58 +1447,51 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
       isScrollControlled: true,
       builder: (context) {
         return ClipRRect(
-          borderRadius: isLandscape
-              ? BorderRadius.zero
-              : const BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: BorderRadius.zero,
           child: BackdropFilter(
             filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: Container(
-              height: isLandscape ? MediaQuery.of(context).size.height : MediaQuery.of(context).size.height * 0.65,
+              height: MediaQuery.of(context).size.height,
               padding: EdgeInsets.only(
-                top: isLandscape ? (MediaQuery.of(context).padding.top + 8) : 0,
-                bottom: isLandscape ? 12 : (kBottomNavigationBarHeight + MediaQuery.of(context).padding.bottom),
+                top: MediaQuery.of(context).padding.top + 8,
+                bottom: MediaQuery.of(context).padding.bottom + 16,
               ),
               decoration: BoxDecoration(
                 color: activeSkin.panelBgColor.withOpacity(0.85),
-                borderRadius: isLandscape
-                    ? BorderRadius.zero
-                    : const BorderRadius.vertical(top: Radius.circular(24)),
-                border: isLandscape
-                    ? null
-                    : Border.all(color: activeSkin.textColor.withOpacity(0.25), width: 1.5),
+                borderRadius: BorderRadius.zero,
+                border: Border(
+                  top: BorderSide(
+                      color: activeSkin.textColor.withOpacity(0.25),
+                      width: 1.5),
+                ),
               ),
               child: Column(
                 children: [
-                  Container(
-                    margin: const EdgeInsets.symmetric(vertical: 12),
-                    width: 48,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: activeSkin.textColor.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(2.5),
-                    ),
-                  ),
+                  const SizedBox(height: 12),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Row(
-                      mainAxisAlignment: isLandscape ? MainAxisAlignment.spaceBetween : MainAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        if (isLandscape) const SizedBox(width: 48),
-                        Text(
-                          'COCKPIT SKINS',
-                          style: TextStyle(
-                            fontFamily: 'Orbitron',
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: activeSkin.textColor,
-                            letterSpacing: 1.5,
+                        const SizedBox(width: 48),
+                        Expanded(
+                          child: Text(
+                            'COCKPIT SKINS',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'Orbitron',
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: activeSkin.textColor,
+                              letterSpacing: 1.5,
+                            ),
                           ),
                         ),
-                        if (isLandscape)
-                          IconButton(
-                            icon: Icon(Icons.close_rounded, color: activeSkin.textColor),
-                            onPressed: () => Navigator.pop(context),
-                          ),
+                        IconButton(
+                          icon: Icon(Icons.close_rounded,
+                              color: activeSkin.textColor),
+                          onPressed: () => Navigator.pop(context),
+                        ),
                       ],
                     ),
                   ),
@@ -1375,7 +1499,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                   Expanded(
                     child: GridView.builder(
                       padding: const EdgeInsets.all(16),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 3,
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
@@ -1385,35 +1510,47 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                       itemBuilder: (context, idx) {
                         final skin = displayedSkins[idx];
                         final isSelected = skin.name == activeSkin.name;
-                        
+
                         return GestureDetector(
                           onTap: () {
-                            ref.read(playerSkinProvider.notifier).setSkinByName(skin.name);
+                            ref
+                                .read(playerSkinProvider.notifier)
+                                .setSkinByName(skin.name);
                             Navigator.pop(context);
-                            _showFeedbackGlow(context, 'SKIN: ${skin.name.toUpperCase()}', skin.textColor);
+                            _showFeedbackGlow(
+                                context,
+                                'SKIN: ${skin.name.toUpperCase()}',
+                                skin.textColor);
                           },
                           child: Container(
                             decoration: BoxDecoration(
-                              color: isSelected ? skin.textColor.withOpacity(0.15) : Colors.black.withOpacity(0.3),
+                              color: isSelected
+                                  ? skin.textColor.withOpacity(0.15)
+                                  : Colors.black.withOpacity(0.3),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                  color: isSelected ? skin.textColor : skin.textColor.withOpacity(0.2),
+                                color: isSelected
+                                    ? skin.textColor
+                                    : skin.textColor.withOpacity(0.2),
                                 width: isSelected ? 2.0 : 1.0,
                               ),
-                              boxShadow: isSelected ? [
-                                BoxShadow(
-                                  color: skin.textColor.withOpacity(0.25),
-                                  blurRadius: 8,
-                                  spreadRadius: 1,
-                                )
-                              ] : [],
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: skin.textColor.withOpacity(0.25),
+                                        blurRadius: 8,
+                                        spreadRadius: 1,
+                                      )
+                                    ]
+                                  : [],
                             ),
                             padding: const EdgeInsets.all(8),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Container(
                                       width: 10,
@@ -1429,7 +1566,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(4),
                                         color: skin.lcdBgColor,
-                                        border: Border.all(color: skin.lcdBorderColor, width: 0.5),
+                                        border: Border.all(
+                                            color: skin.lcdBorderColor,
+                                            width: 0.5),
                                       ),
                                     ),
                                   ],
@@ -1440,8 +1579,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                                       skin.name,
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
-                                        color: isSelected ? skin.textColor : Colors.white.withOpacity(0.85),
-                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                        color: isSelected
+                                            ? skin.textColor
+                                            : Colors.white.withOpacity(0.85),
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
                                         fontSize: 10.5,
                                       ),
                                       maxLines: 2,
@@ -1450,7 +1593,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                                   ),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 5, vertical: 2),
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(4),
                                     color: Colors.black.withOpacity(0.4),
@@ -1483,7 +1627,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
 
   void _showVisualizerSwitcherSheet(BuildContext context) {
     final activeSkin = ref.read(playerSkinProvider);
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
     showModalBottomSheet(
       context: context,
@@ -1491,58 +1636,51 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
       isScrollControlled: true,
       builder: (context) {
         return ClipRRect(
-          borderRadius: isLandscape
-              ? BorderRadius.zero
-              : const BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: BorderRadius.zero,
           child: BackdropFilter(
             filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: Container(
-              height: isLandscape ? MediaQuery.of(context).size.height : MediaQuery.of(context).size.height * 0.65,
+              height: MediaQuery.of(context).size.height,
               padding: EdgeInsets.only(
-                top: isLandscape ? (MediaQuery.of(context).padding.top + 8) : 0,
-                bottom: isLandscape ? 12 : (kBottomNavigationBarHeight + MediaQuery.of(context).padding.bottom),
+                top: MediaQuery.of(context).padding.top + 8,
+                bottom: MediaQuery.of(context).padding.bottom + 16,
               ),
               decoration: BoxDecoration(
                 color: activeSkin.panelBgColor.withOpacity(0.85),
-                borderRadius: isLandscape
-                    ? BorderRadius.zero
-                    : const BorderRadius.vertical(top: Radius.circular(24)),
-                border: isLandscape
-                    ? null
-                    : Border.all(color: activeSkin.textColor.withOpacity(0.25), width: 1.5),
+                borderRadius: BorderRadius.zero,
+                border: Border(
+                  top: BorderSide(
+                      color: activeSkin.textColor.withOpacity(0.25),
+                      width: 1.5),
+                ),
               ),
               child: Column(
                 children: [
-                  Container(
-                    margin: const EdgeInsets.symmetric(vertical: 12),
-                    width: 48,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: activeSkin.textColor.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(2.5),
-                    ),
-                  ),
+                  const SizedBox(height: 12),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Row(
-                      mainAxisAlignment: isLandscape ? MainAxisAlignment.spaceBetween : MainAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        if (isLandscape) const SizedBox(width: 48),
-                        Text(
-                          'VISUALIZATION ENGINES',
-                          style: TextStyle(
-                            fontFamily: 'Orbitron',
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: activeSkin.textColor,
-                            letterSpacing: 1.5,
+                        const SizedBox(width: 48),
+                        Expanded(
+                          child: Text(
+                            'VISUALIZATION ENGINES',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'Orbitron',
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: activeSkin.textColor,
+                              letterSpacing: 1.5,
+                            ),
                           ),
                         ),
-                        if (isLandscape)
-                          IconButton(
-                            icon: Icon(Icons.close_rounded, color: activeSkin.textColor),
-                            onPressed: () => Navigator.pop(context),
-                          ),
+                        IconButton(
+                          icon: Icon(Icons.close_rounded,
+                              color: activeSkin.textColor),
+                          onPressed: () => Navigator.pop(context),
+                        ),
                       ],
                     ),
                   ),
@@ -1550,7 +1688,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                   Expanded(
                     child: GridView.builder(
                       padding: const EdgeInsets.all(16),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 3,
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
@@ -1560,27 +1699,46 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                       itemBuilder: (context, idx) {
                         final style = VisualizerStyle.values[idx];
                         final isSelected = style == _visualizerStyle;
-                        
+
                         IconData styleIcon = Icons.analytics_rounded;
-                        if (style == VisualizerStyle.spectrumBars) styleIcon = Icons.bar_chart_rounded;
-                        if (style == VisualizerStyle.waveform) styleIcon = Icons.insights_rounded;
-                        if (style == VisualizerStyle.circularSpectrum) styleIcon = Icons.track_changes_rounded;
-                        if (style == VisualizerStyle.particleReactive) styleIcon = Icons.grain_rounded;
-                        if (style == VisualizerStyle.liquidFluid) styleIcon = Icons.opacity_rounded;
-                        if (style == VisualizerStyle.breathingRings) styleIcon = Icons.blur_circular_rounded;
-                        if (style == VisualizerStyle.retroWinamp) styleIcon = Icons.grid_view_rounded;
-                        if (style == VisualizerStyle.albumArtReactive) styleIcon = Icons.album_rounded;
-                        if (style == VisualizerStyle.combinedUltra) styleIcon = Icons.auto_awesome_rounded;
-                        if (style == VisualizerStyle.solarFlares) styleIcon = Icons.flare_rounded;
-                        if (style == VisualizerStyle.vortexOrbit) styleIcon = Icons.all_out_rounded;
-                        if (style == VisualizerStyle.rippleWaves) styleIcon = Icons.waves_rounded;
-                        if (style == VisualizerStyle.particleWaveFlow) styleIcon = Icons.bubble_chart_rounded;
-                        if (style == VisualizerStyle.cosmicTunnel) styleIcon = Icons.center_focus_strong_rounded;
-                        if (style == VisualizerStyle.orbitalGlow) styleIcon = Icons.star_purple500_rounded;
-                        if (style == VisualizerStyle.frequencyLaser) styleIcon = Icons.flash_on_rounded;
-                        if (style == VisualizerStyle.dnaHelix) styleIcon = Icons.sync_rounded;
-                        if (style == VisualizerStyle.audioMatrixGrid) styleIcon = Icons.apps_rounded;
-                        if (style == VisualizerStyle.blackHoleStars) styleIcon = Icons.blur_on_rounded;
+                        if (style == VisualizerStyle.spectrumBars)
+                          styleIcon = Icons.bar_chart_rounded;
+                        if (style == VisualizerStyle.waveform)
+                          styleIcon = Icons.insights_rounded;
+                        if (style == VisualizerStyle.circularSpectrum)
+                          styleIcon = Icons.track_changes_rounded;
+                        if (style == VisualizerStyle.particleReactive)
+                          styleIcon = Icons.grain_rounded;
+                        if (style == VisualizerStyle.liquidFluid)
+                          styleIcon = Icons.opacity_rounded;
+                        if (style == VisualizerStyle.breathingRings)
+                          styleIcon = Icons.blur_circular_rounded;
+                        if (style == VisualizerStyle.retroWinamp)
+                          styleIcon = Icons.grid_view_rounded;
+                        if (style == VisualizerStyle.albumArtReactive)
+                          styleIcon = Icons.album_rounded;
+                        if (style == VisualizerStyle.combinedUltra)
+                          styleIcon = Icons.auto_awesome_rounded;
+                        if (style == VisualizerStyle.solarFlares)
+                          styleIcon = Icons.flare_rounded;
+                        if (style == VisualizerStyle.vortexOrbit)
+                          styleIcon = Icons.all_out_rounded;
+                        if (style == VisualizerStyle.rippleWaves)
+                          styleIcon = Icons.waves_rounded;
+                        if (style == VisualizerStyle.particleWaveFlow)
+                          styleIcon = Icons.bubble_chart_rounded;
+                        if (style == VisualizerStyle.cosmicTunnel)
+                          styleIcon = Icons.center_focus_strong_rounded;
+                        if (style == VisualizerStyle.orbitalGlow)
+                          styleIcon = Icons.star_purple500_rounded;
+                        if (style == VisualizerStyle.frequencyLaser)
+                          styleIcon = Icons.flash_on_rounded;
+                        if (style == VisualizerStyle.dnaHelix)
+                          styleIcon = Icons.sync_rounded;
+                        if (style == VisualizerStyle.audioMatrixGrid)
+                          styleIcon = Icons.apps_rounded;
+                        if (style == VisualizerStyle.blackHoleStars)
+                          styleIcon = Icons.blur_on_rounded;
 
                         return GestureDetector(
                           onTap: () {
@@ -1589,23 +1747,33 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                               _visualizerVariation = 0;
                             });
                             Navigator.pop(context);
-                            _showFeedbackGlow(context, 'VISUALIZER: ${style.name.toUpperCase()}', activeSkin.textColor);
+                            _showFeedbackGlow(
+                                context,
+                                'VISUALIZER: ${style.name.toUpperCase()}',
+                                activeSkin.textColor);
                           },
                           child: Container(
                             decoration: BoxDecoration(
-                              color: isSelected ? activeSkin.textColor.withOpacity(0.15) : Colors.black.withOpacity(0.3),
+                              color: isSelected
+                                  ? activeSkin.textColor.withOpacity(0.15)
+                                  : Colors.black.withOpacity(0.3),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: isSelected ? activeSkin.textColor : activeSkin.textColor.withOpacity(0.2),
+                                color: isSelected
+                                    ? activeSkin.textColor
+                                    : activeSkin.textColor.withOpacity(0.2),
                                 width: isSelected ? 2.0 : 1.0,
                               ),
-                              boxShadow: isSelected ? [
-                                BoxShadow(
-                                  color: activeSkin.textColor.withOpacity(0.25),
-                                  blurRadius: 8,
-                                  spreadRadius: 1,
-                                )
-                              ] : [],
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: activeSkin.textColor
+                                            .withOpacity(0.25),
+                                        blurRadius: 8,
+                                        spreadRadius: 1,
+                                      )
+                                    ]
+                                  : [],
                             ),
                             padding: const EdgeInsets.all(8),
                             child: Column(
@@ -1613,17 +1781,27 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                               children: [
                                 Icon(
                                   styleIcon,
-                                  color: isSelected ? activeSkin.textColor : Colors.white.withOpacity(0.7),
+                                  color: isSelected
+                                      ? activeSkin.textColor
+                                      : Colors.white.withOpacity(0.7),
                                   size: 24,
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  style.name.replaceAllMapped(RegExp(r'(^|[a-z])([A-Z])'), (m) => '${m.group(1)} ${m.group(2)}').toUpperCase(),
+                                  style.name
+                                      .replaceAllMapped(
+                                          RegExp(r'(^|[a-z])([A-Z])'),
+                                          (m) => '${m.group(1)} ${m.group(2)}')
+                                      .toUpperCase(),
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontFamily: 'monospace',
-                                    color: isSelected ? activeSkin.textColor : Colors.white.withOpacity(0.85),
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                    color: isSelected
+                                        ? activeSkin.textColor
+                                        : Colors.white.withOpacity(0.85),
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
                                     fontSize: 8,
                                   ),
                                   maxLines: 2,
@@ -1647,7 +1825,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
 
   void _showDialerSwitcherSheet(BuildContext context) {
     final activeSkin = ref.read(playerSkinProvider);
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
     showModalBottomSheet(
       context: context,
@@ -1661,10 +1840,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
           child: BackdropFilter(
             filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: Container(
-              height: isLandscape ? MediaQuery.of(context).size.height : MediaQuery.of(context).size.height * 0.45,
+              height: isLandscape
+                  ? MediaQuery.of(context).size.height
+                  : MediaQuery.of(context).size.height * 0.45,
               padding: EdgeInsets.only(
                 top: isLandscape ? (MediaQuery.of(context).padding.top + 8) : 0,
-                bottom: isLandscape ? 12 : (kBottomNavigationBarHeight + MediaQuery.of(context).padding.bottom),
+                bottom: isLandscape
+                    ? 12
+                    : (kBottomNavigationBarHeight +
+                        MediaQuery.of(context).padding.bottom),
               ),
               decoration: BoxDecoration(
                 color: activeSkin.panelBgColor.withOpacity(0.85),
@@ -1673,7 +1857,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                     : const BorderRadius.vertical(top: Radius.circular(24)),
                 border: isLandscape
                     ? null
-                    : Border.all(color: activeSkin.textColor.withOpacity(0.25), width: 1.5),
+                    : Border.all(
+                        color: activeSkin.textColor.withOpacity(0.25),
+                        width: 1.5),
               ),
               child: Column(
                 children: [
@@ -1689,7 +1875,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Row(
-                      mainAxisAlignment: isLandscape ? MainAxisAlignment.spaceBetween : MainAxisAlignment.center,
+                      mainAxisAlignment: isLandscape
+                          ? MainAxisAlignment.spaceBetween
+                          : MainAxisAlignment.center,
                       children: [
                         if (isLandscape) const SizedBox(width: 48),
                         Text(
@@ -1704,7 +1892,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                         ),
                         if (isLandscape)
                           IconButton(
-                            icon: Icon(Icons.close_rounded, color: activeSkin.textColor),
+                            icon: Icon(Icons.close_rounded,
+                                color: activeSkin.textColor),
                             onPressed: () => Navigator.pop(context),
                           ),
                       ],
@@ -1713,8 +1902,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                   const SizedBox(height: 16),
                   Expanded(
                     child: GridView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 8),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 3,
                         crossAxisSpacing: 16,
                         mainAxisSpacing: 16,
@@ -1745,25 +1936,37 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                             setState(() {
                               _dialStyle = style;
                             });
-                            ref.read(storageServiceProvider).setDialStyle(style.name);
+                            ref
+                                .read(storageServiceProvider)
+                                .setDialStyle(style.name);
                             Navigator.pop(context);
-                            _showFeedbackGlow(context, 'DIAL: ${style.name.toUpperCase()}', activeSkin.textColor);
+                            _showFeedbackGlow(
+                                context,
+                                'DIAL: ${style.name.toUpperCase()}',
+                                activeSkin.textColor);
                           },
                           child: Container(
                             decoration: BoxDecoration(
-                              color: isSelected ? activeSkin.textColor.withOpacity(0.15) : Colors.black.withOpacity(0.3),
+                              color: isSelected
+                                  ? activeSkin.textColor.withOpacity(0.15)
+                                  : Colors.black.withOpacity(0.3),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: isSelected ? activeSkin.textColor : activeSkin.textColor.withOpacity(0.2),
+                                color: isSelected
+                                    ? activeSkin.textColor
+                                    : activeSkin.textColor.withOpacity(0.2),
                                 width: isSelected ? 2.0 : 1.0,
                               ),
-                              boxShadow: isSelected ? [
-                                BoxShadow(
-                                  color: activeSkin.textColor.withOpacity(0.25),
-                                  blurRadius: 8,
-                                  spreadRadius: 1,
-                                )
-                              ] : [],
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: activeSkin.textColor
+                                            .withOpacity(0.25),
+                                        blurRadius: 8,
+                                        spreadRadius: 1,
+                                      )
+                                    ]
+                                  : [],
                             ),
                             padding: const EdgeInsets.all(12),
                             child: Column(
@@ -1771,7 +1974,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                               children: [
                                 Icon(
                                   dIcon,
-                                  color: isSelected ? activeSkin.textColor : Colors.white.withOpacity(0.7),
+                                  color: isSelected
+                                      ? activeSkin.textColor
+                                      : Colors.white.withOpacity(0.7),
                                   size: 32,
                                 ),
                                 const SizedBox(height: 12),
@@ -1780,8 +1985,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontFamily: 'Orbitron',
-                                    color: isSelected ? activeSkin.textColor : Colors.white.withOpacity(0.85),
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                    color: isSelected
+                                        ? activeSkin.textColor
+                                        : Colors.white.withOpacity(0.85),
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
                                     fontSize: 8.5,
                                     letterSpacing: 0.8,
                                   ),
@@ -1819,7 +2028,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
           if (isLandscape) {
             SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
           } else {
-            SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
+            SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+                overlays: SystemUiOverlay.values);
           }
 
           return Stack(
@@ -1837,7 +2047,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                   Container(
                     width: double.infinity,
                     padding: EdgeInsets.only(
-                      top: isLandscape ? 4 : (MediaQuery.of(context).padding.top + 4),
+                      top: isLandscape
+                          ? 4
+                          : (MediaQuery.of(context).padding.top + 4),
                       left: 16,
                       right: 16,
                       bottom: isLandscape ? 4 : 6,
@@ -1873,7 +2085,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                                 fontSize: 16,
                                 letterSpacing: 1.5,
                                 shadows: [
-                                  Shadow(color: topNavColor.withOpacity(0.6), blurRadius: 8),
+                                  Shadow(
+                                      color: topNavColor.withOpacity(0.6),
+                                      blurRadius: 8),
                                 ],
                               ),
                             ),
@@ -1881,22 +2095,29 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                               const SizedBox(width: 24),
                               IconButton(
                                 tooltip: 'Home',
-                                icon: Icon(Icons.home_rounded, color: topNavColor, size: 20),
+                                icon: Icon(Icons.home_rounded,
+                                    color: topNavColor, size: 20),
                                 onPressed: () => context.go('/home'),
                               ),
                               IconButton(
                                 tooltip: 'Library',
-                                icon: Icon(Icons.music_note_rounded, color: topNavColor.withOpacity(0.9), size: 20),
+                                icon: Icon(Icons.music_note_rounded,
+                                    color: topNavColor.withOpacity(0.9),
+                                    size: 20),
                                 onPressed: () => context.go('/library'),
                               ),
                               IconButton(
                                 tooltip: 'Folders',
-                                icon: Icon(Icons.folder_rounded, color: topNavColor.withOpacity(0.9), size: 20),
+                                icon: Icon(Icons.folder_rounded,
+                                    color: topNavColor.withOpacity(0.9),
+                                    size: 20),
                                 onPressed: () => context.go('/folders'),
                               ),
                               IconButton(
                                 tooltip: 'Playlists',
-                                icon: Icon(Icons.queue_music_rounded, color: topNavColor.withOpacity(0.9), size: 20),
+                                icon: Icon(Icons.queue_music_rounded,
+                                    color: topNavColor.withOpacity(0.9),
+                                    size: 20),
                                 onPressed: () => context.go('/playlists'),
                               ),
                               const SizedBox(width: 8),
@@ -1914,24 +2135,48 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                             if (!activeSkin.isFlat)
                               IconButton(
                                 tooltip: 'Dial Style',
-                                icon: Icon(Icons.track_changes_rounded, color: topNavColor.withOpacity(0.9), size: 20),
-                                onPressed: () => _showDialerSwitcherSheet(context),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                    minWidth: 32, minHeight: 32),
+                                icon: Icon(Icons.track_changes_rounded,
+                                    color: topNavColor.withOpacity(0.9),
+                                    size: 20),
+                                onPressed: () =>
+                                    _showDialerSwitcherSheet(context),
                               ),
                             IconButton(
                               tooltip: 'Skin',
-                              icon: Icon(Icons.palette_rounded, color: topNavColor.withOpacity(0.9), size: 20),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                  minWidth: 32, minHeight: 32),
+                              icon: Icon(Icons.palette_rounded,
+                                  color: topNavColor.withOpacity(0.9),
+                                  size: 20),
                               onPressed: () => _showSkinSwitcherSheet(context),
                             ),
                             IconButton(
                               tooltip: 'Visualizer Style',
-                              icon: Icon(Icons.waves_rounded, color: topNavColor.withOpacity(0.9), size: 20),
-                              onPressed: () => _showVisualizerSwitcherSheet(context),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                  minWidth: 32, minHeight: 32),
+                              icon: Icon(Icons.waves_rounded,
+                                  color: topNavColor.withOpacity(0.9),
+                                  size: 20),
+                              onPressed: () =>
+                                  _showVisualizerSwitcherSheet(context),
                             ),
                             IconButton(
                               tooltip: 'Equalizer',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                  minWidth: 32, minHeight: 32),
                               icon: Icon(
-                                _showEqualizer ? Icons.equalizer_rounded : Icons.equalizer_outlined,
-                                color: _showEqualizer ? topNavColor : topNavColor.withOpacity(0.6),
+                                _showEqualizer
+                                    ? Icons.equalizer_rounded
+                                    : Icons.equalizer_outlined,
+                                color: _showEqualizer
+                                    ? topNavColor
+                                    : topNavColor.withOpacity(0.6),
                                 size: 20,
                               ),
                               onPressed: () {
@@ -1943,19 +2188,26 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                             if (!isLandscape)
                               IconButton(
                                 tooltip: 'Library',
-                                icon: Icon(Icons.library_music_rounded, color: topNavColor.withOpacity(0.9), size: 20),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                    minWidth: 32, minHeight: 32),
+                                icon: Icon(Icons.library_music_rounded,
+                                    color: topNavColor.withOpacity(0.9),
+                                    size: 20),
                                 onPressed: () {
                                   context.go('/library');
                                 },
                               ),
                             IconButton(
                               tooltip: 'Settings',
-                              icon: Icon(Icons.settings_rounded, color: topNavColor.withOpacity(0.9), size: 20),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                  minWidth: 32, minHeight: 32),
+                              icon: Icon(Icons.settings_rounded,
+                                  color: topNavColor.withOpacity(0.9),
+                                  size: 20),
                               onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const PlayerSettingsScreen()),
-                                );
+                                context.push('/player-settings');
                               },
                             ),
                           ],
@@ -1971,454 +2223,768 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                       child: () {
                         if (isLandscape) {
                           // ━━━━━ LANDSCAPE: Two-column cockpit ━━━━━
-                          return _buildLandscapeCockpit(context, activeSkin, playbackService, settings, player);
+                          return _buildLandscapeCockpit(context, activeSkin,
+                              playbackService, settings, player);
                         }
 
                         // ━━━━━ PORTRAIT: Standard vertical layout ━━━━━
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                          child: SingleChildScrollView(
-                            physics: const BouncingScrollPhysics(),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                const SizedBox(height: 8),
+                        return SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildVisualizerSection(
+                                context: context,
+                                activeSkin: activeSkin,
+                                playbackService: playbackService,
+                                settings: settings,
+                                player: player,
+                                isLandscape: false,
+                              ),
+                              Transform.translate(
+                                offset: const Offset(0, -10),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      const SizedBox(height: 2),
 
-                                _buildVisualizerSection(
-                                  context: context,
-                                  activeSkin: activeSkin,
-                                  playbackService: playbackService,
-                                  settings: settings,
-                                  player: player,
-                                  isLandscape: false,
-                                ),
-
-                                const SizedBox(height: 2),
-
-                                // Floating background-less update feedback ticker
-                                AnimatedOpacity(
-                                  opacity: _statusMessage != null ? 1.0 : 0.0,
-                                  duration: const Duration(milliseconds: 200),
-                                  child: Container(
-                                    height: 16, // Reduced from 20
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      _statusMessage ?? '',
-                                      style: TextStyle(
-                                        color: activeSkin.textColor,
-                                        fontFamily: 'Orbitron',
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
-                                        letterSpacing: 1.5,
-                                        shadows: [
-                                          Shadow(
-                                            color: activeSkin.textColor.withOpacity(0.8),
-                                            blurRadius: 8,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                                const SizedBox(height: 4), 
-                                // 4. Track name marquee + Quick Actions above progress bar
-                                StreamBuilder<MediaItem?>(
-                                  stream: playbackService.currentMediaItemStream,
-                                  builder: (context, mediaSnapshot) {
-                                    final mediaItem = mediaSnapshot.data;
-                                    final String trackTitle = mediaItem?.title ?? 'No Track Loaded';
-                                    final String trackArtist = mediaItem?.artist ?? 'UltraMP3 Reborn';
-                                    final bool hasTrack = mediaItem != null;
-
-                                    return Consumer(
-                                      builder: (context, ref, _) {
-                                        final favorites = ref.watch(favoritesProvider);
-                                        final isFav = hasTrack && favorites.contains(mediaItem.id);
-
-                                        return Container(
-                                          margin: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
-                                          padding: const EdgeInsets.only(left: 12.0, right: 4.0, top: 2.0, bottom: 2.0),
-                                          decoration: BoxDecoration(
-                                            color: activeSkin.isFlat
-                                                ? Colors.black.withOpacity(0.35)
-                                                : activeSkin.lcdBgColor, // Solid opaque for S60 legibility
-                                            borderRadius: BorderRadius.circular(10),
-                                            border: Border.all(
-                                              color: activeSkin.isFlat
-                                                  ? activeSkin.textColor.withOpacity(0.15)
-                                                  : activeSkin.lcdBorderColor,
-                                              width: activeSkin.isFlat ? 0.8 : 1.2,
+                                      // Floating background-less update feedback ticker
+                                      AnimatedOpacity(
+                                        opacity:
+                                            _statusMessage != null ? 1.0 : 0.0,
+                                        duration:
+                                            const Duration(milliseconds: 200),
+                                        child: Container(
+                                          height: 16, // Reduced from 20
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            _statusMessage ?? '',
+                                            style: TextStyle(
+                                              color: activeSkin.textColor,
+                                              fontFamily: 'Orbitron',
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                              letterSpacing: 1.5,
+                                              shadows: [
+                                                Shadow(
+                                                  color: activeSkin.textColor
+                                                      .withOpacity(0.8),
+                                                  blurRadius: 8,
+                                                ),
+                                              ],
                                             ),
                                           ),
-                                          height: 36,
-                                          child: Row(
-                                            children: [
-                                              Expanded(
-                                                child: _ScrollingMarqueeText(
-                                                  title: trackTitle,
-                                                  artist: trackArtist,
-                                                  textColor: activeSkin.textColor,
-                                                ),
-                                              ),
-                                              SizedBox(
-                                                width: 42,
-                                                height: 42,
-                                                child: Material(
-                                                  color: Colors.transparent,
-                                                  child: InkWell(
-                                                    borderRadius: BorderRadius.circular(21),
-                                                    onTap: hasTrack ? () => ref.read(favoritesProvider.notifier).toggle(mediaItem!.id) : null,
-                                                    child: Center(
-                                                      child: Icon(
-                                                        isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                                                        color: isFav ? Colors.pinkAccent : activeSkin.textColor.withOpacity(0.55),
-                                                        size: 18,
-                                                      ),
-                                                    ),
+                                        ),
+                                      ),
+
+                                      const SizedBox(height: 4),
+                                      // 4. Track name marquee + Quick Actions above progress bar
+                                      StreamBuilder<MediaItem?>(
+                                        stream: playbackService
+                                            .currentMediaItemStream,
+                                        builder: (context, mediaSnapshot) {
+                                          final mediaItem = mediaSnapshot.data;
+                                          final String trackTitle =
+                                              mediaItem?.title ??
+                                                  'No Track Loaded';
+                                          final String trackArtist =
+                                              mediaItem?.artist ??
+                                                  'UltraMP3 Reborn';
+                                          final bool hasTrack =
+                                              mediaItem != null;
+
+                                          return Consumer(
+                                            builder: (context, ref, _) {
+                                              final favorites =
+                                                  ref.watch(favoritesProvider);
+                                              final isFav = hasTrack &&
+                                                  favorites
+                                                      .contains(mediaItem.id);
+
+                                              return Container(
+                                                margin:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 6.0,
+                                                        vertical: 2.0),
+                                                padding: const EdgeInsets.only(
+                                                    left: 12.0,
+                                                    right: 4.0,
+                                                    top: 2.0,
+                                                    bottom: 2.0),
+                                                decoration: BoxDecoration(
+                                                  color: activeSkin.isFlat
+                                                      ? Colors.black
+                                                          .withOpacity(0.35)
+                                                      : activeSkin
+                                                          .lcdBgColor, // Solid opaque for S60 legibility
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  border: Border.all(
+                                                    color: activeSkin.isFlat
+                                                        ? activeSkin.textColor
+                                                            .withOpacity(0.15)
+                                                        : activeSkin
+                                                            .lcdBorderColor,
+                                                    width: activeSkin.isFlat
+                                                        ? 0.8
+                                                        : 1.2,
                                                   ),
                                                 ),
-                                              ),
-                                              SizedBox(
-                                                width: 42,
-                                                height: 42,
-                                                child: Material(
-                                                  color: Colors.transparent,
-                                                  child: InkWell(
-                                                    borderRadius: BorderRadius.circular(21),
-                                                    onTap: hasTrack ? () {
-                                                      Navigator.push(
-                                                        context,
-                                                        MaterialPageRoute(
-                                                          builder: (_) => AddToPlaylistScreen(
-                                                            songId: mediaItem!.id,
-                                                            songTitle: mediaItem.title,
+                                                height: 36,
+                                                child: Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child:
+                                                          _ScrollingMarqueeText(
+                                                        title: trackTitle,
+                                                        artist: trackArtist,
+                                                        textColor: activeSkin
+                                                            .textColor,
+                                                      ),
+                                                    ),
+                                                    SizedBox(
+                                                      width: 42,
+                                                      height: 42,
+                                                      child: Material(
+                                                        color:
+                                                            Colors.transparent,
+                                                        child: InkWell(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(21),
+                                                          onTap: hasTrack
+                                                              ? () => ref
+                                                                  .read(favoritesProvider
+                                                                      .notifier)
+                                                                  .toggle(
+                                                                      mediaItem!
+                                                                          .id)
+                                                              : null,
+                                                          child: Center(
+                                                            child: Icon(
+                                                              isFav
+                                                                  ? Icons
+                                                                      .favorite_rounded
+                                                                  : Icons
+                                                                      .favorite_border_rounded,
+                                                              color: isFav
+                                                                  ? Colors
+                                                                      .pinkAccent
+                                                                  : activeSkin
+                                                                      .textColor
+                                                                      .withOpacity(
+                                                                          0.55),
+                                                              size: 18,
+                                                            ),
                                                           ),
                                                         ),
-                                                      );
-                                                    } : null,
-                                                    child: Center(
-                                                      child: Icon(
-                                                        Icons.playlist_add_rounded,
-                                                        color: activeSkin.textColor.withOpacity(0.55),
-                                                        size: 18,
                                                       ),
                                                     ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      },
-                                    );
-                                  },
-                                ),
-
-                                // 5. Progress / seek bar + time badges
-                                StreamBuilder<PositionState>(
-                                  stream: playbackService.positionStateStream,
-                                  builder: (context, posSnapshot) {
-                                    final posData = posSnapshot.data;
-                                    final position = posData?.position ?? Duration.zero;
-                                    final duration = posData?.duration ?? Duration.zero;
-                                    double currentProgress = 0.0;
-
-                                    if (duration.inMilliseconds > 0) {
-                                      currentProgress = position.inMilliseconds / duration.inMilliseconds;
-                                    }
-
-                                    return Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          SliderTheme(
-                                            data: SliderThemeData(
-                                              trackHeight: 3.0,
-                                              activeTrackColor: activeSkin.textColor,
-                                              inactiveTrackColor: activeSkin.textColor.withOpacity(0.15),
-                                              thumbColor: activeSkin.textColor,
-                                              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5.0),
-                                              overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
-                                            ),
-                                            child: Slider(
-                                              value: currentProgress.clamp(0.0, 1.0),
-                                              onChanged: (val) {
-                                                final targetMs = (val * duration.inMilliseconds).toInt();
-                                                playbackService.seek(Duration(milliseconds: targetMs));
-                                              },
-                                            ),
-                                          ),
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                                            child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                              children: [
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                  decoration: BoxDecoration(
-                                                    color: activeSkin.isFlat
-                                                        ? Colors.black.withOpacity(0.28)
-                                                        : activeSkin.lcdBgColor, // Solid for S60
-                                                    borderRadius: BorderRadius.circular(4),
-                                                    border: activeSkin.isFlat
-                                                        ? null
-                                                        : Border.all(color: activeSkin.lcdBorderColor, width: 0.8),
-                                                  ),
-                                                  child: Text(
-                                                    _formatDuration(position),
-                                                    style: TextStyle(
-                                                      color: activeSkin.textColor,
-                                                      fontFamily: 'Orbitron',
-                                                      fontSize: 10,
-                                                      fontWeight: FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ),
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                  decoration: BoxDecoration(
-                                                    color: activeSkin.isFlat
-                                                        ? Colors.black.withOpacity(0.28)
-                                                        : activeSkin.lcdBgColor, // Solid for S60
-                                                    borderRadius: BorderRadius.circular(4),
-                                                    border: activeSkin.isFlat
-                                                        ? null
-                                                        : Border.all(color: activeSkin.lcdBorderColor, width: 0.8),
-                                                  ),
-                                                  child: Text(
-                                                    _formatDuration(duration),
-                                                    style: TextStyle(
-                                                      color: activeSkin.textColor,
-                                                      fontFamily: 'Orbitron',
-                                                      fontSize: 10,
-                                                      fontWeight: FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                ),
-
-                                // 6. Upcoming Queue Display
-                                StreamBuilder<List<MediaItem>>(
-                                  stream: playbackService.handler.queue,
-                                  builder: (context, queueSnap) {
-                                    return StreamBuilder<int?>(
-                                      stream: playbackService.handler.playerInstance.currentIndexStream,
-                                      builder: (context, indexSnap) {
-                                        final queue = queueSnap.data ?? [];
-                                        final currentIndex = indexSnap.data ?? 0;
-
-                                        if (activeSkin.isFlat) {
-                                          final upcoming = <MapEntry<int, MediaItem>>[];
-                                          for (int i = currentIndex + 1; i < queue.length && upcoming.length < 5; i++) {
-                                            upcoming.add(MapEntry(i, queue[i]));
-                                          }
-                                          if (upcoming.isEmpty) return const SizedBox.shrink();
-
-                                          return Container(
-                                            margin: const EdgeInsets.only(top: 6, left: 6, right: 6),
-                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                            decoration: BoxDecoration(
-                                              color: Colors.black.withOpacity(0.28),
-                                              borderRadius: BorderRadius.circular(10),
-                                              border: Border.all(color: activeSkin.textColor.withOpacity(0.1), width: 0.8),
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Padding(
-                                                  padding: const EdgeInsets.only(bottom: 6),
-                                                  child: Text(
-                                                    'UP NEXT',
-                                                    style: TextStyle(
-                                                      color: activeSkin.textColor.withOpacity(0.5),
-                                                      fontFamily: 'Orbitron',
-                                                      fontSize: 9,
-                                                      fontWeight: FontWeight.bold,
-                                                      letterSpacing: 1.2,
-                                                    ),
-                                                  ),
-                                                ),
-                                                ...upcoming.map((entry) {
-                                                  final idx = entry.key;
-                                                  final item = entry.value;
-                                                  return GestureDetector(
-                                                    behavior: HitTestBehavior.opaque,
-                                                    onTap: () => playbackService.handler.playerInstance.seek(Duration.zero, index: idx),
-                                                    child: Padding(
-                                                      padding: const EdgeInsets.symmetric(vertical: 4),
-                                                      child: Row(
-                                                        children: [
-                                                          Container(
-                                                            width: 22,
-                                                            height: 22,
-                                                            alignment: Alignment.center,
-                                                            decoration: BoxDecoration(
-                                                              shape: BoxShape.circle,
-                                                              color: activeSkin.textColor.withOpacity(0.1),
-                                                            ),
-                                                            child: Text(
-                                                              '${idx + 1}',
-                                                              style: TextStyle(
-                                                                color: activeSkin.textColor.withOpacity(0.6),
-                                                                fontSize: 9,
-                                                                fontWeight: FontWeight.bold,
-                                                              ),
+                                                    SizedBox(
+                                                      width: 42,
+                                                      height: 42,
+                                                      child: Material(
+                                                        color:
+                                                            Colors.transparent,
+                                                        child: InkWell(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(21),
+                                                          onTap: hasTrack
+                                                              ? () {
+                                                                  Navigator
+                                                                      .push(
+                                                                    context,
+                                                                    MaterialPageRoute(
+                                                                      builder:
+                                                                          (_) =>
+                                                                              AddToPlaylistScreen(
+                                                                        songId:
+                                                                            mediaItem!.id,
+                                                                        songTitle:
+                                                                            mediaItem.title,
+                                                                      ),
+                                                                    ),
+                                                                  );
+                                                                }
+                                                              : null,
+                                                          child: Center(
+                                                            child: Icon(
+                                                              Icons
+                                                                  .playlist_add_rounded,
+                                                              color: activeSkin
+                                                                  .textColor
+                                                                  .withOpacity(
+                                                                      0.55),
+                                                              size: 18,
                                                             ),
                                                           ),
-                                                          const SizedBox(width: 10),
-                                                          Expanded(
-                                                            child: Column(
-                                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                                              children: [
-                                                                Text(
-                                                                  item.title,
-                                                                  style: TextStyle(
-                                                                    color: activeSkin.textColor.withOpacity(0.9),
-                                                                    fontSize: 12,
-                                                                    fontWeight: FontWeight.bold,
-                                                                  ),
-                                                                  maxLines: 1,
-                                                                  overflow: TextOverflow.ellipsis,
-                                                                ),
-                                                                Text(
-                                                                  item.artist ?? '',
-                                                                  style: TextStyle(
-                                                                    color: activeSkin.textColor.withOpacity(0.45),
-                                                                    fontSize: 10,
-                                                                  ),
-                                                                  maxLines: 1,
-                                                                  overflow: TextOverflow.ellipsis,
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                          Icon(Icons.chevron_right_rounded, color: activeSkin.textColor.withOpacity(0.3), size: 16),
-                                                        ],
+                                                        ),
                                                       ),
                                                     ),
-                                                  );
-                                                }).toList(),
-                                              ],
-                                            ),
+                                                  ],
+                                                ),
+                                              );
+                                            },
                                           );
-                                        } else {
-                                          final upcoming = <MapEntry<int, MediaItem>>[];
-                                          for (int i = currentIndex + 1; i < queue.length && upcoming.length < 5; i++) {
-                                            upcoming.add(MapEntry(i, queue[i]));
-                                          }
-                                          if (upcoming.isEmpty) return const SizedBox.shrink();
+                                        },
+                                      ),
 
-                                          return Container(
-                                            margin: const EdgeInsets.only(top: 6, left: 6, right: 6),
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                            decoration: BoxDecoration(
-                                              color: activeSkin.lcdBgColor.withOpacity(0.85),
-                                              borderRadius: BorderRadius.circular(6),
-                                              border: Border.all(color: activeSkin.lcdBorderColor, width: 1.0),
-                                            ),
+                                      // 5. Progress / seek bar + time badges
+                                      StreamBuilder<PositionState>(
+                                        stream:
+                                            playbackService.positionStateStream,
+                                        builder: (context, posSnapshot) {
+                                          final posData = posSnapshot.data;
+                                          final position = posData?.position ??
+                                              Duration.zero;
+                                          final duration = posData?.duration ??
+                                              Duration.zero;
+                                          double currentProgress = 0.0;
+
+                                          if (duration.inMilliseconds > 0) {
+                                            currentProgress =
+                                                position.inMilliseconds /
+                                                    duration.inMilliseconds;
+                                          }
+
+                                          return Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 4.0),
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
+                                                SliderTheme(
+                                                  data: SliderThemeData(
+                                                    trackHeight: 3.0,
+                                                    activeTrackColor:
+                                                        activeSkin.textColor,
+                                                    inactiveTrackColor:
+                                                        activeSkin.textColor
+                                                            .withOpacity(0.15),
+                                                    thumbColor:
+                                                        activeSkin.textColor,
+                                                    thumbShape:
+                                                        const RoundSliderThumbShape(
+                                                            enabledThumbRadius:
+                                                                5.0),
+                                                    overlayShape:
+                                                        const RoundSliderOverlayShape(
+                                                            overlayRadius: 10),
+                                                  ),
+                                                  child: Slider(
+                                                    value: currentProgress
+                                                        .clamp(0.0, 1.0),
+                                                    onChanged: (val) {
+                                                      final targetMs = (val *
+                                                              duration
+                                                                  .inMilliseconds)
+                                                          .toInt();
+                                                      playbackService.seek(
+                                                          Duration(
+                                                              milliseconds:
+                                                                  targetMs));
+                                                    },
+                                                  ),
+                                                ),
                                                 Padding(
-                                                  padding: const EdgeInsets.only(bottom: 4),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 12.0),
                                                   child: Row(
-                                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
                                                     children: [
-                                                      Text(
-                                                        'UPCOMING QUEUE',
-                                                        style: TextStyle(
-                                                          color: activeSkin.textColor.withOpacity(0.6),
-                                                          fontFamily: 'Orbitron',
-                                                          fontSize: 8,
-                                                          fontWeight: FontWeight.bold,
-                                                          letterSpacing: 1.1,
+                                                      Container(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                horizontal: 6,
+                                                                vertical: 2),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: activeSkin
+                                                                  .isFlat
+                                                              ? Colors.black
+                                                                  .withOpacity(
+                                                                      0.28)
+                                                              : activeSkin
+                                                                  .lcdBgColor, // Solid for S60
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(4),
+                                                          border: activeSkin
+                                                                  .isFlat
+                                                              ? null
+                                                              : Border.all(
+                                                                  color: activeSkin
+                                                                      .lcdBorderColor,
+                                                                  width: 0.8),
+                                                        ),
+                                                        child: Text(
+                                                          _formatDuration(
+                                                              position),
+                                                          style: TextStyle(
+                                                            color: activeSkin
+                                                                .textColor,
+                                                            fontFamily:
+                                                                'Orbitron',
+                                                            fontSize: 10,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
                                                         ),
                                                       ),
-                                                      Text(
-                                                        '${upcoming.length} TRACKS',
-                                                        style: TextStyle(
-                                                          color: activeSkin.textColor.withOpacity(0.6),
-                                                          fontFamily: 'monospace',
-                                                          fontSize: 8,
-                                                          fontWeight: FontWeight.bold,
+                                                      Container(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                horizontal: 6,
+                                                                vertical: 2),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: activeSkin
+                                                                  .isFlat
+                                                              ? Colors.black
+                                                                  .withOpacity(
+                                                                      0.28)
+                                                              : activeSkin
+                                                                  .lcdBgColor, // Solid for S60
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(4),
+                                                          border: activeSkin
+                                                                  .isFlat
+                                                              ? null
+                                                              : Border.all(
+                                                                  color: activeSkin
+                                                                      .lcdBorderColor,
+                                                                  width: 0.8),
+                                                        ),
+                                                        child: Text(
+                                                          _formatDuration(
+                                                              duration),
+                                                          style: TextStyle(
+                                                            color: activeSkin
+                                                                .textColor,
+                                                            fontFamily:
+                                                                'Orbitron',
+                                                            fontSize: 10,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
                                                         ),
                                                       ),
                                                     ],
                                                   ),
                                                 ),
-                                                Divider(color: activeSkin.lcdBorderColor.withOpacity(0.35), height: 6, thickness: 0.5),
-                                                ...upcoming.map((entry) {
-                                                  final idx = entry.key;
-                                                  final item = entry.value;
-                                                  return GestureDetector(
-                                                    behavior: HitTestBehavior.opaque,
-                                                    onTap: () => playbackService.handler.playerInstance.seek(Duration.zero, index: idx),
-                                                    child: Padding(
-                                                      padding: const EdgeInsets.symmetric(vertical: 3),
-                                                      child: Row(
-                                                        children: [
-                                                          Text(
-                                                            '${(idx + 1).toString().padLeft(2, '0')}. ',
-                                                            style: TextStyle(
-                                                              color: activeSkin.textColor.withOpacity(0.8),
-                                                              fontFamily: 'monospace',
-                                                              fontSize: 10,
-                                                              fontWeight: FontWeight.bold,
-                                                            ),
-                                                          ),
-                                                          Expanded(
-                                                            child: Text(
-                                                              '${item.title} – ${item.artist ?? ""}',
-                                                              style: TextStyle(
-                                                                color: activeSkin.textColor,
-                                                                fontFamily: 'monospace',
-                                                                fontSize: 10,
-                                                                fontWeight: FontWeight.bold,
-                                                              ),
-                                                              maxLines: 1,
-                                                              overflow: TextOverflow.ellipsis,
-                                                            ),
-                                                          ),
-                                                          Icon(Icons.play_arrow_rounded, color: activeSkin.textColor.withOpacity(0.5), size: 12),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  );
-                                                }).toList(),
                                               ],
                                             ),
                                           );
-                                        }
-                                      },
-                                    );
-                                  },
-                                ),
+                                        },
+                                      ),
 
-                                const SizedBox(height: 12),
-                                () {
-                                  final navHeight = kBottomNavigationBarHeight + MediaQuery.of(context).padding.bottom;
-                                  if (activeSkin.isFlat) {
-                                    return SizedBox(height: 100 + navHeight);
-                                  } else {
-                                    if (_dialStyle == DialStyle.circular) {
-                                      return SizedBox(height: 260 + navHeight);
-                                    } else {
-                                      return SizedBox(height: 180 + navHeight + 20);
-                                    }
-                                  }
-                                }(),
-                              ],
-                            ),
+                                      // 6. Upcoming Queue Display
+                                      StreamBuilder<List<MediaItem>>(
+                                        stream: playbackService.handler.queue,
+                                        builder: (context, queueSnap) {
+                                          return StreamBuilder<int?>(
+                                            stream: playbackService
+                                                .handler
+                                                .playerInstance
+                                                .currentIndexStream,
+                                            builder: (context, indexSnap) {
+                                              final queue =
+                                                  queueSnap.data ?? [];
+                                              final currentIndex =
+                                                  indexSnap.data ?? 0;
+
+                                              if (activeSkin.isFlat) {
+                                                final upcoming = <MapEntry<int,
+                                                    MediaItem>>[];
+                                                for (int i = currentIndex + 1;
+                                                    i < queue.length &&
+                                                        upcoming.length < 5;
+                                                    i++) {
+                                                  upcoming.add(
+                                                      MapEntry(i, queue[i]));
+                                                }
+                                                if (upcoming.isEmpty)
+                                                  return const SizedBox
+                                                      .shrink();
+
+                                                return Container(
+                                                  margin: const EdgeInsets.only(
+                                                      top: 6,
+                                                      left: 6,
+                                                      right: 6),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 8),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.black
+                                                        .withOpacity(0.28),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            10),
+                                                    border: Border.all(
+                                                        color: activeSkin
+                                                            .textColor
+                                                            .withOpacity(0.1),
+                                                        width: 0.8),
+                                                  ),
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Padding(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .only(
+                                                                bottom: 6),
+                                                        child: Text(
+                                                          'UP NEXT',
+                                                          style: TextStyle(
+                                                            color: activeSkin
+                                                                .textColor
+                                                                .withOpacity(
+                                                                    0.5),
+                                                            fontFamily:
+                                                                'Orbitron',
+                                                            fontSize: 9,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            letterSpacing: 1.2,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      ...upcoming.map((entry) {
+                                                        final idx = entry.key;
+                                                        final item =
+                                                            entry.value;
+                                                        return GestureDetector(
+                                                          behavior:
+                                                              HitTestBehavior
+                                                                  .opaque,
+                                                          onTap: () =>
+                                                              playbackService
+                                                                  .handler
+                                                                  .playerInstance
+                                                                  .seek(
+                                                                      Duration
+                                                                          .zero,
+                                                                      index:
+                                                                          idx),
+                                                          child: Padding(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .symmetric(
+                                                                    vertical:
+                                                                        4),
+                                                            child: Row(
+                                                              children: [
+                                                                Container(
+                                                                  width: 22,
+                                                                  height: 22,
+                                                                  alignment:
+                                                                      Alignment
+                                                                          .center,
+                                                                  decoration:
+                                                                      BoxDecoration(
+                                                                    shape: BoxShape
+                                                                        .circle,
+                                                                    color: activeSkin
+                                                                        .textColor
+                                                                        .withOpacity(
+                                                                            0.1),
+                                                                  ),
+                                                                  child: Text(
+                                                                    '${idx + 1}',
+                                                                    style:
+                                                                        TextStyle(
+                                                                      color: activeSkin
+                                                                          .textColor
+                                                                          .withOpacity(
+                                                                              0.6),
+                                                                      fontSize:
+                                                                          9,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                                const SizedBox(
+                                                                    width: 10),
+                                                                Expanded(
+                                                                  child: Column(
+                                                                    crossAxisAlignment:
+                                                                        CrossAxisAlignment
+                                                                            .start,
+                                                                    children: [
+                                                                      Text(
+                                                                        item.title,
+                                                                        style:
+                                                                            TextStyle(
+                                                                          color: activeSkin
+                                                                              .textColor
+                                                                              .withOpacity(0.9),
+                                                                          fontSize:
+                                                                              12,
+                                                                          fontWeight:
+                                                                              FontWeight.bold,
+                                                                        ),
+                                                                        maxLines:
+                                                                            1,
+                                                                        overflow:
+                                                                            TextOverflow.ellipsis,
+                                                                      ),
+                                                                      Text(
+                                                                        item.artist ??
+                                                                            '',
+                                                                        style:
+                                                                            TextStyle(
+                                                                          color: activeSkin
+                                                                              .textColor
+                                                                              .withOpacity(0.45),
+                                                                          fontSize:
+                                                                              10,
+                                                                        ),
+                                                                        maxLines:
+                                                                            1,
+                                                                        overflow:
+                                                                            TextOverflow.ellipsis,
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                ),
+                                                                Icon(
+                                                                    Icons
+                                                                        .chevron_right_rounded,
+                                                                    color: activeSkin
+                                                                        .textColor
+                                                                        .withOpacity(
+                                                                            0.3),
+                                                                    size: 16),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        );
+                                                      }).toList(),
+                                                    ],
+                                                  ),
+                                                );
+                                              } else {
+                                                final upcoming = <MapEntry<int,
+                                                    MediaItem>>[];
+                                                for (int i = currentIndex + 1;
+                                                    i < queue.length &&
+                                                        upcoming.length < 5;
+                                                    i++) {
+                                                  upcoming.add(
+                                                      MapEntry(i, queue[i]));
+                                                }
+                                                if (upcoming.isEmpty)
+                                                  return const SizedBox
+                                                      .shrink();
+
+                                                return Container(
+                                                  margin: const EdgeInsets.only(
+                                                      top: 6,
+                                                      left: 6,
+                                                      right: 6),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 6),
+                                                  decoration: BoxDecoration(
+                                                    color: activeSkin.lcdBgColor
+                                                        .withOpacity(0.85),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            6),
+                                                    border: Border.all(
+                                                        color: activeSkin
+                                                            .lcdBorderColor,
+                                                        width: 1.0),
+                                                  ),
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Padding(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .only(
+                                                                bottom: 4),
+                                                        child: Row(
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .spaceBetween,
+                                                          children: [
+                                                            Text(
+                                                              'UPCOMING QUEUE',
+                                                              style: TextStyle(
+                                                                color: activeSkin
+                                                                    .textColor
+                                                                    .withOpacity(
+                                                                        0.6),
+                                                                fontFamily:
+                                                                    'Orbitron',
+                                                                fontSize: 8,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                letterSpacing:
+                                                                    1.1,
+                                                              ),
+                                                            ),
+                                                            Text(
+                                                              '${upcoming.length} TRACKS',
+                                                              style: TextStyle(
+                                                                color: activeSkin
+                                                                    .textColor
+                                                                    .withOpacity(
+                                                                        0.6),
+                                                                fontFamily:
+                                                                    'monospace',
+                                                                fontSize: 8,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      Divider(
+                                                          color: activeSkin
+                                                              .lcdBorderColor
+                                                              .withOpacity(
+                                                                  0.35),
+                                                          height: 6,
+                                                          thickness: 0.5),
+                                                      ...upcoming.map((entry) {
+                                                        final idx = entry.key;
+                                                        final item =
+                                                            entry.value;
+                                                        return GestureDetector(
+                                                          behavior:
+                                                              HitTestBehavior
+                                                                  .opaque,
+                                                          onTap: () =>
+                                                              playbackService
+                                                                  .handler
+                                                                  .playerInstance
+                                                                  .seek(
+                                                                      Duration
+                                                                          .zero,
+                                                                      index:
+                                                                          idx),
+                                                          child: Padding(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .symmetric(
+                                                                    vertical:
+                                                                        3),
+                                                            child: Row(
+                                                              children: [
+                                                                Text(
+                                                                  '${(idx + 1).toString().padLeft(2, '0')}. ',
+                                                                  style:
+                                                                      TextStyle(
+                                                                    color: activeSkin
+                                                                        .textColor
+                                                                        .withOpacity(
+                                                                            0.8),
+                                                                    fontFamily:
+                                                                        'monospace',
+                                                                    fontSize:
+                                                                        10,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                  ),
+                                                                ),
+                                                                Expanded(
+                                                                  child: Text(
+                                                                    '${item.title} – ${item.artist ?? ""}',
+                                                                    style:
+                                                                        TextStyle(
+                                                                      color: activeSkin
+                                                                          .textColor,
+                                                                      fontFamily:
+                                                                          'monospace',
+                                                                      fontSize:
+                                                                          10,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                    ),
+                                                                    maxLines: 1,
+                                                                    overflow:
+                                                                        TextOverflow
+                                                                            .ellipsis,
+                                                                  ),
+                                                                ),
+                                                                Icon(
+                                                                    Icons
+                                                                        .play_arrow_rounded,
+                                                                    color: activeSkin
+                                                                        .textColor
+                                                                        .withOpacity(
+                                                                            0.5),
+                                                                    size: 12),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        );
+                                                      }).toList(),
+                                                    ],
+                                                  ),
+                                                );
+                                              }
+                                            },
+                                          );
+                                        },
+                                      ),
+
+                                      const SizedBox(height: 12),
+                                      () {
+                                        final navHeight =
+                                            kBottomNavigationBarHeight +
+                                                MediaQuery.of(context)
+                                                    .padding
+                                                    .bottom;
+                                        if (activeSkin.isFlat) {
+                                          return SizedBox(
+                                              height: 100 + navHeight);
+                                        } else {
+                                          if (_dialStyle ==
+                                              DialStyle.circular) {
+                                            return SizedBox(
+                                                height: 260 + navHeight);
+                                          } else {
+                                            return SizedBox(
+                                                height: 180 + navHeight + 20);
+                                          }
+                                        }
+                                      }(),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         );
                       }(),
@@ -2433,11 +2999,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                   left: 0,
                   right: 0,
                   bottom: () {
-                    final navHeight = kBottomNavigationBarHeight + MediaQuery.of(context).padding.bottom;
+                    final navHeight = kBottomNavigationBarHeight +
+                        MediaQuery.of(context).padding.bottom;
                     if (activeSkin.isFlat || _dialStyle == DialStyle.circular) {
-                      return _dialStyle == DialStyle.circular ? navHeight - 57 : navHeight - 30; // Move flat dialer down by 30px
+                      return _dialStyle == DialStyle.circular
+                          ? navHeight - 57
+                          : navHeight - 30; // Move flat dialer down by 30px
                     } else {
-                      return navHeight + 20; // Safe distance above bottom navigation bar
+                      return navHeight +
+                          20; // Safe distance above bottom navigation bar
                     }
                   }(),
                   child: StreamBuilder<ja.LoopMode>(
@@ -2476,7 +3046,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                       child: GestureDetector(
                         onTap: () {}, // Prevent tap-through
                         child: Padding(
-                          padding: isLandscape ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16.0, vertical: 40.0),
+                          padding: isLandscape
+                              ? EdgeInsets.zero
+                              : const EdgeInsets.symmetric(
+                                  horizontal: 16.0, vertical: 40.0),
                           child: _SkeuomorphicEqualizerPanel(
                             skin: activeSkin,
                             bands: _eqBands,
@@ -2500,8 +3073,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> with TickerProvider
                               });
                               _applyEqualizerWithKnobs(playbackService);
                             },
-                            onPresetSelected: (name, values) => _applyEqPreset(playbackService, name, values, activeSkin.textColor),
-                            onClose: () => setState(() => _showEqualizer = false),
+                            onPresetSelected: (name, values) => _applyEqPreset(
+                                playbackService,
+                                name,
+                                values,
+                                activeSkin.textColor),
+                            onClose: () =>
+                                setState(() => _showEqualizer = false),
                           ),
                         ),
                       ),
@@ -2554,10 +3132,11 @@ class _VisualizerPainter extends CustomPainter {
     // Background blur / ambient glow for specific combined styles
     if (hasTrack &&
         ((style == VisualizerStyle.combinedUltra && (variation % 4 == 3)) ||
-         style == VisualizerStyle.albumArtReactive)) {
-      final double avgAmp = amplitudes.fold(0.0, (sum, val) => sum + val) / amplitudes.length;
+            style == VisualizerStyle.albumArtReactive)) {
+      final double avgAmp =
+          amplitudes.fold(0.0, (sum, val) => sum + val) / amplitudes.length;
       final double intensity = (avgAmp / 38.0).clamp(0.0, 1.0);
-      
+
       final Paint glowPaint = Paint()
         ..shader = ui.Gradient.radial(
           Offset(w / 2, h / 2),
@@ -2579,9 +3158,9 @@ class _VisualizerPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5;
       canvas.drawLine(Offset(0, h / 2), Offset(w, h / 2), flatPaint);
-      
+
       // If no track is playing, draw an empty vinyl outline in the center for combined/album-art visualizer
-      if (style == VisualizerStyle.albumArtReactive || 
+      if (style == VisualizerStyle.albumArtReactive ||
           (style == VisualizerStyle.combinedUltra && (variation % 4 == 1))) {
         final Paint discPaint = Paint()
           ..color = barColor.withOpacity(0.12)
@@ -2593,7 +3172,8 @@ class _VisualizerPainter extends CustomPainter {
       return;
     }
 
-    final double avgAmp = amplitudes.fold(0.0, (sum, val) => sum + val) / amplitudes.length;
+    final double avgAmp =
+        amplitudes.fold(0.0, (sum, val) => sum + val) / amplitudes.length;
     final double normalizedAmp = (avgAmp / 38.0).clamp(0.0, 1.0);
 
     switch (style) {
@@ -2619,13 +3199,18 @@ class _VisualizerPainter extends CustomPainter {
               ..shader = ui.Gradient.linear(
                 Offset(left, midY - halfH),
                 Offset(left, midY + halfH),
-                [barColor.withOpacity(0.4), barColor, barColor.withOpacity(0.4)],
+                [
+                  barColor.withOpacity(0.4),
+                  barColor,
+                  barColor.withOpacity(0.4)
+                ],
                 [0.0, 0.5, 1.0],
               )
               ..style = PaintingStyle.fill;
-            
+
             canvas.drawRect(
-              Rect.fromLTWH(left, midY - halfH, barWidth, activeHeight.clamp(2.0, h)),
+              Rect.fromLTWH(
+                  left, midY - halfH, barWidth, activeHeight.clamp(2.0, h)),
               barPaint,
             );
           } else if (mode == 1) {
@@ -2635,7 +3220,8 @@ class _VisualizerPainter extends CustomPainter {
               ..style = PaintingStyle.fill;
             canvas.drawRRect(
               RRect.fromRectAndRadius(
-                Rect.fromLTWH(left, h - activeHeight, barWidth, activeHeight.clamp(2.0, h)),
+                Rect.fromLTWH(left, h - activeHeight, barWidth,
+                    activeHeight.clamp(2.0, h)),
                 Radius.circular(barWidth / 2),
               ),
               barPaint,
@@ -2644,17 +3230,18 @@ class _VisualizerPainter extends CustomPainter {
             // Retro Winamp style grid blocks
             final double blockSize = 3.2;
             final double blockGap = 1.0;
-            final int activeBlocks = (activeHeight / (blockSize + blockGap)).floor();
+            final int activeBlocks =
+                (activeHeight / (blockSize + blockGap)).floor();
             final int maxBlocks = (h / (blockSize + blockGap)).floor();
 
             for (int b = 0; b < activeBlocks; b++) {
               final double bottomY = h - (b * (blockSize + blockGap));
               // Green at bottom, yellow in mid, red at top
               final double pct = b / maxBlocks;
-              final Color gridColor = pct < 0.5 
-                  ? Colors.greenAccent 
+              final Color gridColor = pct < 0.5
+                  ? Colors.greenAccent
                   : (pct < 0.82 ? Colors.yellowAccent : Colors.redAccent);
-              
+
               final Paint blockPaint = Paint()
                 ..color = gridColor.withOpacity(0.9)
                 ..style = PaintingStyle.fill;
@@ -2671,7 +3258,8 @@ class _VisualizerPainter extends CustomPainter {
               ..style = PaintingStyle.stroke
               ..strokeWidth = 1.0;
             canvas.drawRect(
-              Rect.fromLTWH(left, h - activeHeight, barWidth, activeHeight.clamp(2.0, h)),
+              Rect.fromLTWH(
+                  left, h - activeHeight, barWidth, activeHeight.clamp(2.0, h)),
               barPaint,
             );
           }
@@ -2692,7 +3280,8 @@ class _VisualizerPainter extends CustomPainter {
       // 2. WAVEFORM VISUALIZATION
       case VisualizerStyle.waveform:
         final int samplePoints = 40;
-        final int waveType = variation % 4; // 0=Continuous, 1=Oscilloscope, 2=Bezier, 3=Symmetrical
+        final int waveType = variation %
+            4; // 0=Continuous, 1=Oscilloscope, 2=Bezier, 3=Symmetrical
         final double midY = h / 2;
 
         if (waveType == 0) {
@@ -2705,10 +3294,12 @@ class _VisualizerPainter extends CustomPainter {
           for (int i = 0; i < samplePoints; i++) {
             final double pct = i / samplePoints;
             final double ampIdx = amplitudes[i % 10] / 38.0;
-            final double waveVal = math.sin(pct * 6 * math.pi + time * 10) * ampIdx * (h * 0.4);
-            
+            final double waveVal =
+                math.sin(pct * 6 * math.pi + time * 10) * ampIdx * (h * 0.4);
+
             canvas.drawRect(
-              Rect.fromLTWH(i * barW, midY - waveVal, barW - 0.8, waveVal * 2.0),
+              Rect.fromLTWH(
+                  i * barW, midY - waveVal, barW - 0.8, waveVal * 2.0),
               fillPaint,
             );
           }
@@ -2726,7 +3317,8 @@ class _VisualizerPainter extends CustomPainter {
             final double pct = x / samplePoints;
             final double ampIdx = amplitudes[x % 10] / 38.0;
             final double dx = pct * w;
-            final double dy = midY + math.sin(pct * 4 * math.pi - time * 14.0) * ampIdx * (h * 0.45);
+            final double dy = midY +
+                math.sin(pct * 4 * math.pi - time * 14.0) * ampIdx * (h * 0.45);
             wavePath.lineTo(dx, dy);
           }
           canvas.drawPath(wavePath, linePaint);
@@ -2749,13 +3341,16 @@ class _VisualizerPainter extends CustomPainter {
             final double ampVal2 = amplitudes[(i + 1) % 10] / 38.0;
 
             final double x1 = pct1 * w;
-            final double y1 = midY + math.sin(pct1 * 4 * math.pi + time * 8) * ampVal1 * (h * 0.4);
-            
+            final double y1 = midY +
+                math.sin(pct1 * 4 * math.pi + time * 8) * ampVal1 * (h * 0.4);
+
             final double x2 = pct2 * w;
-            final double y2 = midY + math.sin(pct2 * 4 * math.pi + time * 8) * ampVal2 * (h * 0.4);
+            final double y2 = midY +
+                math.sin(pct2 * 4 * math.pi + time * 8) * ampVal2 * (h * 0.4);
 
             final double x3 = pct3 * w;
-            final double y3 = midY + math.sin(pct3 * 4 * math.pi + time * 8) * ampVal2 * (h * 0.4);
+            final double y3 = midY +
+                math.sin(pct3 * 4 * math.pi + time * 8) * ampVal2 * (h * 0.4);
 
             path.quadraticBezierTo(x2, y2, x3, y3);
           }
@@ -2779,7 +3374,10 @@ class _VisualizerPainter extends CustomPainter {
             final double pct = x / samplePoints;
             final double ampIdx = amplitudes[x % 10] / 38.0;
             final double dx = pct * w;
-            final double waveVal = math.sin(pct * 3 * math.pi + time * 6).abs() * ampIdx * (h * 0.42);
+            final double waveVal =
+                math.sin(pct * 3 * math.pi + time * 6).abs() *
+                    ampIdx *
+                    (h * 0.42);
 
             topPath.lineTo(dx, midY - waveVal);
             bottomPath.lineTo(dx, midY + waveVal);
@@ -2801,7 +3399,8 @@ class _VisualizerPainter extends CustomPainter {
       case VisualizerStyle.circularSpectrum:
         final double cx = w / 2;
         final double cy = h / 2;
-        final int circType = variation % 4; // 0=Rotating particles, 1=Pulsing radius, 2=TrapNation Inward, 3=Monstercat Bars
+        final int circType = variation %
+            4; // 0=Rotating particles, 1=Pulsing radius, 2=TrapNation Inward, 3=Monstercat Bars
         final int numBars = 64; // increased density
 
         if (circType == 0) {
@@ -2857,7 +3456,7 @@ class _VisualizerPainter extends CustomPainter {
           // TrapNation inward bouncing style
           final double baseRadius = 60.0;
           final double maxRadius = 45.0; // Grows inward!
-          
+
           final Paint rayPaint = Paint()
             ..color = peakColor.withOpacity(0.8)
             ..style = PaintingStyle.stroke
@@ -2867,13 +3466,15 @@ class _VisualizerPainter extends CustomPainter {
           final Paint fillPaint = Paint()
             ..color = peakColor.withOpacity(0.15)
             ..style = PaintingStyle.fill;
-            
-          canvas.drawCircle(Offset(cx, cy), baseRadius - 5 + normalizedAmp * 10, fillPaint);
+
+          canvas.drawCircle(
+              Offset(cx, cy), baseRadius - 5 + normalizedAmp * 10, fillPaint);
 
           for (int i = 0; i < numBars; i++) {
             final double angle = (i / numBars) * 2 * math.pi;
             final double bandAmp = amplitudes[i % 10] / 38.0;
-            final double innerRad = baseRadius - bandAmp * maxRadius; // Subtracted to go inward
+            final double innerRad =
+                baseRadius - bandAmp * maxRadius; // Subtracted to go inward
 
             final double sx = cx + math.cos(angle) * baseRadius * 1.5;
             final double sy = cy + math.sin(angle) * baseRadius * 0.95;
@@ -2887,14 +3488,15 @@ class _VisualizerPainter extends CustomPainter {
           // Monstercat-style dynamic thick bars
           final double baseRadius = 40.0;
           final double maxRadius = 65.0;
-          
+
           final Paint barPaint = Paint()
             ..color = barColor
             ..style = PaintingStyle.stroke
             ..strokeWidth = 4.0 // Thick bars
             ..strokeCap = StrokeCap.square;
 
-          for (int i = 0; i < numBars / 2; i++) { // Half bars for thickness
+          for (int i = 0; i < numBars / 2; i++) {
+            // Half bars for thickness
             final double angle = (i / (numBars / 2)) * 2 * math.pi;
             final double bandAmp = amplitudes[(i * 2) % 10] / 38.0;
             final double extRad = baseRadius + bandAmp * maxRadius;
@@ -2914,7 +3516,8 @@ class _VisualizerPainter extends CustomPainter {
       case VisualizerStyle.particleReactive:
         final double cx = w / 2;
         final double cy = h / 2;
-        final int effectType = variation % 4; // 0=Dust, 1=Galaxy, 2=Smoke, 3=Energy field
+        final int effectType =
+            variation % 4; // 0=Dust, 1=Galaxy, 2=Smoke, 3=Energy field
 
         if (effectType == 0) {
           // Dust (rising floaty embers)
@@ -2924,9 +3527,11 @@ class _VisualizerPainter extends CustomPainter {
             final double dx = ((i * 12.0 + time * 15 * speed) % w);
             final double wave = math.sin(time * 2.0 + i) * 6.0;
             final double dy = h - ((i * 6.0 + time * 8 * speed) % h);
-            
-            dustPaint.color = barColor.withOpacity((1.0 - (dy / h)).clamp(0.0, 1.0) * 0.7);
-            canvas.drawCircle(Offset(dx, dy + wave), 1.0 + normalizedAmp * 1.5, dustPaint);
+
+            dustPaint.color =
+                barColor.withOpacity((1.0 - (dy / h)).clamp(0.0, 1.0) * 0.7);
+            canvas.drawCircle(
+                Offset(dx, dy + wave), 1.0 + normalizedAmp * 1.5, dustPaint);
           }
         } else if (effectType == 1) {
           // Galaxy (twisting vortex)
@@ -2934,12 +3539,14 @@ class _VisualizerPainter extends CustomPainter {
           final Paint starPaint = Paint()..style = PaintingStyle.fill;
 
           for (int i = 0; i < starsCount; i++) {
-            final double angle = (i * 2.4) + (time * 0.5 * (1.0 + normalizedAmp));
+            final double angle =
+                (i * 2.4) + (time * 0.5 * (1.0 + normalizedAmp));
             final double distance = ((i * 1.8 + time * 12.0) % (w * 0.42));
             final double dx = cx + math.cos(angle) * distance * 1.6;
             final double dy = cy + math.sin(angle) * distance * 0.95;
 
-            final double opacity = (1.0 - (distance / (w * 0.42))).clamp(0.0, 1.0);
+            final double opacity =
+                (1.0 - (distance / (w * 0.42))).clamp(0.0, 1.0);
             starPaint.color = HSLColor.fromAHSL(
               opacity,
               (angle * 180 / math.pi) % 360.0,
@@ -2947,7 +3554,8 @@ class _VisualizerPainter extends CustomPainter {
               0.6,
             ).toColor();
 
-            canvas.drawCircle(Offset(dx, dy), 1.0 + normalizedAmp * 2.0, starPaint);
+            canvas.drawCircle(
+                Offset(dx, dy), 1.0 + normalizedAmp * 2.0, starPaint);
           }
         } else if (effectType == 2) {
           // Smoke (expanding soft clouds)
@@ -2957,9 +3565,11 @@ class _VisualizerPainter extends CustomPainter {
             final double dist = 12.0 + normalizedAmp * 20.0;
             final double dx = cx + math.cos(angle) * dist * 1.4;
             final double dy = cy + math.sin(angle) * dist * 0.9;
-            final double sizeRadius = 14.0 + math.sin(time * 3 + i).abs() * 6.0 * (1 + normalizedAmp);
+            final double sizeRadius =
+                14.0 + math.sin(time * 3 + i).abs() * 6.0 * (1 + normalizedAmp);
 
-            smokePaint.color = barColor.withOpacity(0.08 * (1.0 - normalizedAmp * 0.3));
+            smokePaint.color =
+                barColor.withOpacity(0.08 * (1.0 - normalizedAmp * 0.3));
             canvas.drawCircle(Offset(dx, dy), sizeRadius, smokePaint);
           }
         } else {
@@ -2968,7 +3578,7 @@ class _VisualizerPainter extends CustomPainter {
             ..color = barColor.withOpacity(0.15 + normalizedAmp * 0.3)
             ..strokeWidth = 1.0
             ..style = PaintingStyle.stroke;
-          
+
           final Path path = Path();
           final int nodes = 8;
           for (int i = 0; i < nodes; i++) {
@@ -2977,11 +3587,14 @@ class _VisualizerPainter extends CustomPainter {
             final double dx1 = cx + math.cos(angle) * r1 * 1.6;
             final double dy1 = cy + math.sin(angle) * r1 * 0.95;
 
-            if (i == 0) path.moveTo(dx1, dy1);
-            else path.lineTo(dx1, dy1);
+            if (i == 0)
+              path.moveTo(dx1, dy1);
+            else
+              path.lineTo(dx1, dy1);
 
             // Cross draw
-            final double angle2 = ((i + 3) % nodes / nodes) * 2 * math.pi + time * 0.4;
+            final double angle2 =
+                ((i + 3) % nodes / nodes) * 2 * math.pi + time * 0.4;
             final double r2 = 12.0 + (amplitudes[(i + 3) % 10] / 38.0) * 25.0;
             final double dx2 = cx + math.cos(angle2) * r2 * 1.6;
             final double dy2 = cy + math.sin(angle2) * r2 * 0.95;
@@ -2994,7 +3607,8 @@ class _VisualizerPainter extends CustomPainter {
 
       // 5. LIQUID / FLUID VISUALIZER
       case VisualizerStyle.liquidFluid:
-        final int fluidMode = 0; // Force 0 to bypass V2 & V3 (Bezier Swirl, Hot Lava Flow)
+        final int fluidMode =
+            0; // Force 0 to bypass V2 & V3 (Bezier Swirl, Hot Lava Flow)
         final double midY = h / 2;
 
         if (fluidMode == 0) {
@@ -3005,8 +3619,11 @@ class _VisualizerPainter extends CustomPainter {
 
           for (int x = 0; x <= w; x += 5) {
             final double pct = x / w;
-            final double wave1 = math.sin(pct * 3 * math.pi + time * 4.5) * 8.0 * (1 + normalizedAmp);
-            final double wave2 = math.cos(pct * 6 * math.pi - time * 3.0) * 4.0 * normalizedAmp;
+            final double wave1 = math.sin(pct * 3 * math.pi + time * 4.5) *
+                8.0 *
+                (1 + normalizedAmp);
+            final double wave2 =
+                math.cos(pct * 6 * math.pi - time * 3.0) * 4.0 * normalizedAmp;
             fluidPath.lineTo(x.toDouble(), midY + wave1 + wave2);
           }
           fluidPath.lineTo(w, h);
@@ -3035,12 +3652,15 @@ class _VisualizerPainter extends CustomPainter {
           for (int i = 0; i <= segments; i++) {
             final double pct = i / segments;
             final double angle = pct * 4 * math.pi + time * 3.0;
-            final double radius = (4.0 + normalizedAmp * 24.0) * (1.0 + pct * 0.5);
+            final double radius =
+                (4.0 + normalizedAmp * 24.0) * (1.0 + pct * 0.5);
             final double dx = cx + math.cos(angle) * radius * 1.5;
             final double dy = cy + math.sin(angle) * radius * 0.95;
 
-            if (i == 0) path.moveTo(dx, dy);
-            else path.lineTo(dx, dy);
+            if (i == 0)
+              path.moveTo(dx, dy);
+            else
+              path.lineTo(dx, dy);
           }
           canvas.drawPath(path, swirlPaint);
         } else {
@@ -3051,7 +3671,7 @@ class _VisualizerPainter extends CustomPainter {
             final double dx = (i * (w / 11));
             final double lavaH = 6.0 + (amplitudes[i % 10] / 38.0) * h * 0.7;
             final double dy = h - lavaH;
-            
+
             lavaPaint.color = HSLColor.fromAHSL(
               0.38,
               15.0 + normalizedAmp * 35.0, // Hot orange/red spectrum
@@ -3071,7 +3691,8 @@ class _VisualizerPainter extends CustomPainter {
       case VisualizerStyle.breathingRings:
         final double cx = w / 2;
         final double cy = h / 2;
-        final int ringType = variation % 3; // 0=Single, 1=Concentric, 2=Star rings
+        final int ringType =
+            variation % 3; // 0=Single, 1=Concentric, 2=Star rings
 
         if (ringType == 0) {
           // Simple breathing ring expanding with bass
@@ -3080,9 +3701,9 @@ class _VisualizerPainter extends CustomPainter {
             ..color = barColor.withOpacity(0.8)
             ..style = PaintingStyle.stroke
             ..strokeWidth = 2.0;
-          
+
           canvas.drawCircle(Offset(cx, cy), r, ringPaint);
-          
+
           // Outer halo
           ringPaint.color = barColor.withOpacity(0.2);
           ringPaint.strokeWidth = 1.0;
@@ -3096,7 +3717,8 @@ class _VisualizerPainter extends CustomPainter {
           for (int i = 1; i <= 3; i++) {
             final double pulse = normalizedAmp * (8.0 * i);
             final double r = (12.0 * i) + pulse;
-            ringPaint.color = barColor.withOpacity((1.0 - (i * 0.25)).clamp(0.0, 1.0));
+            ringPaint.color =
+                barColor.withOpacity((1.0 - (i * 0.25)).clamp(0.0, 1.0));
             canvas.drawCircle(Offset(cx, cy), r, ringPaint);
           }
         } else {
@@ -3117,8 +3739,10 @@ class _VisualizerPainter extends CustomPainter {
             final double dx = cx + math.cos(angle) * r * 1.5;
             final double dy = cy + math.sin(angle) * r * 0.95;
 
-            if (i == 0) starPath.moveTo(dx, dy);
-            else starPath.lineTo(dx, dy);
+            if (i == 0)
+              starPath.moveTo(dx, dy);
+            else
+              starPath.lineTo(dx, dy);
           }
           starPath.close();
           canvas.drawPath(starPath, starPaint);
@@ -3130,7 +3754,8 @@ class _VisualizerPainter extends CustomPainter {
         final int bandsCount = 14;
         final double barGap = 1.5;
         final double barWidth = (w - (barGap * (bandsCount - 1))) / bandsCount;
-        final int retroMode = variation % 3; // 0=Winamp grid, 1=Glowing fire, 2=Falloff peaks
+        final int retroMode =
+            variation % 3; // 0=Winamp grid, 1=Glowing fire, 2=Falloff peaks
 
         for (int i = 0; i < bandsCount; i++) {
           final double left = i * (barWidth + barGap);
@@ -3149,15 +3774,19 @@ class _VisualizerPainter extends CustomPainter {
             for (int b = 0; b < blocks; b++) {
               final double bottomY = h - (b * (blockH + gapH));
               final double pct = b / maxB;
-              
+
               // Classic Winamp spectrum colors: green -> yellow -> red
-              final Color col = pct < 0.4 
-                  ? const Color(0xFF00FF00) 
-                  : (pct < 0.78 ? const Color(0xFFFFCC00) : const Color(0xFFFF0000));
+              final Color col = pct < 0.4
+                  ? const Color(0xFF00FF00)
+                  : (pct < 0.78
+                      ? const Color(0xFFFFCC00)
+                      : const Color(0xFFFF0000));
 
               canvas.drawRect(
                 Rect.fromLTWH(left, bottomY - blockH, barWidth, blockH),
-                Paint()..color = col..style = PaintingStyle.fill,
+                Paint()
+                  ..color = col
+                  ..style = PaintingStyle.fill,
               );
             }
           } else if (retroMode == 1) {
@@ -3170,9 +3799,10 @@ class _VisualizerPainter extends CustomPainter {
                 [0.0, 0.5, 1.0],
               )
               ..style = PaintingStyle.fill;
-            
+
             canvas.drawRect(
-              Rect.fromLTWH(left, h - activeHeight, barWidth, activeHeight.clamp(2.0, h)),
+              Rect.fromLTWH(
+                  left, h - activeHeight, barWidth, activeHeight.clamp(2.0, h)),
               firePaint,
             );
           } else {
@@ -3181,7 +3811,8 @@ class _VisualizerPainter extends CustomPainter {
               ..color = const ui.Color(0xFF33FF55)
               ..style = PaintingStyle.fill;
             canvas.drawRect(
-              Rect.fromLTWH(left, h - activeHeight, barWidth, activeHeight.clamp(1.0, h)),
+              Rect.fromLTWH(
+                  left, h - activeHeight, barWidth, activeHeight.clamp(1.0, h)),
               barPaint,
             );
           }
@@ -3201,7 +3832,8 @@ class _VisualizerPainter extends CustomPainter {
       case VisualizerStyle.albumArtReactive:
         final double cx = w / 2;
         final double cy = h / 2;
-        final int artMode = variation % 3; // 0=Glow around vinyl, 1=Blur pulse, 2=Dynamic shadow heartbeat
+        final int artMode = variation %
+            3; // 0=Glow around vinyl, 1=Blur pulse, 2=Dynamic shadow heartbeat
 
         // 1. Draw central skeuomorphic Vinyl Record / CD disk
         final double vinylRotation = time * 1.5;
@@ -3220,7 +3852,8 @@ class _VisualizerPainter extends CustomPainter {
           final Paint glowPaint = Paint()
             ..color = barColor.withOpacity(0.18)
             ..style = PaintingStyle.fill;
-          canvas.drawCircle(Offset(cx, cy), baseRadius + 12 + normalizedAmp * 8.0, glowPaint);
+          canvas.drawCircle(
+              Offset(cx, cy), baseRadius + 12 + normalizedAmp * 8.0, glowPaint);
         } else {
           // Dynamic shadow ring
           final Paint shadowPaint = Paint()
@@ -3265,7 +3898,8 @@ class _VisualizerPainter extends CustomPainter {
 
       // 9. COMBINED ULTRA
       case VisualizerStyle.combinedUltra:
-        final int comboMode = variation % 4; // Force 4 options to bypass V5 (Ultra Combo)
+        final int comboMode =
+            variation % 4; // Force 4 options to bypass V5 (Ultra Combo)
         // 0 = Waveform + spectrum bars
         // 1 = Circular spectrum + album art
         // 2 = Particles + pulse ring
@@ -3280,7 +3914,8 @@ class _VisualizerPainter extends CustomPainter {
           // 1. Draw spectrum bars
           final int bandsCount = 10;
           final double barGap = 2.0;
-          final double barWidth = (w - (barGap * (bandsCount - 1))) / bandsCount;
+          final double barWidth =
+              (w - (barGap * (bandsCount - 1))) / bandsCount;
 
           for (int i = 0; i < bandsCount; i++) {
             final double left = i * (barWidth + barGap);
@@ -3288,7 +3923,9 @@ class _VisualizerPainter extends CustomPainter {
             final Paint barPaint = Paint()
               ..color = barColor.withOpacity(0.48)
               ..style = PaintingStyle.fill;
-            canvas.drawRect(Rect.fromLTWH(left, h - activeHeight, barWidth, activeHeight), barPaint);
+            canvas.drawRect(
+                Rect.fromLTWH(left, h - activeHeight, barWidth, activeHeight),
+                barPaint);
           }
 
           // 2. Draw continuous waveform overlay
@@ -3303,11 +3940,11 @@ class _VisualizerPainter extends CustomPainter {
             final double pct = x / 30;
             final double ampIdx = amplitudes[x % 10] / 38.0;
             final double dx = pct * w;
-            final double dy = h * 0.35 + math.sin(pct * 5 * math.pi + time * 12.0) * ampIdx * 15.0;
+            final double dy = h * 0.35 +
+                math.sin(pct * 5 * math.pi + time * 12.0) * ampIdx * 15.0;
             wavePath.lineTo(dx, dy);
           }
           canvas.drawPath(wavePath, linePaint);
-
         } else if (comboMode == 1) {
           // Circular spectrum + album art
           // 1. Draw circular rays
@@ -3334,12 +3971,15 @@ class _VisualizerPainter extends CustomPainter {
           }
 
           // 2. Draw Vinyl CD
-          final Paint cdPaint = Paint()..color = const Color(0xFF141414)..style = PaintingStyle.fill;
+          final Paint cdPaint = Paint()
+            ..color = const Color(0xFF141414)
+            ..style = PaintingStyle.fill;
           canvas.drawCircle(Offset(cx, cy), baseRadius, cdPaint);
-          final Paint stickerPaint = Paint()..color = peakColor..style = PaintingStyle.fill;
+          final Paint stickerPaint = Paint()
+            ..color = peakColor
+            ..style = PaintingStyle.fill;
           canvas.drawCircle(Offset(cx, cy), baseRadius * 0.35, stickerPaint);
           canvas.drawCircle(Offset(cx, cy), 1.8, Paint()..color = Colors.black);
-
         } else if (comboMode == 2) {
           // Particles + pulse ring
           // 1. Drawing expanding bass ring
@@ -3358,18 +3998,18 @@ class _VisualizerPainter extends CustomPainter {
             final double dx = cx + math.cos(angle) * distance * 1.5;
             final double dy = cy + math.sin(angle) * distance * 0.95;
 
-            final double opacity = (1.0 - (distance / (w * 0.42 + r))).clamp(0.0, 1.0);
+            final double opacity =
+                (1.0 - (distance / (w * 0.42 + r))).clamp(0.0, 1.0);
             pPaint.color = barColor.withOpacity(opacity * 0.8);
             canvas.drawCircle(Offset(dx, dy), 1.2, pPaint);
           }
-
         } else if (comboMode == 3) {
           // Background blur + reactive glow
           // Soft glowing energy waves
           final Paint p = Paint()
             ..color = barColor.withOpacity(0.08 + normalizedAmp * 0.12)
             ..style = PaintingStyle.fill;
-          
+
           for (int i = 0; i < 3; i++) {
             final Path path = Path();
             path.moveTo(0, h);
@@ -3378,14 +4018,14 @@ class _VisualizerPainter extends CustomPainter {
 
             for (int x = 0; x <= 20; x++) {
               final double pct = x / 20;
-              final double dy = (h / 2) + math.sin(pct * 2 * math.pi + phase) * amp;
+              final double dy =
+                  (h / 2) + math.sin(pct * 2 * math.pi + phase) * amp;
               path.lineTo(pct * w, dy);
             }
             path.lineTo(w, h);
             path.close();
             canvas.drawPath(path, p);
           }
-
         } else {
           // 4. THE ULTRA COMBO!
           // Combined: Circular spectrum + Album art vinyl + Floating particles + Tiny seekbar waveform at the bottom
@@ -3396,7 +4036,8 @@ class _VisualizerPainter extends CustomPainter {
             final double dx = (i * 18.0 + time * 12.0) % w;
             final double waveY = cy + math.sin(time + i) * (h * 0.35);
             pPaint.color = barColor.withOpacity(0.24);
-            canvas.drawCircle(Offset(dx, waveY), 1.0 + normalizedAmp * 1.0, pPaint);
+            canvas.drawCircle(
+                Offset(dx, waveY), 1.0 + normalizedAmp * 1.0, pPaint);
           }
 
           // B. Draw circular spectrum expanding outward from the center vinyl
@@ -3423,9 +4064,13 @@ class _VisualizerPainter extends CustomPainter {
           }
 
           // C. Draw the Vinyl record CD disk in the center
-          final Paint cdPaint = Paint()..color = const Color(0xFF0D0D0D)..style = PaintingStyle.fill;
+          final Paint cdPaint = Paint()
+            ..color = const Color(0xFF0D0D0D)
+            ..style = PaintingStyle.fill;
           canvas.drawCircle(Offset(cx, cy), baseRadius, cdPaint);
-          final Paint stickerPaint = Paint()..color = peakColor..style = PaintingStyle.fill;
+          final Paint stickerPaint = Paint()
+            ..color = peakColor
+            ..style = PaintingStyle.fill;
           canvas.drawCircle(Offset(cx, cy), baseRadius * 0.32, stickerPaint);
           canvas.drawCircle(Offset(cx, cy), 2.0, Paint()..color = Colors.black);
 
@@ -3440,7 +4085,8 @@ class _VisualizerPainter extends CustomPainter {
           for (int x = 0; x <= 30; x++) {
             final double pct = x / 30;
             final double ampIdx = amplitudes[x % 10] / 38.0;
-            final double dy = (h - 8) + math.cos(pct * 4 * math.pi + time * 8) * ampIdx * 6.0;
+            final double dy =
+                (h - 8) + math.cos(pct * 4 * math.pi + time * 8) * ampIdx * 6.0;
             bottomWave.lineTo(pct * w, dy);
           }
           canvas.drawPath(bottomWave, wavePaint);
@@ -3465,7 +4111,8 @@ class _VisualizerPainter extends CustomPainter {
             ..style = PaintingStyle.stroke
             ..strokeWidth = 2.0;
           canvas.drawCircle(Offset(cx, cy), baseRadius, ringPaint);
-          canvas.drawCircle(Offset(cx, cy), baseRadius - 8, ringPaint..color = peakColor.withOpacity(0.6));
+          canvas.drawCircle(Offset(cx, cy), baseRadius - 8,
+              ringPaint..color = peakColor.withOpacity(0.6));
 
           // Draw radial explosive solar flare spikes (like design 10)
           final int numSpikes = 64;
@@ -3478,16 +4125,21 @@ class _VisualizerPainter extends CustomPainter {
             final double angle = (i / numSpikes) * 2 * math.pi + time * 0.2;
             final double amp = amplitudes[i % 10] / 38.0;
             // Flare spikes are highly reactive and explosive on beats
-            final double flareLength = 8.0 + amp * 32.0 * (1.0 + normalizedAmp * 0.5);
+            final double flareLength =
+                8.0 + amp * 32.0 * (1.0 + normalizedAmp * 0.5);
 
             final double startX = cx + math.cos(angle) * baseRadius;
             final double startY = cy + math.sin(angle) * baseRadius;
-            final double endX = cx + math.cos(angle) * (baseRadius + flareLength);
-            final double endY = cy + math.sin(angle) * (baseRadius + flareLength);
+            final double endX =
+                cx + math.cos(angle) * (baseRadius + flareLength);
+            final double endY =
+                cy + math.sin(angle) * (baseRadius + flareLength);
 
             // Gradient effect: shift from cyan to neon pink or orange
-            flarePaint.color = Color.lerp(barColor, peakColor, (i % 8) / 8.0)!.withOpacity(0.85);
-            canvas.drawLine(Offset(startX, startY), Offset(endX, endY), flarePaint);
+            flarePaint.color = Color.lerp(barColor, peakColor, (i % 8) / 8.0)!
+                .withOpacity(0.85);
+            canvas.drawLine(
+                Offset(startX, startY), Offset(endX, endY), flarePaint);
           }
         }
         break;
@@ -3502,23 +4154,28 @@ class _VisualizerPainter extends CustomPainter {
           // Double helix orbit orbits
           for (int layer = 0; layer < 2; layer++) {
             final double direction = layer == 0 ? 1.0 : -1.0;
-            final double orbitRadius = 40.0 + layer * 20.0 + normalizedAmp * 15.0;
+            final double orbitRadius =
+                40.0 + layer * 20.0 + normalizedAmp * 15.0;
             final Color layerColor = layer == 0 ? barColor : peakColor;
 
             for (int i = 0; i < dotsCount; i++) {
               final double progressPct = i / dotsCount;
-              final double angle = (progressPct * 2 * math.pi) + (time * 0.8 * direction);
-              
+              final double angle =
+                  (progressPct * 2 * math.pi) + (time * 0.8 * direction);
+
               // Modulate radius of the dot by amplitude
               final double amp = amplitudes[i % 10] / 38.0;
               final double dotSize = 2.0 + amp * 5.0;
 
               // Helix modulation (3D wave projection)
               final double xOffset = math.cos(angle) * orbitRadius * 1.5;
-              final double yOffset = math.sin(angle) * orbitRadius * 0.85 + math.sin(time * 3 + i) * 6.0;
+              final double yOffset = math.sin(angle) * orbitRadius * 0.85 +
+                  math.sin(time * 3 + i) * 6.0;
 
-              dotPaint.color = layerColor.withOpacity(0.2 + 0.8 * (1.0 - progressPct));
-              canvas.drawCircle(Offset(cx + xOffset, cy + yOffset), dotSize, dotPaint);
+              dotPaint.color =
+                  layerColor.withOpacity(0.2 + 0.8 * (1.0 - progressPct));
+              canvas.drawCircle(
+                  Offset(cx + xOffset, cy + yOffset), dotSize, dotPaint);
             }
           }
         }
@@ -3533,27 +4190,31 @@ class _VisualizerPainter extends CustomPainter {
 
             final double baseHeight = h * 0.45 + (layer * 12.0);
             final double phase = time * 2.5 + (layer * 2.1);
-            final double ampFactor = (8.0 + layer * 6.0) * (0.2 + normalizedAmp * 1.5);
-            
+            final double ampFactor =
+                (8.0 + layer * 6.0) * (0.2 + normalizedAmp * 1.5);
+
             path.lineTo(0, baseHeight);
 
             final int steps = 15;
             for (int i = 0; i <= steps; i++) {
               final double pct = i / steps;
               final double dx = pct * w;
-              
+
               // Modulate wave height using amplitude spectrum bands
               final double amp = amplitudes[i % 10] / 38.0;
-              final double dy = baseHeight - (amp * ampFactor) - (math.sin(pct * 3 * math.pi + phase) * 15.0);
+              final double dy = baseHeight -
+                  (amp * ampFactor) -
+                  (math.sin(pct * 3 * math.pi + phase) * 15.0);
               path.lineTo(dx, dy);
             }
-            
+
             path.lineTo(w, h);
             path.close();
 
             final Paint wavePaint = Paint()
               ..style = PaintingStyle.fill
-              ..color = Color.lerp(barColor, peakColor, layer / 2.0)!.withOpacity(0.18 + 0.12 * layer);
+              ..color = Color.lerp(barColor, peakColor, layer / 2.0)!
+                  .withOpacity(0.18 + 0.12 * layer);
 
             canvas.drawPath(path, wavePaint);
           }
@@ -3578,9 +4239,11 @@ class _VisualizerPainter extends CustomPainter {
             final double pct = i / steps;
             final double dx = pct * w;
             final double amp = amplitudes[i % 10] / 38.0;
-            
+
             // Multiple sine overlays for high-complexity fluid physics look
-            final double dy = baseHeight - (amp * 45.0 * (1.0 + normalizedAmp)) - (math.sin(pct * 4 * math.pi + time * 3.0) * 20.0);
+            final double dy = baseHeight -
+                (amp * 45.0 * (1.0 + normalizedAmp)) -
+                (math.sin(pct * 4 * math.pi + time * 3.0) * 20.0);
             if (i == 0) {
               path.moveTo(dx, dy);
             } else {
@@ -3596,14 +4259,16 @@ class _VisualizerPainter extends CustomPainter {
             final pt = points[i];
             final double amp = amplitudes[i % 10] / 38.0;
             final double particleSize = 3.0 + amp * 9.0;
-            
+
             // Neon glowing particles
-            particlePaint.color = Color.lerp(barColor, peakColor, i / points.length)!
-                .withOpacity(0.4 + 0.6 * math.sin(time * 5 + i).abs());
-            
+            particlePaint.color =
+                Color.lerp(barColor, peakColor, i / points.length)!
+                    .withOpacity(0.4 + 0.6 * math.sin(time * 5 + i).abs());
+
             // Subtle floating offset
             final double yOffset = math.sin(time * 4 + i) * (5.0 + amp * 12.0);
-            canvas.drawCircle(Offset(pt.dx, pt.dy + yOffset), particleSize, particlePaint);
+            canvas.drawCircle(
+                Offset(pt.dx, pt.dy + yOffset), particleSize, particlePaint);
 
             // Double outline glow
             canvas.drawCircle(
@@ -3650,14 +4315,16 @@ class _VisualizerPainter extends CustomPainter {
             final double screenY = cy + (star.y * h) / star.z;
 
             // If coordinates bleed out of boundaries, skip rendering
-            if (screenX < 0 || screenX > w || screenY < 0 || screenY > h) continue;
+            if (screenX < 0 || screenX > w || screenY < 0 || screenY > h)
+              continue;
 
             // Depth calculation: closer stars are larger and brighter
             final double size = (1.2 - star.z) * (3.5 + normalizedAmp * 8.0);
             final double opacity = (1.0 - star.z).clamp(0.0, 1.0);
 
-            starPaint.color = Color.lerp(barColor, peakColor, (star.z * 2.0).clamp(0.0, 1.0))!
-                .withOpacity(opacity * (0.35 + normalizedAmp * 0.65));
+            starPaint.color =
+                Color.lerp(barColor, peakColor, (star.z * 2.0).clamp(0.0, 1.0))!
+                    .withOpacity(opacity * (0.35 + normalizedAmp * 0.65));
 
             canvas.drawCircle(Offset(screenX, screenY), size, starPaint);
 
@@ -3689,16 +4356,20 @@ class _VisualizerPainter extends CustomPainter {
 
           for (int i = 0; i < ringsCount; i++) {
             final double amp = amplitudes[i % 10] / 38.0;
-            final double radius = 30.0 + i * 28.0 + (amp * 20.0) * (1.0 + normalizedAmp);
+            final double radius =
+                30.0 + i * 28.0 + (amp * 20.0) * (1.0 + normalizedAmp);
             final double opacity = (0.8 - (i * 0.15)).clamp(0.1, 1.0);
 
-            ringPaint.color = Color.lerp(barColor, peakColor, i / (ringsCount - 1))!.withOpacity(opacity);
+            ringPaint.color =
+                Color.lerp(barColor, peakColor, i / (ringsCount - 1))!
+                    .withOpacity(opacity);
             canvas.drawCircle(Offset(cx, cy), radius, ringPaint);
 
             final int particlesOnRing = 3 + i * 2;
             final Paint pPaint = Paint()..style = PaintingStyle.fill;
             for (int j = 0; j < particlesOnRing; j++) {
-              final double angle = (j / particlesOnRing) * 2 * math.pi + time * (0.4 + i * 0.15);
+              final double angle =
+                  (j / particlesOnRing) * 2 * math.pi + time * (0.4 + i * 0.15);
               final double px = cx + math.cos(angle) * radius;
               final double py = cy + math.sin(angle) * radius;
               pPaint.color = peakColor.withOpacity(opacity);
@@ -3725,7 +4396,8 @@ class _VisualizerPainter extends CustomPainter {
           for (int i = 0; i < numLasers; i++) {
             final double amp = amplitudes[i % 10] / 38.0;
             final double dx = spacing * (i + 1);
-            final double laserHeight = h * 0.8 * amp * (0.5 + normalizedAmp * 0.5);
+            final double laserHeight =
+                h * 0.8 * amp * (0.5 + normalizedAmp * 0.5);
 
             final Rect rect = Rect.fromLTRB(dx - 3, h - laserHeight, dx + 3, h);
             final Paint beamPaint = Paint()
@@ -3739,7 +4411,9 @@ class _VisualizerPainter extends CustomPainter {
                 ],
                 [0.0, 0.7, 1.0],
               );
-            canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(3)), beamPaint);
+            canvas.drawRRect(
+                RRect.fromRectAndRadius(rect, const Radius.circular(3)),
+                beamPaint);
 
             canvas.drawLine(
               Offset(dx, h - laserHeight),
@@ -3753,7 +4427,8 @@ class _VisualizerPainter extends CustomPainter {
             canvas.drawCircle(
               Offset(dx, h),
               8.0 + amp * 8.0,
-              Paint()..color = barColor.withOpacity(0.35 * (1.0 + normalizedAmp)),
+              Paint()
+                ..color = barColor.withOpacity(0.35 * (1.0 + normalizedAmp)),
             );
           }
         }
@@ -3765,7 +4440,9 @@ class _VisualizerPainter extends CustomPainter {
           final int nodes = 18;
           final double nodeSpacing = h / (nodes + 1);
           final Paint dotPaint = Paint()..style = PaintingStyle.fill;
-          final Paint linkPaint = Paint()..style = PaintingStyle.stroke..strokeWidth = 1.2;
+          final Paint linkPaint = Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.2;
 
           for (int i = 0; i < nodes; i++) {
             final double amp = amplitudes[i % 10] / 38.0;
@@ -3776,7 +4453,8 @@ class _VisualizerPainter extends CustomPainter {
             final double x1 = cx + math.cos(angle) * offsetDist;
             final double x2 = cx - math.cos(angle) * offsetDist;
 
-            linkPaint.color = Color.lerp(barColor, peakColor, i / nodes)!.withOpacity(0.35);
+            linkPaint.color =
+                Color.lerp(barColor, peakColor, i / nodes)!.withOpacity(0.35);
             canvas.drawLine(Offset(x1, dy), Offset(x2, dy), linkPaint);
 
             dotPaint.color = barColor.withOpacity(0.85);
@@ -3784,7 +4462,10 @@ class _VisualizerPainter extends CustomPainter {
             canvas.drawCircle(
               Offset(x1, dy),
               8.0 + amp * 6.0,
-              Paint()..style = PaintingStyle.stroke..strokeWidth = 0.8..color = barColor.withOpacity(0.3),
+              Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 0.8
+                ..color = barColor.withOpacity(0.3),
             );
 
             dotPaint.color = peakColor.withOpacity(0.85);
@@ -3792,7 +4473,10 @@ class _VisualizerPainter extends CustomPainter {
             canvas.drawCircle(
               Offset(x2, dy),
               8.0 + amp * 6.0,
-              Paint()..style = PaintingStyle.stroke..strokeWidth = 0.8..color = peakColor.withOpacity(0.3),
+              Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 0.8
+                ..color = peakColor.withOpacity(0.3),
             );
           }
         }
@@ -3809,23 +4493,30 @@ class _VisualizerPainter extends CustomPainter {
 
           for (int col = 0; col < cols; col++) {
             final double amp = amplitudes[col % 10] / 38.0;
-            final int activeRows = (amp * rows * (0.8 + normalizedAmp * 0.2)).round().clamp(1, rows);
+            final int activeRows = (amp * rows * (0.8 + normalizedAmp * 0.2))
+                .round()
+                .clamp(1, rows);
 
             for (int row = 0; row < rows; row++) {
               final bool isActive = row < activeRows;
               final double dx = 8.0 + col * cellW;
               final double dy = h - (row + 1) * cellH;
 
-              final Rect cellRect = Rect.fromLTWH(dx + 2, dy + 2, cellW - 4, cellH - 4);
+              final Rect cellRect =
+                  Rect.fromLTWH(dx + 2, dy + 2, cellW - 4, cellH - 4);
               final double rowPct = row / rows;
-              final Color baseCellColor = Color.lerp(barColor, peakColor, rowPct)!;
+              final Color baseCellColor =
+                  Color.lerp(barColor, peakColor, rowPct)!;
 
               if (isActive) {
                 cellPaint.color = baseCellColor.withOpacity(0.85);
-                canvas.drawRRect(RRect.fromRectAndRadius(cellRect, const Radius.circular(2)), cellPaint);
-                
                 canvas.drawRRect(
-                  RRect.fromRectAndRadius(cellRect.inflate(1.5), const Radius.circular(3)),
+                    RRect.fromRectAndRadius(cellRect, const Radius.circular(2)),
+                    cellPaint);
+
+                canvas.drawRRect(
+                  RRect.fromRectAndRadius(
+                      cellRect.inflate(1.5), const Radius.circular(3)),
                   Paint()
                     ..style = PaintingStyle.stroke
                     ..strokeWidth = 1.0
@@ -3833,7 +4524,9 @@ class _VisualizerPainter extends CustomPainter {
                 );
               } else {
                 cellPaint.color = baseCellColor.withOpacity(0.08);
-                canvas.drawRRect(RRect.fromRectAndRadius(cellRect, const Radius.circular(2)), cellPaint);
+                canvas.drawRRect(
+                    RRect.fromRectAndRadius(cellRect, const Radius.circular(2)),
+                    cellPaint);
               }
             }
           }
@@ -3845,8 +4538,9 @@ class _VisualizerPainter extends CustomPainter {
           final double cx = w / 2;
           final double cy = h / 2;
           final double maxRadius = math.max(cx, cy) * 1.2;
-          
-          final double avgAmp = amplitudes.fold(0.0, (sum, val) => sum + val) / amplitudes.length;
+
+          final double avgAmp =
+              amplitudes.fold(0.0, (sum, val) => sum + val) / amplitudes.length;
           final double amp = avgAmp / 38.0;
           final double bhRadius = 15.0 + amp * 22.0;
 
@@ -3854,10 +4548,10 @@ class _VisualizerPainter extends CustomPainter {
           final Paint glowPaint = Paint()..style = PaintingStyle.fill;
           glowPaint.color = barColor.withOpacity(0.12 + amp * 0.15);
           canvas.drawCircle(Offset(cx, cy), bhRadius * 2.8, glowPaint);
-          
+
           glowPaint.color = peakColor.withOpacity(0.24 + amp * 0.2);
           canvas.drawCircle(Offset(cx, cy), bhRadius * 1.8, glowPaint);
-          
+
           glowPaint.color = Colors.white.withOpacity(0.45);
           canvas.drawCircle(Offset(cx, cy), bhRadius * 1.2, glowPaint);
 
@@ -3876,25 +4570,30 @@ class _VisualizerPainter extends CustomPainter {
 
           for (int i = 0; i < starCount; i++) {
             final double starAmp = amplitudes[i % 10] / 38.0;
-            final double radius = (maxRadius - (time * (35.0 + starAmp * 85.0) + i * 22.0) % maxRadius);
-            
+            final double radius = (maxRadius -
+                (time * (35.0 + starAmp * 85.0) + i * 22.0) % maxRadius);
+
             // Do not paint stars that are already consumed inside the event horizon
             if (radius <= bhRadius + 2.0) continue;
 
-            final double angle = i * 0.8 + (maxRadius - radius) * 0.016 + time * 1.4;
-            
+            final double angle =
+                i * 0.8 + (maxRadius - radius) * 0.016 + time * 1.4;
+
             final double sx = cx + math.cos(angle) * radius;
             final double sy = cy + math.sin(angle) * radius;
 
             // Prev position for spaghettification tail stretching
             final double radiusPrev = radius + 6.0 + starAmp * 15.0;
-            final double anglePrev = i * 0.8 + (maxRadius - radiusPrev) * 0.016 + time * 1.4;
+            final double anglePrev =
+                i * 0.8 + (maxRadius - radiusPrev) * 0.016 + time * 1.4;
             final double sxPrev = cx + math.cos(anglePrev) * radiusPrev;
             final double syPrev = cy + math.sin(anglePrev) * radiusPrev;
 
-            final double proximityFactor = (radius - bhRadius) / (maxRadius - bhRadius);
-            final double opacity = (proximityFactor * 0.8 + 0.2).clamp(0.0, 1.0);
-            
+            final double proximityFactor =
+                (radius - bhRadius) / (maxRadius - bhRadius);
+            final double opacity =
+                (proximityFactor * 0.8 + 0.2).clamp(0.0, 1.0);
+
             final Color starColor = Color.lerp(barColor, Colors.white, 0.45)!;
             starPaint.color = starColor.withOpacity(opacity);
             starPaint.strokeWidth = 1.0 + (1.0 - proximityFactor) * 2.5;
@@ -3903,7 +4602,9 @@ class _VisualizerPainter extends CustomPainter {
           }
 
           // 4. Central Singularity (Pure Void Event Horizon)
-          final Paint singularityPaint = Paint()..color = Colors.black..style = PaintingStyle.fill;
+          final Paint singularityPaint = Paint()
+            ..color = Colors.black
+            ..style = PaintingStyle.fill;
           canvas.drawCircle(Offset(cx, cy), bhRadius, singularityPaint);
         }
         break;
@@ -3973,13 +4674,15 @@ class _S60DpadCockpitConsole extends StatelessWidget {
     }
 
     final bool isWide = dialStyle == DialStyle.rectangular;
-    
+
     // If skeuomorphic (not flat) and circular, render the gorgeous iPod click-wheel console
     if (!isWide && !skin.isFlat) {
       return _buildSkeuomorphicClickWheel(context);
     }
 
-    final double width = isWide ? 360.0 : 260.0;
+    final bool isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+    final double width = isLandscape ? 328.0 : (isWide ? 360.0 : 260.0);
     final double height = isWide ? 180.0 : 260.0;
     final Color iconCol = getDialIconColor();
 
@@ -4053,7 +4756,9 @@ class _S60DpadCockpitConsole extends StatelessWidget {
               top: isWide ? 4 : 30,
               child: _DpadMicroToggle(
                 icon: Icons.shuffle_rounded,
-                color: isShuffle ? getDialTextColor() : getDialTextColor().withOpacity(0.35),
+                color: isShuffle
+                    ? getDialTextColor()
+                    : getDialTextColor().withOpacity(0.35),
                 buttonFaceColor: getDialButtonFaceColor(),
                 onPressed: onToggleShuffle,
                 label: 'SHUF',
@@ -4066,11 +4771,17 @@ class _S60DpadCockpitConsole extends StatelessWidget {
               right: isWide ? 16 : 30,
               top: isWide ? 4 : 30,
               child: _DpadMicroToggle(
-                icon: loopMode == ja.LoopMode.one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
-                color: loopMode != ja.LoopMode.off ? getDialTextColor() : getDialTextColor().withOpacity(0.35),
+                icon: loopMode == ja.LoopMode.one
+                    ? Icons.repeat_one_rounded
+                    : Icons.repeat_rounded,
+                color: loopMode != ja.LoopMode.off
+                    ? getDialTextColor()
+                    : getDialTextColor().withOpacity(0.35),
                 buttonFaceColor: getDialButtonFaceColor(),
                 onPressed: onToggleRepeat,
-                label: loopMode == ja.LoopMode.one ? 'REP 1' : (loopMode == ja.LoopMode.all ? 'REP ALL' : 'REP OFF'),
+                label: loopMode == ja.LoopMode.one
+                    ? 'REP 1'
+                    : (loopMode == ja.LoopMode.all ? 'REP ALL' : 'REP OFF'),
                 dense: isWide,
               ),
             ),
@@ -4116,21 +4827,39 @@ class _S60DpadCockpitConsole extends StatelessWidget {
 
   Widget _buildSkeuomorphicClickWheel(BuildContext context) {
     final Color iconCol = getDialIconColor();
+    final bool isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Container(
-      width: double.infinity,
-      height: 260.0,
+      width: isLandscape ? 328.0 : double.infinity,
+      height: 220.0,
       decoration: BoxDecoration(
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(30.0),
-          topRight: Radius.circular(30.0),
-        ),
-        border: Border(
-          top: BorderSide(
-            color: skin.outerBorderColor.withOpacity(0.5),
-            width: 2,
-          ),
-        ),
+        borderRadius: isLandscape
+            ? const BorderRadius.only(
+                topLeft: Radius.circular(20.0),
+                topRight: Radius.circular(20.0),
+                bottomLeft: Radius.zero,
+                bottomRight: Radius.zero,
+              )
+            : const BorderRadius.only(
+                topLeft: Radius.circular(30.0),
+                topRight: Radius.circular(30.0),
+              ),
+        border: isLandscape
+            ? Border(
+                top: BorderSide(
+                    color: skin.outerBorderColor.withOpacity(0.5), width: 2),
+                left: BorderSide(
+                    color: skin.outerBorderColor.withOpacity(0.5), width: 2),
+                right: BorderSide(
+                    color: skin.outerBorderColor.withOpacity(0.5), width: 2),
+              )
+            : Border(
+                top: BorderSide(
+                  color: skin.outerBorderColor.withOpacity(0.5),
+                  width: 2,
+                ),
+              ),
         color: skin.panelBgColor.withOpacity(bgOpacity),
         boxShadow: [
           BoxShadow(
@@ -4144,45 +4873,51 @@ class _S60DpadCockpitConsole extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           // Corner buttons outside the main wheel
-          
+
           // Top-Left corner: Fast Backward
           Positioned(
-            left: 24,
-            top: 20,
+            left: 20,
+            top: 8,
             child: _buildCornerButton(
               icon: Icons.fast_rewind_rounded,
               onTap: onFastRewind,
               tooltip: 'FAST BACKWARD',
             ),
           ),
-          
+
           // Top-Right corner: Fast Forward
           Positioned(
-            right: 24,
-            top: 20,
+            right: 20,
+            top: 8,
             child: _buildCornerButton(
               icon: Icons.fast_forward_rounded,
               onTap: onFastForward,
               tooltip: 'FAST FORWARD',
             ),
           ),
-          
+
           // Bottom-Left corner: Repeat toggle
           Positioned(
-            left: 24,
-            bottom: 28,
+            left: 20,
+            bottom: 8,
             child: _buildCornerButton(
-              icon: loopMode == ja.LoopMode.one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
+              icon: loopMode == ja.LoopMode.one
+                  ? Icons.repeat_one_rounded
+                  : Icons.repeat_rounded,
               onTap: onToggleRepeat,
               isActive: loopMode != ja.LoopMode.off,
-              tooltip: loopMode == ja.LoopMode.one ? 'REPEAT: ONE' : (loopMode == ja.LoopMode.all ? 'REPEAT: ALL' : 'REPEAT: OFF'),
+              tooltip: loopMode == ja.LoopMode.one
+                  ? 'REPEAT: ONE'
+                  : (loopMode == ja.LoopMode.all
+                      ? 'REPEAT: ALL'
+                      : 'REPEAT: OFF'),
             ),
           ),
-          
+
           // Bottom-Right corner: Shuffle toggle
           Positioned(
-            right: 24,
-            bottom: 28,
+            right: 20,
+            bottom: 8,
             child: _buildCornerButton(
               icon: Icons.shuffle_rounded,
               onTap: onToggleShuffle,
@@ -4190,14 +4925,15 @@ class _S60DpadCockpitConsole extends StatelessWidget {
               tooltip: isShuffle ? 'SHUFFLE: ON' : 'SHUFFLE: OFF',
             ),
           ),
-          
+
           // Main central iPod click-wheel circle
           Container(
             width: 204,
             height: 204,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: skin.outerBorderColor.withOpacity(0.85), width: 3),
+              border: Border.all(
+                  color: skin.outerBorderColor.withOpacity(0.85), width: 3),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.45),
@@ -4229,7 +4965,7 @@ class _S60DpadCockpitConsole extends StatelessWidget {
                     iconColor: iconCol,
                   ),
                 ),
-                
+
                 // Bottom: Vol Down
                 Positioned(
                   bottom: 5,
@@ -4240,7 +4976,7 @@ class _S60DpadCockpitConsole extends StatelessWidget {
                     iconColor: iconCol,
                   ),
                 ),
-                
+
                 // Left: Skip Previous (Long press: REW)
                 Positioned(
                   left: 5,
@@ -4252,7 +4988,7 @@ class _S60DpadCockpitConsole extends StatelessWidget {
                     iconColor: iconCol,
                   ),
                 ),
-                
+
                 // Right: Skip Next (Long press: FF)
                 Positioned(
                   right: 5,
@@ -4264,7 +5000,7 @@ class _S60DpadCockpitConsole extends StatelessWidget {
                     iconColor: iconCol,
                   ),
                 ),
-                
+
                 // Center circular Play/Pause button
                 Align(
                   alignment: Alignment.center,
@@ -4273,7 +5009,8 @@ class _S60DpadCockpitConsole extends StatelessWidget {
                     height: 86,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.black.withOpacity(0.45), width: 1.5),
+                      border: Border.all(
+                          color: Colors.black.withOpacity(0.45), width: 1.5),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.25),
@@ -4298,7 +5035,9 @@ class _S60DpadCockpitConsole extends StatelessWidget {
                         onTap: onPlayPause,
                         child: Center(
                           child: Icon(
-                            isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                            isPlaying
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
                             color: iconCol,
                             size: 36,
                           ),
@@ -4330,7 +5069,8 @@ class _S60DpadCockpitConsole extends StatelessWidget {
           height: 50,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.black.withOpacity(0.45), width: 1.5),
+            border:
+                Border.all(color: Colors.black.withOpacity(0.45), width: 1.5),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.35),
@@ -4350,7 +5090,9 @@ class _S60DpadCockpitConsole extends StatelessWidget {
           child: Center(
             child: Icon(
               icon,
-              color: isActive ? skin.textColor : skin.buttonIconColor.withOpacity(0.7),
+              color: isActive
+                  ? skin.textColor
+                  : skin.buttonIconColor.withOpacity(0.7),
               size: 26,
             ),
           ),
@@ -4393,13 +5135,20 @@ class _S60DpadCockpitConsole extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: isShuffle ? activeCol : Colors.grey[800],
-                      boxShadow: isShuffle ? [BoxShadow(color: activeCol, blurRadius: 4)] : [],
+                      boxShadow: isShuffle
+                          ? [BoxShadow(color: activeCol, blurRadius: 4)]
+                          : [],
                     ),
                   ),
                   const SizedBox(width: 4),
                   Text(
                     'SHUF',
-                    style: TextStyle(fontFamily: 'monospace', fontSize: 8, color: isShuffle ? activeCol : activeCol.withOpacity(0.4), fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 8,
+                        color:
+                            isShuffle ? activeCol : activeCol.withOpacity(0.4),
+                        fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(width: 14),
                   Container(
@@ -4407,29 +5156,46 @@ class _S60DpadCockpitConsole extends StatelessWidget {
                     height: 8,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: loopMode != ja.LoopMode.off ? activeCol : Colors.grey[800],
-                      boxShadow: loopMode != ja.LoopMode.off ? [BoxShadow(color: activeCol, blurRadius: 4)] : [],
+                      color: loopMode != ja.LoopMode.off
+                          ? activeCol
+                          : Colors.grey[800],
+                      boxShadow: loopMode != ja.LoopMode.off
+                          ? [BoxShadow(color: activeCol, blurRadius: 4)]
+                          : [],
                     ),
                   ),
                   const SizedBox(width: 4),
                   Text(
                     'REP',
-                    style: TextStyle(fontFamily: 'monospace', fontSize: 8, color: loopMode != ja.LoopMode.off ? activeCol : activeCol.withOpacity(0.4), fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 8,
+                        color: loopMode != ja.LoopMode.off
+                            ? activeCol
+                            : activeCol.withOpacity(0.4),
+                        fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
               GestureDetector(
                 onTap: onCycleDialStyle,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: activeCol.withOpacity(0.3), width: 0.8),
+                    border: Border.all(
+                        color: activeCol.withOpacity(0.3), width: 0.8),
                     color: Colors.black.withOpacity(0.3),
                   ),
                   child: Text(
                     'SYNTH RACK',
-                    style: TextStyle(fontFamily: 'Orbitron', fontSize: 8, color: activeCol, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                    style: TextStyle(
+                        fontFamily: 'Orbitron',
+                        fontSize: 8,
+                        color: activeCol,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.8),
                   ),
                 ),
               ),
@@ -4477,19 +5243,26 @@ class _S60DpadCockpitConsole extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: isPlaying ? activeCol : Colors.transparent,
-                          border: Border.all(color: activeCol.withOpacity(0.5), width: 1.0),
+                          border: Border.all(
+                              color: activeCol.withOpacity(0.5), width: 1.0),
                         ),
                       ),
                       const SizedBox(height: 10),
                       Icon(
-                        isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                        isPlaying
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
                         color: activeCol,
                         size: 28,
                       ),
                       const SizedBox(height: 6),
                       Text(
                         isPlaying ? 'RUN' : 'HALT',
-                        style: TextStyle(fontFamily: 'monospace', fontSize: 8, color: activeCol, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 8,
+                            color: activeCol,
+                            fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -4513,10 +5286,26 @@ class _S60DpadCockpitConsole extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildRackMiniToggle(label: 'SHUF', isActive: isShuffle, onTap: onToggleShuffle, color: activeCol),
-              _buildRackMiniToggle(label: 'REW', isActive: false, onTap: onFastRewind, color: activeCol),
-              _buildRackMiniToggle(label: 'FF', isActive: false, onTap: onFastForward, color: activeCol),
-              _buildRackMiniToggle(label: 'LOOP', isActive: loopMode != ja.LoopMode.off, onTap: onToggleRepeat, color: activeCol),
+              _buildRackMiniToggle(
+                  label: 'SHUF',
+                  isActive: isShuffle,
+                  onTap: onToggleShuffle,
+                  color: activeCol),
+              _buildRackMiniToggle(
+                  label: 'REW',
+                  isActive: false,
+                  onTap: onFastRewind,
+                  color: activeCol),
+              _buildRackMiniToggle(
+                  label: 'FF',
+                  isActive: false,
+                  onTap: onFastForward,
+                  color: activeCol),
+              _buildRackMiniToggle(
+                  label: 'LOOP',
+                  isActive: loopMode != ja.LoopMode.off,
+                  onTap: onToggleRepeat,
+                  color: activeCol),
             ],
           ),
         ],
@@ -4547,7 +5336,11 @@ class _S60DpadCockpitConsole extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               label,
-              style: TextStyle(fontFamily: 'monospace', fontSize: 8, color: color.withOpacity(0.8), fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 8,
+                  color: color.withOpacity(0.8),
+                  fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -4567,8 +5360,11 @@ class _S60DpadCockpitConsole extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(4),
-          color: isActive ? color.withOpacity(0.12) : Colors.black.withOpacity(0.25),
-          border: Border.all(color: isActive ? color : color.withOpacity(0.35), width: 1.0),
+          color: isActive
+              ? color.withOpacity(0.12)
+              : Colors.black.withOpacity(0.25),
+          border: Border.all(
+              color: isActive ? color : color.withOpacity(0.35), width: 1.0),
         ),
         child: Text(
           label,
@@ -4663,7 +5459,8 @@ class _S60DpadCockpitConsole extends StatelessWidget {
             )
           : BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.black.withOpacity(0.65), width: 2),
+              border:
+                  Border.all(color: Colors.black.withOpacity(0.65), width: 2),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.4),
@@ -4745,8 +5542,8 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
   final Function(int, double) onBandChanged;
   final Function(String, List<double>) onPresetSelected;
   final VoidCallback onClose;
-  final double bassValue;    // 0.0-1.0 hardware knob
-  final double stereoValue;  // 0.0-1.0 hardware knob
+  final double bassValue; // 0.0-1.0 hardware knob
+  final double stereoValue; // 0.0-1.0 hardware knob
   final ValueChanged<double> onBassChanged;
   final ValueChanged<double> onStereoChanged;
 
@@ -4767,15 +5564,20 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final frequencies = ['60Hz', '230Hz', '910Hz', '4kHz', '14kHz'];
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Container(
       width: isLandscape ? MediaQuery.of(context).size.width : null,
       height: isLandscape ? MediaQuery.of(context).size.height : null,
-      constraints: BoxConstraints(maxHeight: isLandscape ? double.infinity : 460),
+      constraints:
+          BoxConstraints(maxHeight: isLandscape ? double.infinity : 460),
       decoration: BoxDecoration(
-        borderRadius: isLandscape ? BorderRadius.zero : BorderRadius.circular(20),
-        border: isLandscape ? null : Border.all(color: skin.outerBorderColor, width: 2.5),
+        borderRadius:
+            isLandscape ? BorderRadius.zero : BorderRadius.circular(20),
+        border: isLandscape
+            ? null
+            : Border.all(color: skin.outerBorderColor, width: 2.5),
         color: skin.panelBgColor,
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.85), blurRadius: 20),
@@ -4801,14 +5603,22 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
               children: [
                 Text(
                   'S60 GRAPHIC EQUALIZER',
-                  style: TextStyle(color: skin.textColor, fontFamily: 'Orbitron', fontSize: 10.5, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                  style: TextStyle(
+                      color: skin.textColor,
+                      fontFamily: 'Orbitron',
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.8),
                 ),
                 GestureDetector(
                   onTap: onClose,
                   child: Container(
                     padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withOpacity(0.4)),
-                    child: Icon(Icons.close_rounded, color: skin.textColor, size: 12),
+                    decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.black.withOpacity(0.4)),
+                    child: Icon(Icons.close_rounded,
+                        color: skin.textColor, size: 12),
                   ),
                 ),
               ],
@@ -4820,7 +5630,8 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.35),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: skin.textColor.withOpacity(0.15), width: 0.8),
+                border: Border.all(
+                    color: skin.textColor.withOpacity(0.15), width: 0.8),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -4861,11 +5672,14 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: skin.textColor.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: skin.textColor.withOpacity(0.3), width: 0.8),
+                          border: Border.all(
+                              color: skin.textColor.withOpacity(0.3),
+                              width: 0.8),
                         ),
                         child: Text(
                           activePreset.toUpperCase(),
@@ -4892,7 +5706,11 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
                     children: [
                       Text(
                         '${bands[index].toInt() > 0 ? "+" : ""}${bands[index].toInt()}dB',
-                        style: TextStyle(color: skin.textColor, fontFamily: 'monospace', fontSize: 8, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            color: skin.textColor,
+                            fontFamily: 'monospace',
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
                       Expanded(
@@ -4904,8 +5722,10 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
                               activeTrackColor: skin.textColor,
                               inactiveTrackColor: Colors.black26,
                               thumbColor: skin.textColor,
-                              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
-                              overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+                              thumbShape: const RoundSliderThumbShape(
+                                  enabledThumbRadius: 5),
+                              overlayShape: const RoundSliderOverlayShape(
+                                  overlayRadius: 10),
                             ),
                             child: Slider(
                               value: bands[index].clamp(-12.0, 12.0),
@@ -4919,7 +5739,11 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         frequencies[index],
-                        style: TextStyle(color: skin.textMutedColor, fontFamily: 'monospace', fontSize: 8.5, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            color: skin.textMutedColor,
+                            fontFamily: 'monospace',
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.bold),
                       ),
                     ],
                   );
@@ -4941,21 +5765,34 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
                   return GestureDetector(
                     onTap: () => onPresetSelected(presetName, presetValues),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 5),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(6),
-                        color: isSelected ? skin.textColor.withOpacity(0.2) : Colors.black.withOpacity(0.3),
+                        color: isSelected
+                            ? skin.textColor.withOpacity(0.2)
+                            : Colors.black.withOpacity(0.3),
                         border: Border.all(
-                          color: isSelected ? skin.textColor : skin.textColor.withOpacity(0.15),
+                          color: isSelected
+                              ? skin.textColor
+                              : skin.textColor.withOpacity(0.15),
                           width: isSelected ? 1.2 : 0.8,
                         ),
-                        boxShadow: isSelected ? [BoxShadow(color: skin.textColor.withOpacity(0.2), blurRadius: 4)] : [],
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                    color: skin.textColor.withOpacity(0.2),
+                                    blurRadius: 4)
+                              ]
+                            : [],
                       ),
                       alignment: Alignment.center,
                       child: Text(
                         presetName.toUpperCase(),
                         style: TextStyle(
-                          color: isSelected ? skin.textColor : skin.textColor.withOpacity(0.7),
+                          color: isSelected
+                              ? skin.textColor
+                              : skin.textColor.withOpacity(0.7),
                           fontFamily: 'monospace',
                           fontSize: 8,
                           fontWeight: FontWeight.bold,
@@ -4978,7 +5815,7 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
 // ---------------------------------------------------------
 
 class _SkeuomorphicKnob extends StatefulWidget {
-  final double value;       // 0.0 to 1.0
+  final double value; // 0.0 to 1.0
   final String label;
   final Color accentColor;
   final ValueChanged<double> onChanged;
@@ -5019,7 +5856,9 @@ class _SkeuomorphicKnobState extends State<_SkeuomorphicKnob> {
   Widget build(BuildContext context) {
     final Color glowColor = widget.accentColor;
     final double percentDb = (widget.value - 0.5) * 24.0;
-    final String dbLabel = percentDb >= 0 ? '+${percentDb.toStringAsFixed(0)}dB' : '${percentDb.toStringAsFixed(0)}dB';
+    final String dbLabel = percentDb >= 0
+        ? '+${percentDb.toStringAsFixed(0)}dB'
+        : '${percentDb.toStringAsFixed(0)}dB';
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -5074,7 +5913,8 @@ class _KnobPainter extends CustomPainter {
   final double value;
   final Color accentColor;
 
-  _KnobPainter({required this.rotation, required this.value, required this.accentColor});
+  _KnobPainter(
+      {required this.rotation, required this.value, required this.accentColor});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -5147,13 +5987,16 @@ class _KnobPainter extends CustomPainter {
     );
 
     // 5. Glowing indicator needle (rotates with value)
-    final double indicatorX = cx + (radius * 0.55) * math.cos(rotation - math.pi / 2);
-    final double indicatorY = cy + (radius * 0.55) * math.sin(rotation - math.pi / 2);
+    final double indicatorX =
+        cx + (radius * 0.55) * math.cos(rotation - math.pi / 2);
+    final double indicatorY =
+        cy + (radius * 0.55) * math.sin(rotation - math.pi / 2);
     final Paint needlePaint = Paint()
       ..color = accentColor
       ..strokeWidth = 2.5
       ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(cx, cy), Offset(indicatorX, indicatorY), needlePaint);
+    canvas.drawLine(
+        Offset(cx, cy), Offset(indicatorX, indicatorY), needlePaint);
 
     // 6. Center dot
     final Paint dotPaint = Paint()
@@ -5184,7 +6027,8 @@ class _TactileButtonWrapper extends StatefulWidget {
   State<_TactileButtonWrapper> createState() => _TactileButtonWrapperState();
 }
 
-class _TactileButtonWrapperState extends State<_TactileButtonWrapper> with SingleTickerProviderStateMixin {
+class _TactileButtonWrapperState extends State<_TactileButtonWrapper>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -5277,13 +6121,23 @@ class _CenterPlayInkwell extends StatelessWidget {
           height: 66,
           decoration: BoxDecoration(
             shape: borderRadius == null ? BoxShape.circle : BoxShape.rectangle,
-            borderRadius: borderRadius != null ? BorderRadius.circular(10) : null,
-            color: isPlaying ? activeTextColor.withOpacity(0.08) : Colors.transparent,
+            borderRadius:
+                borderRadius != null ? BorderRadius.circular(10) : null,
+            color: isPlaying
+                ? activeTextColor.withOpacity(0.08)
+                : Colors.transparent,
             border: Border.all(
-              color: isPlaying ? activeTextColor : activeIconColor.withOpacity(0.35),
+              color: isPlaying
+                  ? activeTextColor
+                  : activeIconColor.withOpacity(0.35),
               width: 1.5,
             ),
-            boxShadow: isPlaying ? [BoxShadow(color: activeTextColor.withOpacity(0.3), blurRadius: 6)] : [],
+            boxShadow: isPlaying
+                ? [
+                    BoxShadow(
+                        color: activeTextColor.withOpacity(0.3), blurRadius: 6)
+                  ]
+                : [],
           ),
           child: Center(
             child: Icon(
@@ -5326,7 +6180,8 @@ class _DpadTactileButton extends StatelessWidget {
         width: w,
         height: h,
         decoration: const BoxDecoration(
-          color: Colors.transparent, // Completely flat/transparent style, removing heavy physical button borders and backgrounds
+          color: Colors
+              .transparent, // Completely flat/transparent style, removing heavy physical button borders and backgrounds
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -5375,7 +6230,8 @@ class _DpadMicroSeekButton extends StatelessWidget {
     return _TactileButtonWrapper(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 10, vertical: dense ? 3.0 : 6.0),
+        padding:
+            EdgeInsets.symmetric(horizontal: 10, vertical: dense ? 3.0 : 6.0),
         color: Colors.transparent,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -5384,7 +6240,10 @@ class _DpadMicroSeekButton extends StatelessWidget {
             const SizedBox(height: 0.5),
             Text(
               tooltip,
-              style: TextStyle(color: color.withOpacity(0.55), fontSize: dense ? 6.5 : 7.5, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: color.withOpacity(0.55),
+                  fontSize: dense ? 6.5 : 7.5,
+                  fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -5421,7 +6280,8 @@ class _DpadMicroToggle extends StatelessWidget {
         width: w,
         height: h,
         decoration: const BoxDecoration(
-          color: Colors.transparent, // Completely flat/transparent style, removing heavy physical button borders and backgrounds
+          color: Colors
+              .transparent, // Completely flat/transparent style, removing heavy physical button borders and backgrounds
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -5480,7 +6340,11 @@ class _LCDBezelMiniButton extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(color: color.withOpacity(0.7), fontFamily: 'monospace', fontSize: 8.5, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                color: color.withOpacity(0.7),
+                fontFamily: 'monospace',
+                fontSize: 8.5,
+                fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -5498,11 +6362,14 @@ class _BacklitLCDBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(left: 4.0),
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0), // Expanded padding
+      padding: const EdgeInsets.symmetric(
+          horizontal: 8.0, vertical: 3.0), // Expanded padding
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(4), // Modern soft cornering
-        border: Border.all(color: color.withOpacity(0.35), width: 1.0), // Premium backlit border
+        border: Border.all(
+            color: color.withOpacity(0.35),
+            width: 1.0), // Premium backlit border
       ),
       child: Text(
         text,
@@ -5540,14 +6407,24 @@ class _EqualizerIconButton extends StatelessWidget {
             padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: active ? color.withOpacity(0.2) : Colors.black.withOpacity(0.35),
+              color: active
+                  ? color.withOpacity(0.2)
+                  : Colors.black.withOpacity(0.35),
               border: Border.all(
                 color: active ? color : color.withOpacity(0.2),
                 width: 1.2,
               ),
-              boxShadow: active ? [BoxShadow(color: color.withOpacity(0.6), blurRadius: 6, spreadRadius: 1)] : [],
+              boxShadow: active
+                  ? [
+                      BoxShadow(
+                          color: color.withOpacity(0.6),
+                          blurRadius: 6,
+                          spreadRadius: 1)
+                    ]
+                  : [],
             ),
-            child: Icon(Icons.equalizer_rounded, color: active ? color : color.withOpacity(0.55), size: 13),
+            child: Icon(Icons.equalizer_rounded,
+                color: active ? color : color.withOpacity(0.55), size: 13),
           ),
           const SizedBox(height: 2),
           Text(
@@ -5576,14 +6453,19 @@ class _MetallicLCDContainer extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: skin.outerBorderColor.withOpacity(0.2), width: 0.8),
+        border: Border.all(
+            color: skin.outerBorderColor.withOpacity(0.2), width: 0.8),
         gradient: LinearGradient(
-          colors: skin.metallicGradients.map((c) => c.withOpacity(0.25)).toList(),
+          colors:
+              skin.metallicGradients.map((c) => c.withOpacity(0.25)).toList(),
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 6, offset: const Offset(0, 3)),
+          BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 6,
+              offset: const Offset(0, 3)),
         ],
       ),
       padding: const EdgeInsets.all(2.0),
@@ -5594,10 +6476,12 @@ class _MetallicLCDContainer extends StatelessWidget {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.black.withOpacity(0.3), width: 0.8),
+              border:
+                  Border.all(color: Colors.black.withOpacity(0.3), width: 0.8),
               color: skin.lcdBgColor.withOpacity(0.55),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 16.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14.0, vertical: 16.0),
             child: child,
           ),
         ),
@@ -5692,7 +6576,9 @@ class _ScrollingMarqueeTextState extends State<_ScrollingMarqueeText> {
             fontSize: 12.0,
             fontWeight: FontWeight.w900,
             letterSpacing: 1.0,
-            shadows: [Shadow(color: widget.textColor.withOpacity(0.35), blurRadius: 4)],
+            shadows: [
+              Shadow(color: widget.textColor.withOpacity(0.35), blurRadius: 4)
+            ],
           ),
         ),
       ),
@@ -5730,16 +6616,29 @@ class _TactileRoundToggle extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: faceColor,
-              border: Border.all(color: Colors.black.withOpacity(0.5), width: 1.5),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 4, offset: const Offset(0, 2))],
-              gradient: RadialGradient(colors: [faceColor, faceColor.withOpacity(0.7)]),
+              border:
+                  Border.all(color: Colors.black.withOpacity(0.5), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.4),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2))
+              ],
+              gradient: RadialGradient(
+                  colors: [faceColor, faceColor.withOpacity(0.7)]),
             ),
-            child: Center(child: Icon(icon, color: textColor.withOpacity(0.85), size: dense ? 13 : 16)),
+            child: Center(
+                child: Icon(icon,
+                    color: textColor.withOpacity(0.85), size: dense ? 13 : 16)),
           ),
           const SizedBox(height: 4),
           Text(
             label,
-            style: TextStyle(color: textColor.withOpacity(0.85), fontFamily: 'monospace', fontSize: dense ? 7.5 : 9, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                color: textColor.withOpacity(0.85),
+                fontFamily: 'monospace',
+                fontSize: dense ? 7.5 : 9,
+                fontWeight: FontWeight.bold),
           ),
         ],
       ),

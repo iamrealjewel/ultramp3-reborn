@@ -9,9 +9,12 @@ class AppColors {
   static const Color surfaceCard = Color(0xFF161622);
 
   // Neon Retro Accents
-  static const Color neonGreen = Color(0xFF39FF14); // Playback active state, equalizers
-  static const Color electricCyan = Color(0xFF00E5FF); // Seek bar, progress, timers
-  static const Color cyberPink = Color(0xFFFF0055); // Heart/Favorites active status, warnings
+  static const Color neonGreen =
+      Color(0xFF39FF14); // Playback active state, equalizers
+  static const Color electricCyan =
+      Color(0xFF00E5FF); // Seek bar, progress, timers
+  static const Color cyberPink =
+      Color(0xFFFF0055); // Heart/Favorites active status, warnings
   static const Color laserViolet = Color(0xFF9D00FF); // Ambient glow accents
 
   // Typography Colors
@@ -49,7 +52,8 @@ class AppColors {
   );
 
   // Glow Shadow Helpers
-  static List<BoxShadow> neonGlow({required Color color, double blurRadius = 12}) {
+  static List<BoxShadow> neonGlow(
+      {required Color color, double blurRadius = 12}) {
     return [
       BoxShadow(
         color: color.withOpacity(0.4),

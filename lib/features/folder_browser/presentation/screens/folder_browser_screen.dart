@@ -18,7 +18,8 @@ class FolderBrowserScreen extends ConsumerStatefulWidget {
   const FolderBrowserScreen({super.key});
 
   @override
-  ConsumerState<FolderBrowserScreen> createState() => _FolderBrowserScreenState();
+  ConsumerState<FolderBrowserScreen> createState() =>
+      _FolderBrowserScreenState();
 }
 
 class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
@@ -85,7 +86,11 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
             list.add(entity);
           } else if (entity is File) {
             final ext = p.extension(entity.path).toLowerCase();
-            if (ext == '.mp3' || ext == '.wav' || ext == '.flac' || ext == '.m4a' || ext == '.ogg') {
+            if (ext == '.mp3' ||
+                ext == '.wav' ||
+                ext == '.flac' ||
+                ext == '.m4a' ||
+                ext == '.ogg') {
               list.add(entity);
             }
           }
@@ -95,7 +100,10 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
         list.sort((a, b) {
           if (a is Directory && b is! Directory) return -1;
           if (a is! Directory && b is Directory) return 1;
-          return p.basename(a.path).toLowerCase().compareTo(p.basename(b.path).toLowerCase());
+          return p
+              .basename(a.path)
+              .toLowerCase()
+              .compareTo(p.basename(b.path).toLowerCase());
         });
 
         setState(() {
@@ -131,10 +139,11 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
     if (files.isNotEmpty) {
       final first = files.first;
       final title = p.basenameWithoutExtension(first.path).toUpperCase();
-      final parentDirName = p.basename(Directory(first.path).parent.path).toUpperCase();
+      final parentDirName =
+          p.basename(Directory(first.path).parent.path).toUpperCase();
 
       final playbackService = ref.read(playbackServiceProvider);
-      
+
       // 1. Play the first track
       await playbackService.playTrack(
         filePath: first.path,
@@ -147,10 +156,10 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
       // 2. Feed all files as the active queue to storage
       final filePaths = files.map((f) => f.path).toList();
       await ref.read(storageServiceProvider).saveQueueState(
-        songIds: filePaths,
-        activeSongId: first.path,
-        playbackPositionMs: 0,
-      );
+            songIds: filePaths,
+            activeSongId: first.path,
+            playbackPositionMs: 0,
+          );
 
       if (mounted) {
         GoRouter.of(context).go(AppRoutes.home);
@@ -196,17 +205,20 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
             ),
             IconButton(
               tooltip: 'Library',
-              icon: const Icon(Icons.music_note_rounded, color: AppColors.neonGreen),
+              icon: const Icon(Icons.music_note_rounded,
+                  color: AppColors.neonGreen),
               onPressed: () => context.go('/library'),
             ),
             IconButton(
               tooltip: 'Folders',
-              icon: const Icon(Icons.folder_rounded, color: AppColors.neonGreen),
+              icon:
+                  const Icon(Icons.folder_rounded, color: AppColors.neonGreen),
               onPressed: () => context.go('/folders'),
             ),
             IconButton(
               tooltip: 'Playlists',
-              icon: const Icon(Icons.queue_music_rounded, color: AppColors.neonGreen),
+              icon: const Icon(Icons.queue_music_rounded,
+                  color: AppColors.neonGreen),
               onPressed: () => context.go('/playlists'),
             ),
             const SizedBox(width: 8),
@@ -234,8 +246,8 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
             ],
           ),
         ),
-        child: _hasPermission 
-            ? _buildBrowserBody(theme, themeExtension) 
+        child: _hasPermission
+            ? _buildBrowserBody(theme, themeExtension)
             : _buildPermissionDeniedBody(theme),
       ),
     );
@@ -256,7 +268,10 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
                   children: [
                     const Text(
                       'CURRENT PATH',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 10, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -272,19 +287,24 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              
+
               // Action: Play Folder
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.neonGreen.withOpacity(0.1),
                   foregroundColor: AppColors.neonGreen,
                   shadowColor: Colors.transparent,
-                  side: const BorderSide(color: AppColors.neonGreen, width: 0.8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  side:
+                      const BorderSide(color: AppColors.neonGreen, width: 0.8),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
                 icon: const Icon(Icons.play_circle_fill_rounded, size: 16),
-                label: const Text('Play Folder', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                label: const Text('Play Folder',
+                    style:
+                        TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                 onPressed: _playFolder,
               ),
             ],
@@ -293,16 +313,18 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
 
         // Loader / Error / Content
         Expanded(
-          child: _isLoading 
+          child: _isLoading
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const CircularProgressIndicator(color: AppColors.electricCyan),
+                      const CircularProgressIndicator(
+                          color: AppColors.electricCyan),
                       const SizedBox(height: 16),
                       Text(
                         'OPENING STORAGE NODE...',
-                        style: GoogleFonts.shareTechMono(color: AppColors.electricCyan),
+                        style: GoogleFonts.shareTechMono(
+                            color: AppColors.electricCyan),
                       ),
                     ],
                   ),
@@ -314,16 +336,20 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.warning_amber_rounded, color: AppColors.cyberPink, size: 48),
+                            const Icon(Icons.warning_amber_rounded,
+                                color: AppColors.cyberPink, size: 48),
                             const SizedBox(height: 16),
                             Text(
                               'ACCESS BLOCK DETECTED',
-                              style: GoogleFonts.orbitron(color: AppColors.cyberPink, fontWeight: FontWeight.bold),
+                              style: GoogleFonts.orbitron(
+                                  color: AppColors.cyberPink,
+                                  fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 12),
                             Text(
                               _error!,
-                              style: GoogleFonts.shareTechMono(color: AppColors.textSecondary, fontSize: 11),
+                              style: GoogleFonts.shareTechMono(
+                                  color: AppColors.textSecondary, fontSize: 11),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 24),
@@ -332,9 +358,11 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
                               icon: const Icon(Icons.arrow_upward_rounded),
                               label: const Text('GO UP A LEVEL'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.cyberPink.withOpacity(0.1),
+                                backgroundColor:
+                                    AppColors.cyberPink.withOpacity(0.1),
                                 foregroundColor: AppColors.cyberPink,
-                                side: const BorderSide(color: AppColors.cyberPink),
+                                side: const BorderSide(
+                                    color: AppColors.cyberPink),
                               ),
                             ),
                           ],
@@ -343,8 +371,10 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
                     )
                   : ListView.builder(
                       physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, kBottomNavigationBarHeight + 100),
-                      itemCount: _entities.length + 1, // +1 for the Parent Directory '..'
+                      padding: const EdgeInsets.fromLTRB(
+                          16, 12, 16, kBottomNavigationBarHeight + 100),
+                      itemCount: _entities.length +
+                          1, // +1 for the Parent Directory '..'
                       itemBuilder: (context, index) {
                         if (index == 0) {
                           return Card(
@@ -352,12 +382,16 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
                             color: AppColors.surfaceCard.withOpacity(0.3),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
-                              side: BorderSide(color: AppColors.glassBorder.withOpacity(0.04), width: 0.8),
+                              side: BorderSide(
+                                  color:
+                                      AppColors.glassBorder.withOpacity(0.04),
+                                  width: 0.8),
                             ),
                             elevation: 0,
                             clipBehavior: Clip.antiAlias,
                             child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 2),
                               leading: Container(
                                 width: 36,
                                 height: 36,
@@ -393,12 +427,15 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
                           color: AppColors.surfaceCard.withOpacity(0.3),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
-                            side: BorderSide(color: AppColors.glassBorder.withOpacity(0.04), width: 0.8),
+                            side: BorderSide(
+                                color: AppColors.glassBorder.withOpacity(0.04),
+                                width: 0.8),
                           ),
                           elevation: 0,
                           clipBehavior: Clip.antiAlias,
                           child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 2),
                             leading: Container(
                               width: 36,
                               height: 36,
@@ -407,9 +444,11 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
-                                isDir ? Icons.folder_rounded : Icons.audiotrack_rounded,
-                                color: isDir 
-                                    ? AppColors.electricCyan.withOpacity(0.8) 
+                                isDir
+                                    ? Icons.folder_rounded
+                                    : Icons.audiotrack_rounded,
+                                color: isDir
+                                    ? AppColors.electricCyan.withOpacity(0.8)
                                     : AppColors.neonGreen.withOpacity(0.8),
                                 size: 18,
                               ),
@@ -417,16 +456,21 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
                             title: Text(
                               isDir ? name : name.toUpperCase(),
                               style: TextStyle(
-                                color: isDir ? AppColors.textPrimary : AppColors.textSecondary,
-                                fontWeight: isDir ? FontWeight.bold : FontWeight.normal,
+                                color: isDir
+                                    ? AppColors.textPrimary
+                                    : AppColors.textSecondary,
+                                fontWeight:
+                                    isDir ? FontWeight.bold : FontWeight.normal,
                                 fontSize: 13,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            trailing: isDir 
-                                ? const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20)
-                                : const Icon(Icons.play_arrow_rounded, color: AppColors.neonGreen, size: 18),
+                            trailing: isDir
+                                ? const Icon(Icons.chevron_right_rounded,
+                                    color: AppColors.textMuted, size: 20)
+                                : const Icon(Icons.play_arrow_rounded,
+                                    color: AppColors.neonGreen, size: 18),
                             onTap: () async {
                               if (isDir) {
                                 setState(() {
@@ -434,10 +478,18 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
                                 });
                                 _loadDirectoryContents();
                               } else {
-                                final playbackService = ref.read(playbackServiceProvider);
-                                final songName = p.basenameWithoutExtension(entity.path).toUpperCase();
-                                final parentName = p.basename(entity.parent.path).toUpperCase();
-                                final folderFiles = _entities.where((e) => e is File).map((e) => e.path).toList();
+                                final playbackService =
+                                    ref.read(playbackServiceProvider);
+                                final songName = p
+                                    .basenameWithoutExtension(entity.path)
+                                    .toUpperCase();
+                                final parentName = p
+                                    .basename(entity.parent.path)
+                                    .toUpperCase();
+                                final folderFiles = _entities
+                                    .where((e) => e is File)
+                                    .map((e) => e.path)
+                                    .toList();
 
                                 await playbackService.playTrack(
                                   filePath: entity.path,
@@ -476,7 +528,8 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.folder_off_rounded, color: AppColors.cyberPink, size: 64),
+              const Icon(Icons.folder_off_rounded,
+                  color: AppColors.cyberPink, size: 64),
               const SizedBox(height: 16),
               Text(
                 'STORAGE ACCESS REQUIRED',
@@ -490,23 +543,29 @@ class _FolderBrowserScreenState extends ConsumerState<FolderBrowserScreen> {
               const Text(
                 'To index and browse your physical audio files offline, UltraMP3 needs permission to read files on your local device.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
+                style: TextStyle(
+                    color: AppColors.textSecondary, fontSize: 13, height: 1.4),
               ),
               const SizedBox(height: 24),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.cyberPink,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 ),
                 onPressed: () async {
-                  final granted = await ref.read(permissionServiceProvider).requestStoragePermission();
+                  final granted = await ref
+                      .read(permissionServiceProvider)
+                      .requestStoragePermission();
                   if (granted) {
                     _initDirectory();
                   }
                 },
-                child: const Text('Grant Access', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text('Grant Access',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),

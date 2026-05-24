@@ -15,7 +15,8 @@ class PlayerSkin {
   final Color buttonIconColor; // Icon glyph active color
   final Color statusLedColor; // Glowing indicator LED
   final String bgAssetPath; // Swappable landscape background image path
-  final bool isFlat; // True for modern flat skins, false for metallic/skeuomorphic
+  final bool
+      isFlat; // True for modern flat skins, false for metallic/skeuomorphic
 
   const PlayerSkin({
     required this.name,
@@ -173,8 +174,6 @@ class PlayerSkin {
     statusLedColor: Color(0xFF00FF88),
     bgAssetPath: 'assets/images/bg_aurora.png',
   );
-
-
 
   // 9. Desert Horizon Gold
   static const PlayerSkin desertGold = PlayerSkin(

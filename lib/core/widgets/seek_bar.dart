@@ -51,7 +51,7 @@ class SeekBar extends StatelessWidget {
             ),
           ],
         ),
-        
+
         // Interactive Slider
         SliderTheme(
           data: SliderTheme.of(context).copyWith(

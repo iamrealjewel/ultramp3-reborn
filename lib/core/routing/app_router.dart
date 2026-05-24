@@ -9,8 +9,10 @@ import '../../features/folder_browser/presentation/screens/folder_browser_screen
 import '../../features/playlists/presentation/screens/playlists_screen.dart';
 import '../../features/player/presentation/screens/player_screen.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
+import '../../features/player/presentation/screens/player_settings_screen.dart';
 
-final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+final GlobalKey<NavigatorState> _rootNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'root');
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -22,7 +24,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.splash,
         builder: (context, state) => const SplashScreen(),
       ),
-      // Stateful shell routing retains the tab states (scrolling, active item, etc.) 
+      // Stateful shell routing retains the tab states (scrolling, active item, etc.)
       // as the user navigates between bottom-bar options.
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -64,6 +66,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/player-settings',
+        builder: (context, state) => const PlayerSettingsScreen(),
+      ),
+
       // Slide-up Now Playing Screen (Slides over the bottom shell navigator)
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
@@ -72,11 +80,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           return CustomTransitionPage(
             key: state.pageKey,
             child: const PlayerScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
               const begin = Offset(0.0, 1.0);
               const end = Offset.zero;
               const curve = Curves.easeInOutCubic;
-              var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+              var tween =
+                  Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
               return SlideTransition(
                 position: animation.drive(tween),
                 child: child,

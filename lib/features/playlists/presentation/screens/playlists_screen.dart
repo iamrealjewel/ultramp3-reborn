@@ -19,12 +19,11 @@ class PlaylistsScreen extends ConsumerStatefulWidget {
 }
 
 class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final themeExtension = theme.extension<AppThemeExtension>()!;
-    
+
     final playlists = ref.watch(playlistsProvider);
     final favorites = ref.watch(favoritesProvider);
     final recentlyPlayed = ref.watch(recentlyPlayedProvider);
@@ -49,17 +48,20 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
             ),
             IconButton(
               tooltip: 'Library',
-              icon: const Icon(Icons.music_note_rounded, color: AppColors.neonGreen),
+              icon: const Icon(Icons.music_note_rounded,
+                  color: AppColors.neonGreen),
               onPressed: () => context.go('/library'),
             ),
             IconButton(
               tooltip: 'Folders',
-              icon: const Icon(Icons.folder_rounded, color: AppColors.neonGreen),
+              icon:
+                  const Icon(Icons.folder_rounded, color: AppColors.neonGreen),
               onPressed: () => context.go('/folders'),
             ),
             IconButton(
               tooltip: 'Playlists',
-              icon: const Icon(Icons.queue_music_rounded, color: AppColors.neonGreen),
+              icon: const Icon(Icons.queue_music_rounded,
+                  color: AppColors.neonGreen),
               onPressed: () => context.go('/playlists'),
             ),
             const SizedBox(width: 8),
@@ -89,7 +91,8 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
         ),
         child: ListView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, kBottomNavigationBarHeight + 100),
+          padding: const EdgeInsets.fromLTRB(
+              16, 16, 16, kBottomNavigationBarHeight + 100),
           children: [
             // Core Nodes (Favorites & Recents Grid)
             Row(
@@ -102,7 +105,9 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                     count: '${favorites.length} Songs',
                     color: AppColors.cyberPink,
                     glow: themeExtension.pinkGlow,
-                    onTap: () => _showPlaylistSongs(context, 'Favorites', favorites, isFavoritesTab: true),
+                    onTap: () => _showPlaylistSongs(
+                        context, 'Favorites', favorites,
+                        isFavoritesTab: true),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -114,60 +119,62 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                     count: '${recentlyPlayed.length} Songs',
                     color: AppColors.electricCyan,
                     glow: themeExtension.cyanGlow,
-                    onTap: () => _showPlaylistSongs(context, 'Recently Played', recentlyPlayed),
+                    onTap: () => _showPlaylistSongs(
+                        context, 'Recently Played', recentlyPlayed),
                   ),
                 ),
               ],
             ),
-            
-            const SizedBox(height: 16),
-            
-            // Secondary Nodes (Recently Added & Most Played)
-            Builder(
-              builder: (context) {
-                final physicalSongs = physicalSongsAsync.value ?? [];
-                
-                // Smart playlist logic
-                // Recently Added: take newest files (simulated by taking first 20)
-                final recentlyAddedIds = physicalSongs.take(20).map((s) => s.id).toList();
-                
-                // Most Played: Use recentlyPlayed data, fallback to arbitrary slice
-                final mostPlayedIds = recentlyPlayed.isNotEmpty 
-                    ? recentlyPlayed 
-                    : physicalSongs.reversed.take(15).map((s) => s.id).toList();
 
-                return Row(
-                  children: [
-                    Expanded(
-                      child: _buildCoreCard(
-                        context: context,
-                        icon: Icons.new_releases_rounded,
-                        title: 'Recently Added',
-                        count: '${recentlyAddedIds.length} Songs',
-                        color: const Color(0xFFFFB300),
-                        glow: themeExtension.greenGlow, // using existing glow
-                        onTap: () => _showPlaylistSongs(context, 'Recently Added', recentlyAddedIds),
-                      ),
+            const SizedBox(height: 16),
+
+            // Secondary Nodes (Recently Added & Most Played)
+            Builder(builder: (context) {
+              final physicalSongs = physicalSongsAsync.value ?? [];
+
+              // Smart playlist logic
+              // Recently Added: take newest files (simulated by taking first 20)
+              final recentlyAddedIds =
+                  physicalSongs.take(20).map((s) => s.id).toList();
+
+              // Most Played: Use recentlyPlayed data, fallback to arbitrary slice
+              final mostPlayedIds = recentlyPlayed.isNotEmpty
+                  ? recentlyPlayed
+                  : physicalSongs.reversed.take(15).map((s) => s.id).toList();
+
+              return Row(
+                children: [
+                  Expanded(
+                    child: _buildCoreCard(
+                      context: context,
+                      icon: Icons.new_releases_rounded,
+                      title: 'Recently Added',
+                      count: '${recentlyAddedIds.length} Songs',
+                      color: const Color(0xFFFFB300),
+                      glow: themeExtension.greenGlow, // using existing glow
+                      onTap: () => _showPlaylistSongs(
+                          context, 'Recently Added', recentlyAddedIds),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildCoreCard(
-                        context: context,
-                        icon: Icons.trending_up_rounded,
-                        title: 'Most Played',
-                        count: '${mostPlayedIds.length} Songs',
-                        color: AppColors.laserViolet,
-                        glow: themeExtension.pinkGlow, // using existing glow
-                        onTap: () => _showPlaylistSongs(context, 'Most Played', mostPlayedIds),
-                      ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildCoreCard(
+                      context: context,
+                      icon: Icons.trending_up_rounded,
+                      title: 'Most Played',
+                      count: '${mostPlayedIds.length} Songs',
+                      color: AppColors.laserViolet,
+                      glow: themeExtension.pinkGlow, // using existing glow
+                      onTap: () => _showPlaylistSongs(
+                          context, 'Most Played', mostPlayedIds),
                     ),
-                  ],
-                );
-              }
-            ),
-            
+                  ),
+                ],
+              );
+            }),
+
             const SizedBox(height: 32),
-            
+
             // Custom Playlists Title
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -182,11 +189,12 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                 ),
                 Text(
                   '${playlists.length} Folders',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 12),
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 12),
 
             // Playlists vertical builder
@@ -205,7 +213,8 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                 ),
               )
             else
-              ...playlists.entries.map((entry) => _buildPlaylistItem(entry.key, entry.value)),
+              ...playlists.entries
+                  .map((entry) => _buildPlaylistItem(entry.key, entry.value)),
           ],
         ),
       ),
@@ -278,7 +287,8 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
       color: AppColors.surfaceCard.withOpacity(0.3),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: AppColors.glassBorder.withOpacity(0.05), width: 0.8),
+        side: BorderSide(
+            color: AppColors.glassBorder.withOpacity(0.05), width: 0.8),
       ),
       elevation: 0,
       clipBehavior: Clip.antiAlias,
@@ -293,7 +303,8 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppColors.glassBorder, width: 0.8),
           ),
-          child: const Icon(Icons.playlist_play_rounded, color: AppColors.neonGreen, size: 24),
+          child: const Icon(Icons.playlist_play_rounded,
+              color: AppColors.neonGreen, size: 24),
         ),
         title: Text(
           name,
@@ -316,7 +327,8 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
             ),
             const SizedBox(width: 8),
             IconButton(
-              icon: const Icon(Icons.delete_outline_rounded, color: AppColors.textMuted, size: 20),
+              icon: const Icon(Icons.delete_outline_rounded,
+                  color: AppColors.textMuted, size: 20),
               onPressed: () {
                 ref.read(playlistsProvider.notifier).deletePlaylist(name);
               },
@@ -340,7 +352,11 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
           ),
           title: const Text(
             'NEW PLAYLIST',
-            style: TextStyle(color: AppColors.neonGreen, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.0),
+            style: TextStyle(
+                color: AppColors.neonGreen,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                letterSpacing: 1.0),
           ),
           content: TextField(
             controller: controller,
@@ -349,7 +365,8 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
               hintText: 'Enter playlist title...',
               hintStyle: const TextStyle(color: AppColors.textMuted),
               enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: AppColors.glassBorder.withOpacity(0.5)),
+                borderSide:
+                    BorderSide(color: AppColors.glassBorder.withOpacity(0.5)),
               ),
               focusedBorder: const UnderlineInputBorder(
                 borderSide: BorderSide(color: AppColors.electricCyan),
@@ -358,7 +375,8 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
           ),
           actions: [
             TextButton(
-              child: const Text('CANCEL', style: TextStyle(color: AppColors.textMuted)),
+              child: const Text('CANCEL',
+                  style: TextStyle(color: AppColors.textMuted)),
               onPressed: () => Navigator.pop(context),
             ),
             ElevatedButton(
@@ -370,7 +388,9 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
               child: const Text('CREATE'),
               onPressed: () {
                 if (controller.text.trim().isNotEmpty) {
-                  ref.read(playlistsProvider.notifier).createPlaylist(controller.text.trim());
+                  ref
+                      .read(playlistsProvider.notifier)
+                      .createPlaylist(controller.text.trim());
                 }
                 Navigator.pop(context);
               },
@@ -381,7 +401,9 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
     );
   }
 
-  void _showPlaylistSongs(BuildContext context, String title, List<String> songIds, {bool isFavoritesTab = false}) {
+  void _showPlaylistSongs(
+      BuildContext context, String title, List<String> songIds,
+      {bool isFavoritesTab = false}) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -392,9 +414,9 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
               final allSongs = ref.watch(physicalSongsProvider).value ?? [];
               final playlistsState = ref.watch(playlistsProvider);
               final favoritesState = ref.watch(favoritesProvider);
-              
-              final activeIds = isFavoritesTab 
-                  ? favoritesState 
+
+              final activeIds = isFavoritesTab
+                  ? favoritesState
                   : (title == 'Recently Played'
                       ? ref.watch(recentlyPlayedProvider)
                       : (title == 'Recently Added' || title == 'Most Played'
@@ -403,10 +425,13 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
 
               final List<AppTrack> matchingTracks = [];
               for (var id in activeIds) {
-                final track = allSongs.firstWhere((t) => t.id == id, 
+                final track = allSongs.firstWhere((t) => t.id == id,
                     orElse: () => AppTrack(
                           id: id,
-                          title: id.split(Platform.pathSeparator).last.toUpperCase(),
+                          title: id
+                              .split(Platform.pathSeparator)
+                              .last
+                              .toUpperCase(),
                           artist: 'Unknown Artist',
                           album: 'Unknown Album',
                           filePath: id,
@@ -424,7 +449,8 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                   backgroundColor: AppColors.obsidianDark,
                   elevation: 0,
                   leading: IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+                    icon: const Icon(Icons.arrow_back_rounded,
+                        color: AppColors.textPrimary),
                     onPressed: () => Navigator.pop(context),
                   ),
                   title: Text(
@@ -468,17 +494,27 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                           children: [
                             Expanded(
                               child: ElevatedButton.icon(
-                                icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                                label: const Text('PLAY ALL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                                icon: const Icon(Icons.play_arrow_rounded,
+                                    size: 18),
+                                label: const Text('PLAY ALL',
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5)),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.neonGreen.withOpacity(0.12),
+                                  backgroundColor:
+                                      AppColors.neonGreen.withOpacity(0.12),
                                   foregroundColor: AppColors.neonGreen,
-                                  side: const BorderSide(color: AppColors.neonGreen, width: 1.0),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  side: const BorderSide(
+                                      color: AppColors.neonGreen, width: 1.0),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
                                 ),
                                 onPressed: () async {
-                                  final player = playbackService.handler.playerInstance;
+                                  final player =
+                                      playbackService.handler.playerInstance;
                                   await player.setShuffleModeEnabled(false);
                                   await playbackService.playTrack(
                                     filePath: matchingTracks.first.filePath,
@@ -486,7 +522,9 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                                     artist: matchingTracks.first.artist,
                                     album: matchingTracks.first.album,
                                     duration: matchingTracks.first.duration,
-                                    queue: matchingTracks.map((t) => t.filePath).toList(),
+                                    queue: matchingTracks
+                                        .map((t) => t.filePath)
+                                        .toList(),
                                   );
                                   if (context.mounted) {
                                     Navigator.pop(context);
@@ -498,18 +536,31 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: ElevatedButton.icon(
-                                icon: const Icon(Icons.shuffle_rounded, size: 18),
-                                label: const Text('SHUFFLE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                                icon:
+                                    const Icon(Icons.shuffle_rounded, size: 18),
+                                label: const Text('SHUFFLE',
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5)),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.electricCyan.withOpacity(0.12),
+                                  backgroundColor:
+                                      AppColors.electricCyan.withOpacity(0.12),
                                   foregroundColor: AppColors.electricCyan,
-                                  side: const BorderSide(color: AppColors.electricCyan, width: 1.0),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  side: const BorderSide(
+                                      color: AppColors.electricCyan,
+                                      width: 1.0),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
                                 ),
                                 onPressed: () async {
-                                  final player = playbackService.handler.playerInstance;
-                                  final shuffled = List<AppTrack>.from(matchingTracks)..shuffle();
+                                  final player =
+                                      playbackService.handler.playerInstance;
+                                  final shuffled =
+                                      List<AppTrack>.from(matchingTracks)
+                                        ..shuffle();
                                   await player.setShuffleModeEnabled(true);
                                   await playbackService.playTrack(
                                     filePath: shuffled.first.filePath,
@@ -517,7 +568,9 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                                     artist: shuffled.first.artist,
                                     album: shuffled.first.album,
                                     duration: shuffled.first.duration,
-                                    queue: shuffled.map((t) => t.filePath).toList(),
+                                    queue: shuffled
+                                        .map((t) => t.filePath)
+                                        .toList(),
                                   );
                                   if (context.mounted) {
                                     Navigator.pop(context);
@@ -543,7 +596,8 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                               ),
                             )
                           : ListView.builder(
-                              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 40),
+                              padding: const EdgeInsets.only(
+                                  left: 16, right: 16, bottom: 40),
                               itemCount: matchingTracks.length,
                               itemBuilder: (context, index) {
                                 final track = matchingTracks[index];
@@ -553,7 +607,8 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     side: BorderSide(
-                                      color: AppColors.glassBorder.withOpacity(0.05),
+                                      color: AppColors.glassBorder
+                                          .withOpacity(0.05),
                                       width: 0.8,
                                     ),
                                   ),
@@ -568,14 +623,17 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                                         artist: track.artist,
                                         album: track.album,
                                         duration: track.duration,
-                                        queue: matchingTracks.map((t) => t.filePath).toList(),
+                                        queue: matchingTracks
+                                            .map((t) => t.filePath)
+                                            .toList(),
                                       );
                                       if (context.mounted) {
                                         Navigator.pop(context);
                                         GoRouter.of(context).go(AppRoutes.home);
                                       }
                                     },
-                                    leading: const Icon(Icons.music_note, color: AppColors.neonGreen, size: 20),
+                                    leading: const Icon(Icons.music_note,
+                                        color: AppColors.neonGreen, size: 20),
                                     title: Text(
                                       track.title,
                                       style: const TextStyle(
@@ -589,17 +647,25 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                                     ),
                                     subtitle: Text(
                                       track.artist,
-                                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                                      style: const TextStyle(
+                                          color: AppColors.textSecondary,
+                                          fontSize: 11),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     trailing: IconButton(
-                                      icon: const Icon(Icons.close_rounded, color: AppColors.cyberPink, size: 18),
+                                      icon: const Icon(Icons.close_rounded,
+                                          color: AppColors.cyberPink, size: 18),
                                       onPressed: () async {
                                         if (isFavoritesTab) {
-                                          await ref.read(favoritesProvider.notifier).toggle(track.filePath);
+                                          await ref
+                                              .read(favoritesProvider.notifier)
+                                              .toggle(track.filePath);
                                         } else if (title != 'Recently Played') {
-                                          await ref.read(playlistsProvider.notifier).removeSongFromPlaylist(title, track.filePath);
+                                          await ref
+                                              .read(playlistsProvider.notifier)
+                                              .removeSongFromPlaylist(
+                                                  title, track.filePath);
                                         }
                                       },
                                     ),

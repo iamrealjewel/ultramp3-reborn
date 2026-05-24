@@ -26,7 +26,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _updateTime();
-    _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) => _updateTime());
+    _timer =
+        Timer.periodic(const Duration(seconds: 1), (Timer t) => _updateTime());
   }
 
   @override
@@ -37,7 +38,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _updateTime() {
     final DateTime now = DateTime.now();
-    final String formattedTime = 
+    final String formattedTime =
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
     if (mounted) {
       setState(() {
@@ -69,7 +70,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         content: const Text(
           'SLEEP TIMER SCHEDULED FOR 30 MINUTES',
-          style: TextStyle(color: AppColors.electricCyan, fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 11),
+          style: TextStyle(
+              color: AppColors.electricCyan,
+              fontFamily: 'monospace',
+              fontWeight: FontWeight.bold,
+              fontSize: 11),
           textAlign: TextAlign.center,
         ),
         duration: const Duration(seconds: 2),
@@ -148,8 +153,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 pinned: false,
                 actions: [
                   IconButton(
-                    icon: const Icon(Icons.music_note_rounded, color: AppColors.neonGreen),
-                    onPressed: () => GoRouter.of(context).push(AppRoutes.player),
+                    icon: const Icon(Icons.music_note_rounded,
+                        color: AppColors.neonGreen),
+                    onPressed: () =>
+                        GoRouter.of(context).push(AppRoutes.player),
                     tooltip: 'Open Playback Cockpit',
                   ),
                 ],
@@ -158,7 +165,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               // Digital Clock Section
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
+                  padding: const EdgeInsets.symmetric(
+                      vertical: 24.0, horizontal: 16.0),
                   child: Center(
                     child: Column(
                       children: [
@@ -230,7 +238,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         onPressed: () {},
                         child: const Text(
                           'View All',
-                          style: TextStyle(color: AppColors.electricCyan, fontSize: 13),
+                          style: TextStyle(
+                              color: AppColors.electricCyan, fontSize: 13),
                         ),
                       ),
                     ],
@@ -284,7 +293,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
               // Favorites vertical list
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, kBottomNavigationBarHeight + 100),
+                padding: const EdgeInsets.fromLTRB(
+                    16, 0, 16, kBottomNavigationBarHeight + 100),
                 sliver: favoriteTracks.isEmpty
                     ? SliverToBoxAdapter(
                         child: Container(
@@ -305,7 +315,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {
                             final track = favoriteTracks[index];
-                            return _buildFavoriteListTile(track, favoriteTracks);
+                            return _buildFavoriteListTile(
+                                track, favoriteTracks);
                           },
                           childCount: favoriteTracks.length,
                         ),
@@ -388,7 +399,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         decoration: BoxDecoration(
           color: AppColors.surfaceCard.withOpacity(0.4),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.glassBorder.withOpacity(0.08), width: 0.8),
+          border: Border.all(
+              color: AppColors.glassBorder.withOpacity(0.08), width: 0.8),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -399,8 +411,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               width: double.infinity,
               decoration: BoxDecoration(
                 color: AppColors.obsidianDark,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                border: const Border(bottom: BorderSide(color: AppColors.glassBorder, width: 0.5)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(12)),
+                border: const Border(
+                    bottom:
+                        BorderSide(color: AppColors.glassBorder, width: 0.5)),
               ),
               child: Icon(
                 Icons.music_video_rounded,
@@ -409,7 +424,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -453,7 +469,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       decoration: BoxDecoration(
         color: AppColors.surfaceCard.withOpacity(0.3),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.glassBorder.withOpacity(0.05), width: 0.8),
+        border: Border.all(
+            color: AppColors.glassBorder.withOpacity(0.05), width: 0.8),
       ),
       child: ListTile(
         onTap: () async {
@@ -477,7 +494,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             color: AppColors.obsidianDark,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Icon(Icons.music_note, color: AppColors.cyberPink, size: 20),
+          child: const Icon(Icons.music_note,
+              color: AppColors.cyberPink, size: 20),
         ),
         title: Text(
           track.title,
@@ -503,7 +521,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.favorite_rounded, color: AppColors.cyberPink, size: 18),
+            const Icon(Icons.favorite_rounded,
+                color: AppColors.cyberPink, size: 18),
           ],
         ),
       ),
@@ -522,54 +541,41 @@ class _MediaScanDialog extends ConsumerStatefulWidget {
 
 class _MediaScanDialogState extends ConsumerState<_MediaScanDialog> {
   int _percentage = 0;
-  String _scanLog = 'INITIALIZING ENGINE...';
-  Timer? _timer;
+  String _scanLog = 'INITIALIZING SCANNER...';
+  StreamSubscription<ScanStatus>? _subscription;
 
   @override
   void initState() {
     super.initState();
-    _startSimulatedScan();
+    _startActualScan();
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _subscription?.cancel();
     super.dispose();
   }
 
-  Future<void> _startSimulatedScan() async {
-    // Actually trigger the real scan in the background
+  Future<void> _startActualScan() async {
     final mediaQuery = ref.read(mediaQueryServiceProvider);
-    final songs = await mediaQuery.getSongs();
-    ref.invalidate(physicalSongsProvider);
 
-    _timer = Timer.periodic(const Duration(milliseconds: 60), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
+    _subscription = mediaQuery.scanStream.listen((status) {
+      if (!mounted) return;
       setState(() {
-        _percentage += 3;
-        
-        if (_percentage >= 100) {
+        _percentage = (status.progress * 100).toInt();
+        _scanLog = status.currentPath;
+        if (status.isCompleted) {
           _percentage = 100;
-          _scanLog = 'SCAN SUCCESSFUL: ${songs.length} TRACKS INDEXED!';
-          timer.cancel();
-          // Delay closing dialog to let user enjoy success status
-          Future.delayed(const Duration(milliseconds: 1000), () {
+          _scanLog = 'SCAN SUCCESSFUL: ${status.songsIndexed} TRACKS INDEXED!';
+          Future.delayed(const Duration(milliseconds: 1200), () {
             if (mounted) Navigator.pop(context);
           });
-        } else if (_percentage > 85) {
-          _scanLog = 'INDEXING META TAGS...';
-        } else if (_percentage > 60 && songs.isNotEmpty) {
-          _scanLog = 'INDEXING: ${songs[songs.length % 3].filePath}';
-        } else if (_percentage > 40 && songs.length > 1) {
-          _scanLog = 'INDEXING: ${songs[1].filePath}';
-        } else if (_percentage > 20) {
-          _scanLog = 'READING DIRECTORY FILE HANDLES...';
         }
       });
     });
+
+    await mediaQuery.getSongs();
+    ref.invalidate(physicalSongsProvider);
   }
 
   @override
@@ -611,14 +617,15 @@ class _MediaScanDialogState extends ConsumerState<_MediaScanDialog> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Retro Digital LED Progress Bar
             Container(
               height: 16,
               decoration: BoxDecoration(
                 color: Colors.black,
                 borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: AppColors.neonGreen.withOpacity(0.3), width: 1),
+                border: Border.all(
+                    color: AppColors.neonGreen.withOpacity(0.3), width: 1),
               ),
               padding: const EdgeInsets.all(2),
               child: Align(
@@ -630,7 +637,9 @@ class _MediaScanDialogState extends ConsumerState<_MediaScanDialog> {
                       color: AppColors.neonGreen,
                       borderRadius: BorderRadius.circular(2),
                       boxShadow: [
-                        BoxShadow(color: AppColors.neonGreen.withOpacity(0.5), blurRadius: 4),
+                        BoxShadow(
+                            color: AppColors.neonGreen.withOpacity(0.5),
+                            blurRadius: 4),
                       ],
                     ),
                   ),
@@ -638,7 +647,7 @@ class _MediaScanDialogState extends ConsumerState<_MediaScanDialog> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             // Console diagnostics log
             Container(
               height: 48,

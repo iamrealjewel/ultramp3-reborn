@@ -18,7 +18,8 @@ class LibraryScreen extends ConsumerStatefulWidget {
   ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
 }
 
-class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTickerProviderStateMixin {
+class _LibraryScreenState extends ConsumerState<LibraryScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -43,7 +44,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
     // 1. Request permission
     final permissionService = ref.read(permissionServiceProvider);
     final granted = await permissionService.requestStoragePermission();
-    
+
     if (granted) {
       // 2. Refresh provider
       ref.invalidate(physicalSongsProvider);
@@ -81,7 +82,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final themeExtension = theme.extension<AppThemeExtension>()!;
-    
+
     final songsAsync = ref.watch(physicalSongsProvider);
 
     return Scaffold(
@@ -103,17 +104,20 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
             ),
             IconButton(
               tooltip: 'Library',
-              icon: const Icon(Icons.music_note_rounded, color: AppColors.neonGreen),
+              icon: const Icon(Icons.music_note_rounded,
+                  color: AppColors.neonGreen),
               onPressed: () => context.go('/library'),
             ),
             IconButton(
               tooltip: 'Folders',
-              icon: const Icon(Icons.folder_rounded, color: AppColors.neonGreen),
+              icon:
+                  const Icon(Icons.folder_rounded, color: AppColors.neonGreen),
               onPressed: () => context.go('/folders'),
             ),
             IconButton(
               tooltip: 'Playlists',
-              icon: const Icon(Icons.queue_music_rounded, color: AppColors.neonGreen),
+              icon: const Icon(Icons.queue_music_rounded,
+                  color: AppColors.neonGreen),
               onPressed: () => context.go('/playlists'),
             ),
             const SizedBox(width: 8),
@@ -134,7 +138,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
           indicatorColor: AppColors.electricCyan,
           labelColor: AppColors.electricCyan,
           unselectedLabelColor: AppColors.textMuted,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.0),
+          labelStyle: const TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.0),
           tabs: const [
             Tab(text: 'ALL SONGS'),
             Tab(text: 'ALBUMS'),
@@ -188,22 +193,27 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_outline_rounded, color: AppColors.cyberPink, size: 48),
+                const Icon(Icons.error_outline_rounded,
+                    color: AppColors.cyberPink, size: 48),
                 const SizedBox(height: 16),
                 Text(
                   'ENGINE INDEXING EXCEPTION',
-                  style: GoogleFonts.orbitron(color: AppColors.cyberPink, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.orbitron(
+                      color: AppColors.cyberPink, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   err.toString(),
-                  style: GoogleFonts.shareTechMono(color: AppColors.textSecondary, fontSize: 11),
+                  style: GoogleFonts.shareTechMono(
+                      color: AppColors.textSecondary, fontSize: 11),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () => ref.invalidate(physicalSongsProvider),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.cyberPink.withOpacity(0.1)),
-                  child: const Text('RETRY SCAN', style: TextStyle(color: AppColors.cyberPink)),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.cyberPink.withOpacity(0.1)),
+                  child: const Text('RETRY SCAN',
+                      style: TextStyle(color: AppColors.cyberPink)),
                 )
               ],
             ),
@@ -225,7 +235,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppColors.surfaceCard.withOpacity(0.2),
-                border: Border.all(color: AppColors.neonGreen.withOpacity(0.3), width: 1.5),
+                border: Border.all(
+                    color: AppColors.neonGreen.withOpacity(0.3), width: 1.5),
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.neonGreen.withOpacity(0.05),
@@ -233,7 +244,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                   ),
                 ],
               ),
-              child: const Icon(Icons.music_off_rounded, color: AppColors.neonGreen, size: 54),
+              child: const Icon(Icons.music_off_rounded,
+                  color: AppColors.neonGreen, size: 54),
             ),
             const SizedBox(height: 32),
             Text(
@@ -262,13 +274,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                 backgroundColor: AppColors.neonGreen.withOpacity(0.15),
                 foregroundColor: AppColors.neonGreen,
                 side: const BorderSide(color: AppColors.neonGreen, width: 1.0),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               icon: const Icon(Icons.search_rounded, size: 18),
               label: Text(
                 'TRIGGER DIRECTORY SCAN',
-                style: GoogleFonts.shareTechMono(fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                style: GoogleFonts.shareTechMono(
+                    fontWeight: FontWeight.bold, letterSpacing: 0.5),
               ),
             ),
           ],
@@ -277,13 +292,15 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
     );
   }
 
-  Widget _buildSongsTab(List<AppTrack> songs, AppThemeExtension themeExtension) {
+  Widget _buildSongsTab(
+      List<AppTrack> songs, AppThemeExtension themeExtension) {
     final playbackService = ref.watch(playbackServiceProvider);
     final favList = ref.watch(favoritesProvider);
 
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, kBottomNavigationBarHeight + 100),
+      padding: const EdgeInsets.fromLTRB(
+          16, 16, 16, kBottomNavigationBarHeight + 100),
       itemCount: songs.length,
       itemBuilder: (context, index) {
         final song = songs[index];
@@ -294,7 +311,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
           decoration: BoxDecoration(
             color: AppColors.surfaceCard.withOpacity(0.4),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.glassBorder.withOpacity(0.05), width: 0.8),
+            border: Border.all(
+                color: AppColors.glassBorder.withOpacity(0.05), width: 0.8),
           ),
           child: ListTile(
             onTap: () async {
@@ -311,18 +329,23 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                 GoRouter.of(context).go(AppRoutes.home);
               }
             },
-            contentPadding: const EdgeInsets.only(left: 12, right: 6, top: 4, bottom: 4),
+            contentPadding:
+                const EdgeInsets.only(left: 12, right: 6, top: 4, bottom: 4),
             leading: Container(
               width: 42,
               height: 42,
               decoration: BoxDecoration(
                 color: AppColors.voidBlack,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: isFav ? AppColors.cyberPink.withOpacity(0.5) : AppColors.glassBorder, width: 0.8),
+                border: Border.all(
+                    color: isFav
+                        ? AppColors.cyberPink.withOpacity(0.5)
+                        : AppColors.glassBorder,
+                    width: 0.8),
               ),
               child: Icon(
-                isFav ? Icons.favorite_rounded : Icons.music_note, 
-                color: isFav ? AppColors.cyberPink : AppColors.neonGreen, 
+                isFav ? Icons.favorite_rounded : Icons.music_note,
+                color: isFav ? AppColors.cyberPink : AppColors.neonGreen,
                 size: 20,
               ),
             ),
@@ -340,7 +363,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
             ),
             subtitle: Text(
               song.artist,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+              style:
+                  const TextStyle(color: AppColors.textSecondary, fontSize: 11),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -349,11 +373,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
               children: [
                 Text(
                   _formatDuration(song.duration),
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                  style:
+                      const TextStyle(color: AppColors.textMuted, fontSize: 11),
                 ),
                 const SizedBox(width: 4),
                 IconButton(
-                  icon: const Icon(Icons.more_vert_rounded, color: AppColors.textMuted, size: 20),
+                  icon: const Icon(Icons.more_vert_rounded,
+                      color: AppColors.textMuted, size: 20),
                   onPressed: () => _showTrackContextMenu(context, song, isFav),
                 ),
               ],
@@ -364,7 +390,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
     );
   }
 
-  Widget _buildAlbumsTab(List<AppTrack> songs, AppThemeExtension themeExtension) {
+  Widget _buildAlbumsTab(
+      List<AppTrack> songs, AppThemeExtension themeExtension) {
     // Group songs by Album
     final Map<String, List<AppTrack>> albums = {};
     for (var song in songs) {
@@ -375,7 +402,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
 
     return GridView.builder(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, kBottomNavigationBarHeight + 100),
+      padding: const EdgeInsets.fromLTRB(
+          16, 16, 16, kBottomNavigationBarHeight + 100),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 16,
@@ -390,12 +418,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
 
         return InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => _showSongsListModal(context, 'ALBUM: $albumName', albumSongs),
+          onTap: () =>
+              _showSongsListModal(context, 'ALBUM: $albumName', albumSongs),
           child: Container(
             decoration: BoxDecoration(
               color: AppColors.surfaceCard.withOpacity(0.4),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.glassBorder.withOpacity(0.08), width: 0.8),
+              border: Border.all(
+                  color: AppColors.glassBorder.withOpacity(0.08), width: 0.8),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -405,11 +435,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                     width: double.infinity,
                     decoration: const BoxDecoration(
                       color: AppColors.obsidianDark,
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(16)),
                     ),
                     child: Center(
                       child: Icon(
-                        Icons.album_rounded, 
+                        Icons.album_rounded,
                         color: AppColors.electricCyan.withOpacity(0.3),
                         size: 64,
                       ),
@@ -438,14 +469,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                           Expanded(
                             child: Text(
                               artistName,
-                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                              style: const TextStyle(
+                                  color: AppColors.textSecondary, fontSize: 11),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           Text(
                             '${albumSongs.length} trk',
-                            style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                            style: const TextStyle(
+                                color: AppColors.textMuted, fontSize: 10),
                           ),
                         ],
                       ),
@@ -460,7 +493,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
     );
   }
 
-  Widget _buildArtistsTab(List<AppTrack> songs, AppThemeExtension themeExtension) {
+  Widget _buildArtistsTab(
+      List<AppTrack> songs, AppThemeExtension themeExtension) {
     // Group songs by Artist
     final Map<String, List<AppTrack>> artists = {};
     for (var song in songs) {
@@ -471,7 +505,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
 
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, kBottomNavigationBarHeight + 100),
+      padding: const EdgeInsets.fromLTRB(
+          16, 16, 16, kBottomNavigationBarHeight + 100),
       itemCount: artistEntries.length,
       itemBuilder: (context, index) {
         final artistName = artistEntries[index].key;
@@ -482,14 +517,18 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
           decoration: BoxDecoration(
             color: AppColors.surfaceCard.withOpacity(0.3),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.glassBorder.withOpacity(0.05), width: 0.8),
+            border: Border.all(
+                color: AppColors.glassBorder.withOpacity(0.05), width: 0.8),
           ),
           child: ListTile(
-            onTap: () => _showSongsListModal(context, 'ARTIST: $artistName', artistSongs),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            onTap: () => _showSongsListModal(
+                context, 'ARTIST: $artistName', artistSongs),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             leading: CircleAvatar(
               backgroundColor: AppColors.obsidianDark,
-              child: Icon(Icons.person_rounded, color: AppColors.neonGreen.withOpacity(0.7), size: 20),
+              child: Icon(Icons.person_rounded,
+                  color: AppColors.neonGreen.withOpacity(0.7), size: 20),
             ),
             title: Text(
               artistName,
@@ -501,9 +540,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
             ),
             subtitle: Text(
               '${artistSongs.length} songs',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+              style:
+                  const TextStyle(color: AppColors.textSecondary, fontSize: 11),
             ),
-            trailing: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
+            trailing: const Icon(Icons.arrow_forward_ios_rounded,
+                color: AppColors.textMuted, size: 14),
           ),
         );
       },
@@ -519,14 +560,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
           decoration: const BoxDecoration(
             color: AppColors.obsidianDark,
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            border: Border(top: BorderSide(color: AppColors.neonGreen, width: 1.5)),
+            border:
+                Border(top: BorderSide(color: AppColors.neonGreen, width: 1.5)),
           ),
           child: SafeArea(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   child: Row(
                     children: [
                       Container(
@@ -536,7 +579,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                           color: AppColors.voidBlack,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.music_note, color: AppColors.neonGreen),
+                        child: const Icon(Icons.music_note,
+                            color: AppColors.neonGreen),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -545,13 +589,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                           children: [
                             Text(
                               song.title,
-                              style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 14),
+                              style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
                               song.artist,
-                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                              style: const TextStyle(
+                                  color: AppColors.textSecondary, fontSize: 12),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -564,12 +612,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                 const Divider(color: AppColors.glassBorder, height: 1),
                 ListTile(
                   leading: Icon(
-                    isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded, 
+                    isFav
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
                     color: AppColors.cyberPink,
                   ),
                   title: Text(
                     isFav ? 'REMOVE FROM FAVORITES' : 'ADD TO FAVORITES',
-                    style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 13),
+                    style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13),
                   ),
                   onTap: () {
                     ref.read(favoritesProvider.notifier).toggle(song.filePath);
@@ -577,10 +630,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.playlist_add_rounded, color: AppColors.electricCyan),
+                  leading: const Icon(Icons.playlist_add_rounded,
+                      color: AppColors.electricCyan),
                   title: const Text(
                     'ADD TO PLAYLIST',
-                    style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 13),
+                    style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13),
                   ),
                   onTap: () {
                     Navigator.pop(context);
@@ -608,7 +665,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
               backgroundColor: AppColors.obsidianDark,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: AppColors.glassBorder, width: 0.8),
+                side:
+                    const BorderSide(color: AppColors.glassBorder, width: 0.8),
               ),
               title: Text(
                 'CHOOSE PLAYLIST',
@@ -626,7 +684,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                     ? Center(
                         child: Text(
                           'NO CUSTOM PLAYLISTS DETECTED',
-                          style: GoogleFonts.shareTechMono(color: AppColors.textMuted, fontSize: 11),
+                          style: GoogleFonts.shareTechMono(
+                              color: AppColors.textMuted, fontSize: 11),
                         ),
                       )
                     : ListView.builder(
@@ -634,21 +693,28 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                         itemBuilder: (context, index) {
                           final pName = playlists.keys.elementAt(index);
                           return ListTile(
-                            leading: const Icon(Icons.playlist_play_rounded, color: AppColors.neonGreen),
-                            title: Text(pName, style: const TextStyle(color: AppColors.textPrimary)),
+                            leading: const Icon(Icons.playlist_play_rounded,
+                                color: AppColors.neonGreen),
+                            title: Text(pName,
+                                style: const TextStyle(
+                                    color: AppColors.textPrimary)),
                             onTap: () {
-                              ref.read(playlistsProvider.notifier).addSongToPlaylist(pName, song.filePath);
+                              ref
+                                  .read(playlistsProvider.notifier)
+                                  .addSongToPlaylist(pName, song.filePath);
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   backgroundColor: AppColors.obsidianDark,
                                   shape: RoundedRectangleBorder(
-                                    side: const BorderSide(color: AppColors.neonGreen, width: 0.8),
+                                    side: const BorderSide(
+                                        color: AppColors.neonGreen, width: 0.8),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   content: Text(
                                     'ADDED TO PLAYLIST: $pName',
-                                    style: GoogleFonts.shareTechMono(color: AppColors.neonGreen),
+                                    style: GoogleFonts.shareTechMono(
+                                        color: AppColors.neonGreen),
                                   ),
                                 ),
                               );
@@ -659,7 +725,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
               ),
               actions: [
                 TextButton(
-                  child: const Text('CLOSE', style: TextStyle(color: AppColors.textMuted)),
+                  child: const Text('CLOSE',
+                      style: TextStyle(color: AppColors.textMuted)),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
@@ -670,7 +737,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
     );
   }
 
-  void _showSongsListModal(BuildContext context, String title, List<AppTrack> songs) {
+  void _showSongsListModal(
+      BuildContext context, String title, List<AppTrack> songs) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -684,7 +752,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                   backgroundColor: AppColors.obsidianDark,
                   elevation: 0,
                   leading: IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+                    icon: const Icon(Icons.arrow_back_rounded,
+                        color: AppColors.textPrimary),
                     onPressed: () => Navigator.pop(context),
                   ),
                   title: Text(
@@ -728,17 +797,27 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                           children: [
                             Expanded(
                               child: ElevatedButton.icon(
-                                icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                                label: const Text('PLAY ALL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                                icon: const Icon(Icons.play_arrow_rounded,
+                                    size: 18),
+                                label: const Text('PLAY ALL',
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5)),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.neonGreen.withOpacity(0.12),
+                                  backgroundColor:
+                                      AppColors.neonGreen.withOpacity(0.12),
                                   foregroundColor: AppColors.neonGreen,
-                                  side: const BorderSide(color: AppColors.neonGreen, width: 1.0),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  side: const BorderSide(
+                                      color: AppColors.neonGreen, width: 1.0),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
                                 ),
                                 onPressed: () async {
-                                  final player = playbackService.handler.playerInstance;
+                                  final player =
+                                      playbackService.handler.playerInstance;
                                   await player.setShuffleModeEnabled(false);
                                   await playbackService.playTrack(
                                     filePath: songs.first.filePath,
@@ -746,7 +825,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                                     artist: songs.first.artist,
                                     album: songs.first.album,
                                     duration: songs.first.duration,
-                                    queue: songs.map((t) => t.filePath).toList(),
+                                    queue:
+                                        songs.map((t) => t.filePath).toList(),
                                   );
                                   if (context.mounted) {
                                     Navigator.pop(context);
@@ -758,18 +838,30 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                             const SizedBox(width: 12),
                             Expanded(
                               child: ElevatedButton.icon(
-                                icon: const Icon(Icons.shuffle_rounded, size: 18),
-                                label: const Text('SHUFFLE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                                icon:
+                                    const Icon(Icons.shuffle_rounded, size: 18),
+                                label: const Text('SHUFFLE',
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5)),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.electricCyan.withOpacity(0.12),
+                                  backgroundColor:
+                                      AppColors.electricCyan.withOpacity(0.12),
                                   foregroundColor: AppColors.electricCyan,
-                                  side: const BorderSide(color: AppColors.electricCyan, width: 1.0),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  side: const BorderSide(
+                                      color: AppColors.electricCyan,
+                                      width: 1.0),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
                                 ),
                                 onPressed: () async {
-                                  final player = playbackService.handler.playerInstance;
-                                  final shuffled = List<AppTrack>.from(songs)..shuffle();
+                                  final player =
+                                      playbackService.handler.playerInstance;
+                                  final shuffled = List<AppTrack>.from(songs)
+                                    ..shuffle();
                                   await player.setShuffleModeEnabled(true);
                                   await playbackService.playTrack(
                                     filePath: shuffled.first.filePath,
@@ -777,7 +869,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                                     artist: shuffled.first.artist,
                                     album: shuffled.first.album,
                                     duration: shuffled.first.duration,
-                                    queue: shuffled.map((t) => t.filePath).toList(),
+                                    queue: shuffled
+                                        .map((t) => t.filePath)
+                                        .toList(),
                                   );
                                   if (context.mounted) {
                                     Navigator.pop(context);
@@ -803,7 +897,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                               ),
                             )
                           : ListView.builder(
-                              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 40),
+                              padding: const EdgeInsets.only(
+                                  left: 16, right: 16, bottom: 40),
                               itemCount: songs.length,
                               itemBuilder: (context, index) {
                                 final track = songs[index];
@@ -813,7 +908,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     side: BorderSide(
-                                      color: AppColors.glassBorder.withOpacity(0.05),
+                                      color: AppColors.glassBorder
+                                          .withOpacity(0.05),
                                       width: 0.8,
                                     ),
                                   ),
@@ -827,14 +923,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                                         artist: track.artist,
                                         album: track.album,
                                         duration: track.duration,
-                                        queue: songs.map((t) => t.filePath).toList(),
+                                        queue: songs
+                                            .map((t) => t.filePath)
+                                            .toList(),
                                       );
                                       if (context.mounted) {
                                         Navigator.pop(context);
                                         GoRouter.of(context).go(AppRoutes.home);
                                       }
                                     },
-                                    leading: const Icon(Icons.music_note, color: AppColors.neonGreen, size: 20),
+                                    leading: const Icon(Icons.music_note,
+                                        color: AppColors.neonGreen, size: 20),
                                     title: Text(
                                       track.title,
                                       style: const TextStyle(
@@ -848,11 +947,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                                     ),
                                     subtitle: Text(
                                       track.artist,
-                                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                                      style: const TextStyle(
+                                          color: AppColors.textSecondary,
+                                          fontSize: 11),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                    trailing: const Icon(Icons.play_arrow_rounded, color: AppColors.electricCyan, size: 18),
+                                    trailing: const Icon(
+                                        Icons.play_arrow_rounded,
+                                        color: AppColors.electricCyan,
+                                        size: 18),
                                   ),
                                 );
                               },

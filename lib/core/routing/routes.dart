@@ -3,7 +3,7 @@ class AppRoutes {
 
   // Splash Screen
   static const String splash = '/';
-  
+
   // Primary Tabs
   static const String home = '/home';
   static const String library = '/library';

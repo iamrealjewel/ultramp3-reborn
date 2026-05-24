@@ -8,6 +8,8 @@ class PlayerSettings {
   final bool visualizerTransparencyEnabled;
   final double visualizerOpacity;
   final bool showAlbumArt; // true = Album Art, false = Visualizer
+  final bool glowEnabled;
+  final bool glassEnabled;
 
   const PlayerSettings({
     required this.dialerTransparencyEnabled,
@@ -16,6 +18,8 @@ class PlayerSettings {
     required this.visualizerTransparencyEnabled,
     required this.visualizerOpacity,
     required this.showAlbumArt,
+    required this.glowEnabled,
+    required this.glassEnabled,
   });
 
   PlayerSettings copyWith({
@@ -25,14 +29,20 @@ class PlayerSettings {
     bool? visualizerTransparencyEnabled,
     double? visualizerOpacity,
     bool? showAlbumArt,
+    bool? glowEnabled,
+    bool? glassEnabled,
   }) {
     return PlayerSettings(
-      dialerTransparencyEnabled: dialerTransparencyEnabled ?? this.dialerTransparencyEnabled,
+      dialerTransparencyEnabled:
+          dialerTransparencyEnabled ?? this.dialerTransparencyEnabled,
       dialerOpacity: dialerOpacity ?? this.dialerOpacity,
       skinType: skinType ?? this.skinType,
-      visualizerTransparencyEnabled: visualizerTransparencyEnabled ?? this.visualizerTransparencyEnabled,
+      visualizerTransparencyEnabled:
+          visualizerTransparencyEnabled ?? this.visualizerTransparencyEnabled,
       visualizerOpacity: visualizerOpacity ?? this.visualizerOpacity,
       showAlbumArt: showAlbumArt ?? this.showAlbumArt,
+      glowEnabled: glowEnabled ?? this.glowEnabled,
+      glassEnabled: glassEnabled ?? this.glassEnabled,
     );
   }
 
@@ -43,13 +53,16 @@ class PlayerSettings {
     visualizerTransparencyEnabled: false,
     visualizerOpacity: 0.55,
     showAlbumArt: false,
+    glowEnabled: true,
+    glassEnabled: true,
   );
 }
 
 class PlayerSettingsNotifier extends StateNotifier<PlayerSettings> {
   final StorageService _storageService;
 
-  PlayerSettingsNotifier(this._storageService) : super(PlayerSettings.defaultSettings) {
+  PlayerSettingsNotifier(this._storageService)
+      : super(PlayerSettings.defaultSettings) {
     _loadSettings();
   }
 
@@ -58,9 +71,12 @@ class PlayerSettingsNotifier extends StateNotifier<PlayerSettings> {
       dialerTransparencyEnabled: _storageService.getDialerTransparencyEnabled(),
       dialerOpacity: _storageService.getDialerOpacity(),
       skinType: _storageService.getSkinType(),
-      visualizerTransparencyEnabled: _storageService.getVisualizerTransparencyEnabled(),
+      visualizerTransparencyEnabled:
+          _storageService.getVisualizerTransparencyEnabled(),
       visualizerOpacity: _storageService.getVisualizerOpacity(),
       showAlbumArt: _storageService.getShowAlbumArt(),
+      glowEnabled: _storageService.getGlowEnabled(),
+      glassEnabled: _storageService.getGlassEnabled(),
     );
   }
 
@@ -93,9 +109,20 @@ class PlayerSettingsNotifier extends StateNotifier<PlayerSettings> {
     state = state.copyWith(showAlbumArt: show);
     _storageService.setShowAlbumArt(show);
   }
+
+  void toggleGlowEnabled(bool enabled) {
+    state = state.copyWith(glowEnabled: enabled);
+    _storageService.setGlowEnabled(enabled);
+  }
+
+  void toggleGlassEnabled(bool enabled) {
+    state = state.copyWith(glassEnabled: enabled);
+    _storageService.setGlassEnabled(enabled);
+  }
 }
 
-final playerSettingsProvider = StateNotifierProvider<PlayerSettingsNotifier, PlayerSettings>((ref) {
+final playerSettingsProvider =
+    StateNotifierProvider<PlayerSettingsNotifier, PlayerSettings>((ref) {
   final storageService = ref.watch(storageServiceProvider);
   return PlayerSettingsNotifier(storageService);
 });

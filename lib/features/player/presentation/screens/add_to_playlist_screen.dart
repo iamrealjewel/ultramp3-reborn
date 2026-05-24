@@ -14,7 +14,8 @@ class AddToPlaylistScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<AddToPlaylistScreen> createState() => _AddToPlaylistScreenState();
+  ConsumerState<AddToPlaylistScreen> createState() =>
+      _AddToPlaylistScreenState();
 }
 
 class _AddToPlaylistScreenState extends ConsumerState<AddToPlaylistScreen> {
@@ -55,14 +56,16 @@ class _AddToPlaylistScreenState extends ConsumerState<AddToPlaylistScreen> {
             hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
             filled: true,
             fillColor: const Color(0xFF09090B),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: Color(0xFF27272A)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.cyberPink, width: 1.5),
+              borderSide:
+                  const BorderSide(color: AppColors.cyberPink, width: 1.5),
             ),
           ),
         ),
@@ -72,7 +75,8 @@ class _AddToPlaylistScreenState extends ConsumerState<AddToPlaylistScreen> {
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text(
               'CANCEL',
-              style: TextStyle(color: Colors.white60, fontSize: 12, fontFamily: 'Orbitron'),
+              style: TextStyle(
+                  color: Colors.white60, fontSize: 12, fontFamily: 'Orbitron'),
             ),
           ),
           ElevatedButton(
@@ -81,7 +85,9 @@ class _AddToPlaylistScreenState extends ConsumerState<AddToPlaylistScreen> {
               if (name.isNotEmpty) {
                 // Create playlist and add song to it
                 await ref.read(playlistsProvider.notifier).createPlaylist(name);
-                await ref.read(playlistsProvider.notifier).addSongToPlaylist(name, widget.songId);
+                await ref
+                    .read(playlistsProvider.notifier)
+                    .addSongToPlaylist(name, widget.songId);
                 // Close dialog first using dialog's own context
                 if (dialogContext.mounted) {
                   Navigator.of(dialogContext).pop();
@@ -103,7 +109,10 @@ class _AddToPlaylistScreenState extends ConsumerState<AddToPlaylistScreen> {
             ),
             child: const Text(
               'CREATE',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Orbitron'),
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Orbitron'),
             ),
           ),
         ],
@@ -159,7 +168,8 @@ class _AddToPlaylistScreenState extends ConsumerState<AddToPlaylistScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 24),
+                    icon: const Icon(Icons.arrow_back_rounded,
+                        color: Colors.white, size: 24),
                     onPressed: () => Navigator.pop(context),
                   ),
                   const SizedBox(width: 8),
@@ -176,7 +186,8 @@ class _AddToPlaylistScreenState extends ConsumerState<AddToPlaylistScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.add_box_rounded, color: AppColors.cyberPink, size: 26),
+                    icon: const Icon(Icons.add_box_rounded,
+                        color: AppColors.cyberPink, size: 26),
                     tooltip: 'Create New Playlist',
                     onPressed: () => _showCreatePlaylistDialog(context),
                   ),
@@ -202,9 +213,11 @@ class _AddToPlaylistScreenState extends ConsumerState<AddToPlaylistScreen> {
                     decoration: BoxDecoration(
                       color: const Color(0xFF09090B),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.cyberPink.withOpacity(0.3)),
+                      border: Border.all(
+                          color: AppColors.cyberPink.withOpacity(0.3)),
                     ),
-                    child: const Icon(Icons.music_note_rounded, color: AppColors.cyberPink, size: 24),
+                    child: const Icon(Icons.music_note_rounded,
+                        color: AppColors.cyberPink, size: 24),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -246,7 +259,8 @@ class _AddToPlaylistScreenState extends ConsumerState<AddToPlaylistScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.playlist_add_rounded, color: Colors.white.withOpacity(0.2), size: 64),
+                          Icon(Icons.playlist_add_rounded,
+                              color: Colors.white.withOpacity(0.2), size: 64),
                           const SizedBox(height: 16),
                           const Text(
                             'NO PLAYLISTS YET',
@@ -264,7 +278,10 @@ class _AddToPlaylistScreenState extends ConsumerState<AddToPlaylistScreen> {
                             icon: const Icon(Icons.add_rounded, size: 18),
                             label: const Text(
                               'CREATE PLAYLIST',
-                              style: TextStyle(fontFamily: 'Orbitron', fontSize: 12, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                  fontFamily: 'Orbitron',
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold),
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.cyberPink,
@@ -272,7 +289,8 @@ class _AddToPlaylistScreenState extends ConsumerState<AddToPlaylistScreen> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 12),
                             ),
                           ),
                         ],
@@ -290,10 +308,12 @@ class _AddToPlaylistScreenState extends ConsumerState<AddToPlaylistScreen> {
                           decoration: BoxDecoration(
                             color: const Color(0xFF121214),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFF1F1F23), width: 1.0),
+                            border: Border.all(
+                                color: const Color(0xFF1F1F23), width: 1.0),
                           ),
                           child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 4),
                             leading: Container(
                               width: 40,
                               height: 40,
@@ -301,7 +321,8 @@ class _AddToPlaylistScreenState extends ConsumerState<AddToPlaylistScreen> {
                                 color: const Color(0xFF18181B),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: const Icon(Icons.playlist_play_rounded, color: Colors.white70, size: 24),
+                              child: const Icon(Icons.playlist_play_rounded,
+                                  color: Colors.white70, size: 24),
                             ),
                             title: Text(
                               name.toUpperCase(),
@@ -320,9 +341,12 @@ class _AddToPlaylistScreenState extends ConsumerState<AddToPlaylistScreen> {
                                 fontSize: 11,
                               ),
                             ),
-                            trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white30),
+                            trailing: const Icon(Icons.chevron_right_rounded,
+                                color: Colors.white30),
                             onTap: () async {
-                              await ref.read(playlistsProvider.notifier).addSongToPlaylist(name, widget.songId);
+                              await ref
+                                  .read(playlistsProvider.notifier)
+                                  .addSongToPlaylist(name, widget.songId);
                               if (context.mounted) {
                                 _showToast(context, 'ADDED TO $name');
                                 Navigator.pop(context);

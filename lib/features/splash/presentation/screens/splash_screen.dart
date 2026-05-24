@@ -14,7 +14,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with TickerProviderStateMixin {
   late AnimationController _iconAnimationController;
   late AnimationController _bgAnimationController;
   late Animation<double> _iconScale;
@@ -122,7 +123,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
             ],
           ),
         ),
-        
+
         // Spring scaling App Icon
         AnimatedBuilder(
           animation: _iconAnimationController,
@@ -292,7 +293,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
       backgroundColor: AppColors.voidBlack,
@@ -374,7 +376,8 @@ class _SplashBackgroundPainter extends CustomPainter {
   final double progress;
   final double animationTime;
 
-  _SplashBackgroundPainter({required this.progress, required this.animationTime});
+  _SplashBackgroundPainter(
+      {required this.progress, required this.animationTime});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -382,30 +385,35 @@ class _SplashBackgroundPainter extends CustomPainter {
     final double h = size.height;
 
     // Draw galaxy particles
-    final math.Random random = math.Random(42); // deterministic seed for stable particles
+    final math.Random random =
+        math.Random(42); // deterministic seed for stable particles
     final Paint particlePaint = Paint()..style = PaintingStyle.fill;
-    
+
     // Scale speed and particle count based on progress
     final double speedFactor = 1.0 + progress * 4.0;
-    
+
     for (int i = 0; i < 40; i++) {
       // Base positions
       final double baseAngle = random.nextDouble() * 2 * math.pi;
       final double baseRadius = 30 + random.nextDouble() * math.max(w, h) * 0.6;
-      
+
       // Animate radius outwards
-      final double driftRadius = (baseRadius + (animationTime * 12.0 * speedFactor)) % (math.max(w, h) * 0.7);
-      
+      final double driftRadius =
+          (baseRadius + (animationTime * 12.0 * speedFactor)) %
+              (math.max(w, h) * 0.7);
+
       // Calculate coordinates centered in the screen
       final double dx = w / 2 + math.cos(baseAngle) * driftRadius;
       final double dy = h / 2 + math.sin(baseAngle) * driftRadius;
 
       // Draw particle with opacity fading near edges
-      final double edgeOpacity = (1.0 - (driftRadius / (math.max(w, h) * 0.7))).clamp(0.0, 1.0);
+      final double edgeOpacity =
+          (1.0 - (driftRadius / (math.max(w, h) * 0.7))).clamp(0.0, 1.0);
       final double particleSize = 1.0 + random.nextDouble() * 2.5;
-      
+
       // Green/cyan glow
-      final Color pColor = i % 2 == 0 ? AppColors.neonGreen : AppColors.electricCyan;
+      final Color pColor =
+          i % 2 == 0 ? AppColors.neonGreen : AppColors.electricCyan;
       particlePaint.color = pColor.withOpacity(0.18 * edgeOpacity);
 
       canvas.drawCircle(Offset(dx, dy), particleSize, particlePaint);
@@ -419,7 +427,7 @@ class _SplashBackgroundPainter extends CustomPainter {
 
     final double midY = h / 2;
     final int samplePoints = 50;
-    
+
     // Draw 3 layers of glowing retro oscilloscope waves
     for (int layer = 0; layer < 3; layer++) {
       final wavePath = Path();
@@ -432,14 +440,18 @@ class _SplashBackgroundPainter extends CustomPainter {
       for (int x = 0; x <= samplePoints; x++) {
         final double pct = x / samplePoints;
         final double dx = pct * w;
-        final double dy = midY + math.sin(pct * w * frequency - phaseShift) * amplitude * math.sin(pct * math.pi);
+        final double dy = midY +
+            math.sin(pct * w * frequency - phaseShift) *
+                amplitude *
+                math.sin(pct * math.pi);
         wavePath.lineTo(dx, dy);
       }
 
       // Color from neon green to electric cyan with low opacity for background aura
-      final Color waveColor = layer % 2 == 0 ? AppColors.neonGreen : AppColors.electricCyan;
+      final Color waveColor =
+          layer % 2 == 0 ? AppColors.neonGreen : AppColors.electricCyan;
       wavePaint.color = waveColor.withOpacity(0.12 - (layer * 0.03));
-      
+
       canvas.drawPath(wavePath, wavePaint);
     }
   }
@@ -450,6 +462,7 @@ class _SplashBackgroundPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SplashBackgroundPainter oldDelegate) {
-    return oldDelegate.animationTime != animationTime || oldDelegate.progress != progress;
+    return oldDelegate.animationTime != animationTime ||
+        oldDelegate.progress != progress;
   }
 }
