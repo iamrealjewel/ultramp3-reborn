@@ -62,6 +62,7 @@ flutter:
 
   shaders:
     - shaders/apps_ring.frag
+    - shaders/steam_bars.frag
     - shaders/cosmic_tunnel.frag
     - shaders/liquid_fluid.frag
     - shaders/solar_flares.frag

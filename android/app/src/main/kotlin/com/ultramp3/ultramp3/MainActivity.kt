@@ -2,12 +2,12 @@ package com.ultramp3.ultramp3
 
 import android.media.audiofx.Virtualizer
 import android.media.audiofx.Visualizer
-import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
+import com.ryanheise.audioservice.AudioServiceActivity
 
-class MainActivity : FlutterActivity() {
+class MainActivity : AudioServiceActivity() {
   private val channelName = "ultramp3/audio_effects"
   private val visualizerEventName = "ultramp3/visualizer"
   private var virtualizer: Virtualizer? = null

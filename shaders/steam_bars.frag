@@ -58,7 +58,7 @@ void main() {
   float vign = smoothstep(1.10, 0.25, length(p));
   float mist = 0.015 * sin(uv.y * 10.0 + uTime * 0.5) +
       0.015 * sin(uv.x * 8.0 - uTime * 0.35);
-  vec3 bg = (0.02 + mist) * vign;
+  vec3 bg = vec3((0.02 + mist) * vign);
 
   // Mirror split.
   float midY = 0.52;

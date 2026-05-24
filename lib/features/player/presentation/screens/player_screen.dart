@@ -43,10 +43,7 @@ enum VisualizerStyle {
 
   // GPU shader visualizers (Android-only for now)
   shaderAppsRing,
-  shaderDsRing,
   shaderSteamBars,
-  shaderPrismRing,
-  shaderBlobOrbit,
 }
 
 // Supported Skeuomorphic Dial Styles
@@ -121,10 +118,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   bool _isShaderStyle(VisualizerStyle style) {
     switch (style) {
       case VisualizerStyle.shaderAppsRing:
-      case VisualizerStyle.shaderDsRing:
       case VisualizerStyle.shaderSteamBars:
-      case VisualizerStyle.shaderPrismRing:
-      case VisualizerStyle.shaderBlobOrbit:
         return true;
       default:
         return false;
@@ -193,10 +187,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   final Map<String, Future<_AudioTechInfo?>> _techInfoInflight = {};
 
   ui.FragmentProgram? _appsRingProgram;
-  ui.FragmentProgram? _dsRingProgram;
   ui.FragmentProgram? _steamBarsProgram;
-  ui.FragmentProgram? _prismRingProgram;
-  ui.FragmentProgram? _blobOrbitProgram;
   ui.FragmentProgram? _cosmicTunnelProgram;
   ui.FragmentProgram? _liquidFluidProgram;
   ui.FragmentProgram? _solarFlaresProgram;
@@ -218,10 +209,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
 
   Future<void> _loadShaderPrograms() async {
     final apps = await _tryLoadProgram('shaders/apps_ring.frag');
-    final ds = await _tryLoadProgram('shaders/ds_ring.frag');
     final steam = await _tryLoadProgram('shaders/steam_bars.frag');
-    final prism = await _tryLoadProgram('shaders/prism_ring.frag');
-    final blob = await _tryLoadProgram('shaders/blob_orbit.frag');
     final tunnel = await _tryLoadProgram('shaders/cosmic_tunnel.frag');
     final fluid = await _tryLoadProgram('shaders/liquid_fluid.frag');
     final solar = await _tryLoadProgram('shaders/solar_flares.frag');
@@ -229,10 +217,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     if (!mounted) return;
     setState(() {
       _appsRingProgram = apps;
-      _dsRingProgram = ds;
       _steamBarsProgram = steam;
-      _prismRingProgram = prism;
-      _blobOrbitProgram = blob;
       _cosmicTunnelProgram = tunnel;
       _liquidFluidProgram = fluid;
       _solarFlaresProgram = solar;
@@ -627,10 +612,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
       case VisualizerStyle.audioMatrixGrid:
       case VisualizerStyle.blackHoleStars:
       case VisualizerStyle.shaderAppsRing:
-      case VisualizerStyle.shaderDsRing:
       case VisualizerStyle.shaderSteamBars:
-      case VisualizerStyle.shaderPrismRing:
-      case VisualizerStyle.shaderBlobOrbit:
         return 4; // All newer styles support 4 variations
     }
   }
@@ -1189,10 +1171,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                                 peakColor: activeSkin.visualizerPeakColor,
                                 hasTrack: _hasTrack,
                                 appsRingProgram: _appsRingProgram,
-                                dsRingProgram: _dsRingProgram,
                                 steamBarsProgram: _steamBarsProgram,
-                                prismRingProgram: _prismRingProgram,
-                                blobOrbitProgram: _blobOrbitProgram,
                                 cosmicTunnelProgram: _cosmicTunnelProgram,
                                 liquidFluidProgram: _liquidFluidProgram,
                                 solarFlaresProgram: _solarFlaresProgram,
@@ -2105,14 +2084,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                           styleIcon = Icons.blur_on_rounded;
                         if (style == VisualizerStyle.shaderAppsRing)
                           styleIcon = Icons.auto_awesome_motion_rounded;
-                        if (style == VisualizerStyle.shaderDsRing)
-                          styleIcon = Icons.donut_large_rounded;
                         if (style == VisualizerStyle.shaderSteamBars)
                           styleIcon = Icons.equalizer_rounded;
-                        if (style == VisualizerStyle.shaderPrismRing)
-                          styleIcon = Icons.tonality_rounded;
-                        if (style == VisualizerStyle.shaderBlobOrbit)
-                          styleIcon = Icons.brightness_high_rounded;
 
                         return GestureDetector(
                           onTap: () {
@@ -3737,10 +3710,7 @@ class _VisualizerPainter extends CustomPainter {
   final Color peakColor;
   final bool hasTrack;
   final ui.FragmentProgram? appsRingProgram;
-  final ui.FragmentProgram? dsRingProgram;
   final ui.FragmentProgram? steamBarsProgram;
-  final ui.FragmentProgram? prismRingProgram;
-  final ui.FragmentProgram? blobOrbitProgram;
   final ui.FragmentProgram? cosmicTunnelProgram;
   final ui.FragmentProgram? liquidFluidProgram;
   final ui.FragmentProgram? solarFlaresProgram;
@@ -3757,10 +3727,7 @@ class _VisualizerPainter extends CustomPainter {
     required this.peakColor,
     required this.hasTrack,
     this.appsRingProgram,
-    this.dsRingProgram,
     this.steamBarsProgram,
-    this.prismRingProgram,
-    this.blobOrbitProgram,
     this.cosmicTunnelProgram,
     this.liquidFluidProgram,
     this.solarFlaresProgram,
@@ -5278,38 +5245,6 @@ class _VisualizerPainter extends CustomPainter {
         }
         break;
 
-      case VisualizerStyle.shaderDsRing:
-        {
-          final program = dsRingProgram;
-          if (program != null) {
-            final shader = program.fragmentShader();
-            // Uniform order must match shaders/ds_ring.frag.
-            shader.setFloat(0, w);
-            shader.setFloat(1, h);
-            shader.setFloat(2, time);
-            shader.setFloat(3, beat.clamp(0.0, 1.0));
-            for (int i = 0; i < 10; i++) {
-              final v = (i < amplitudes.length)
-                  ? (amplitudes[i] / 38.0).clamp(0.0, 1.0)
-                  : 0.0;
-              shader.setFloat(4 + i, v);
-            }
-            canvas.drawRect(
-                Rect.fromLTWH(0, 0, w, h), Paint()..shader = shader);
-          } else {
-            // Fallback: ring + bars.
-            final double cx = w / 2;
-            final double cy = h / 2;
-            final double baseR = math.min(w, h) * 0.18;
-            final Paint ringPaint = Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 2.0
-              ..color = barColor.withOpacity(0.75);
-            canvas.drawCircle(Offset(cx, cy), baseR, ringPaint);
-          }
-        }
-        break;
-
       case VisualizerStyle.shaderSteamBars:
         {
           final program = steamBarsProgram;
@@ -5349,87 +5284,6 @@ class _VisualizerPainter extends CustomPainter {
         }
         break;
 
-      case VisualizerStyle.shaderPrismRing:
-        {
-          final program = prismRingProgram;
-          if (program != null) {
-            final shader = program.fragmentShader();
-            // Uniform order must match shaders/prism_ring.frag.
-            shader.setFloat(0, w);
-            shader.setFloat(1, h);
-            shader.setFloat(2, time);
-            shader.setFloat(3, beat.clamp(0.0, 1.0));
-            for (int i = 0; i < 10; i++) {
-              final v = (i < amplitudes.length)
-                  ? (amplitudes[i] / 38.0).clamp(0.0, 1.0)
-                  : 0.0;
-              shader.setFloat(4 + i, v);
-            }
-            canvas.drawRect(
-                Rect.fromLTWH(0, 0, w, h), Paint()..shader = shader);
-          } else {
-            // Fallback: two-tone ring.
-            final double cx = w / 2;
-            final double cy = h / 2;
-            final double baseR = math.min(w, h) * 0.20;
-            final Paint ringPaint = Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 4.0;
-            ringPaint.color = Colors.redAccent.withOpacity(0.55);
-            canvas.drawArc(
-                Rect.fromCircle(center: Offset(cx, cy), radius: baseR),
-                -math.pi,
-                math.pi,
-                false,
-                ringPaint);
-            ringPaint.color = Colors.lightBlueAccent.withOpacity(0.55);
-            canvas.drawArc(
-                Rect.fromCircle(center: Offset(cx, cy), radius: baseR),
-                0,
-                math.pi,
-                false,
-                ringPaint);
-          }
-        }
-        break;
-
-      case VisualizerStyle.shaderBlobOrbit:
-        {
-          final program = blobOrbitProgram;
-          if (program != null) {
-            final shader = program.fragmentShader();
-            // Uniform order must match shaders/blob_orbit.frag.
-            shader.setFloat(0, w);
-            shader.setFloat(1, h);
-            shader.setFloat(2, time);
-            shader.setFloat(3, beat.clamp(0.0, 1.0));
-            for (int i = 0; i < 10; i++) {
-              final v = (i < amplitudes.length)
-                  ? (amplitudes[i] / 38.0).clamp(0.0, 1.0)
-                  : 0.0;
-              shader.setFloat(4 + i, v);
-            }
-            canvas.drawRect(
-                Rect.fromLTWH(0, 0, w, h), Paint()..shader = shader);
-          } else {
-            // Fallback: orbiting dots.
-            final double cx = w / 2;
-            final double cy = h / 2;
-            final double rr = math.min(w, h) * 0.22;
-            final Paint dot = Paint()..style = PaintingStyle.fill;
-            for (int i = 0; i < 8; i++) {
-              final double ang = time * 0.8 + i * (math.pi * 2 / 8);
-              final double amp = (amplitudes[i % amplitudes.length] / 38.0)
-                  .clamp(0.0, 1.0);
-              final Offset o = Offset(cx + math.cos(ang) * rr,
-                  cy + math.sin(ang) * rr * 0.75);
-              dot.color = Color.lerp(barColor, Colors.white, amp)!
-                  .withOpacity(0.75);
-              canvas.drawCircle(o, 6 + amp * 10, dot);
-            }
-          }
-        }
-        break;
     }
     canvas.restore();
   }
