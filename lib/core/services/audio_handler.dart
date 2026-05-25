@@ -21,6 +21,10 @@ class UltraAudioHandler extends BaseAudioHandler
   bool _equalizerEnabled = false;
   List<double> _currentGains = const [];
   Timer? _eqRampTimer;
+  double _userVolume = 1.0;
+  final _volumeController = StreamController<double>.broadcast();
+  Stream<double> get volumeStream => _volumeController.stream;
+  double get userVolume => _userVolume;
 
   // Beat-ish envelope derived from low-frequency energy.
   double _lowEnergyEma = 0.0;
@@ -111,6 +115,9 @@ class UltraAudioHandler extends BaseAudioHandler
       final maxDb = parameters.maxDecibels;
 
       final targetGains = gains.map((g) => g.clamp(minDb, maxDb)).toList();
+
+      // Pre-attenuate master volume immediately to secure headroom and prevent clipping
+      await _applyActualVolumeForGains(targetGains);
 
       // If _currentGains is empty or size mismatch, initialize it instantly to avoid startup lag
       if (_currentGains.length != targetGains.length) {
@@ -259,6 +266,31 @@ class UltraAudioHandler extends BaseAudioHandler
     } catch (_) {
       // Best-effort; platform may not support this effect.
     }
+  }
+
+  Future<void> setVolume(double volume) async {
+    _userVolume = volume;
+    _volumeController.add(volume);
+    await _applyActualVolumeForGains(_currentGains);
+  }
+
+  Future<void> _applyActualVolumeForGains(List<double> gainsList) async {
+    double maxBoost = 0.0;
+    if (_equalizerEnabled && gainsList.isNotEmpty) {
+      maxBoost = gainsList.fold(0.0, (max, val) => val > max ? val : max);
+    }
+
+    // Safety attenuation headroom of -3.0 dB to prevent inter-sample clipping and filter summation peaks
+    double preAmpDb = 0.0;
+    if (maxBoost > 0.0) {
+      preAmpDb = -maxBoost - 3.0;
+    }
+
+    final preAmpFactor = math.pow(10.0, preAmpDb / 20.0).toDouble();
+    final actualVol = (_userVolume * preAmpFactor).clamp(0.0, 1.0);
+    await _player.setVolume(actualVol);
+    print(
+        'Volume Pre-Amp applied: user=$_userVolume, maxBoost=$maxBoost, preAmpDb=$preAmpDb, actual=$actualVol');
   }
 
   void _startAndroidVisualizer(int sessionId) {

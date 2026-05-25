@@ -107,6 +107,14 @@ class PlaybackService {
   Future<void> setStereoStrength(double value01) =>
       _handler.setStereoStrength(value01);
 
+  Stream<double> get volumeStream => _handler.volumeStream;
+  double get volume => _handler.userVolume;
+
+  Future<void> setVolume(double volume) async {
+    await _handler.setVolume(volume);
+    await _storage.setVolumeLevel(volume);
+  }
+
   Future<void> skipToNext() => _handler.skipToNext();
 
   Future<void> skipToPrevious() => _handler.skipToPrevious();

@@ -15,7 +15,6 @@ import 'package:ultramp3/core/services/storage_service.dart';
 import 'package:ultramp3/features/player/presentation/providers/player_skin_provider.dart';
 import 'package:ultramp3/features/player/presentation/providers/player_settings_provider.dart';
 import 'package:ultramp3/features/player/domain/models/player_skin.dart';
-import 'package:ultramp3/features/player/presentation/screens/player_settings_screen.dart';
 import 'package:ultramp3/features/player/presentation/screens/add_to_playlist_screen.dart';
 import 'package:ultramp3/features/playlists/presentation/providers/playlist_providers.dart';
 
@@ -146,6 +145,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     'Live',
     'Dance',
     'Soft',
+    'Beats Audio',
+    'Harman Kardon',
+    'Sony ClearBass',
+    'Bose Signature',
+    'Sennheiser Club',
     'No Bass',
     'No Mids',
     'No Treble',
@@ -821,6 +825,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
         return [5.5, 7.0, 3.5, 0.0, 5.0];
       case 'Soft':
         return [2.5, 1.0, 0.0, 1.5, 3.0];
+      case 'Beats Audio':
+        return [5.5, 3.0, -2.0, 2.0, 4.5];
+      case 'Harman Kardon':
+        return [3.0, 1.0, -1.0, 1.5, 3.5];
+      case 'Sony ClearBass':
+        return [4.5, 2.0, 0.0, 1.0, 2.5];
+      case 'Bose Signature':
+        return [3.5, 2.5, 1.0, 1.5, 2.0];
+      case 'Sennheiser Club':
+        return [2.0, 1.0, 0.0, 1.0, 3.0];
       case 'No Bass':
         return [-12.0, -12.0, 0.0, 0.0, 0.0];
       case 'No Mids':
@@ -1024,7 +1038,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   }
 
   Widget _buildSkeuomorphicVolumeBar(
-      double volume, ja.AudioPlayer player, PlayerSkin skin) {
+      double volume, PlaybackService service, PlayerSkin skin) {
     final activeColor = skin.textColor;
     final numSegments = 10;
 
@@ -1034,13 +1048,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
         const double barWidth = 90.0;
         final double x = details.localPosition.dx.clamp(0.0, barWidth);
         final double volumePercent = x / barWidth;
-        player.setVolume(volumePercent);
+        service.setVolume(volumePercent);
       },
       onHorizontalDragUpdate: (details) {
         const double barWidth = 90.0;
         final double x = details.localPosition.dx.clamp(0.0, barWidth);
         final double volumePercent = x / barWidth;
-        player.setVolume(volumePercent);
+        service.setVolume(volumePercent);
       },
       child: Container(
         width: 90,
@@ -1154,7 +1168,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                       ),
 
                       // Visualizer (always rendered for shader styles).
-                      if (!settings.showAlbumArt || _isShaderStyle(_visualizerStyle))
+                      if (!settings.showAlbumArt ||
+                          _isShaderStyle(_visualizerStyle))
                         Positioned.fill(
                           child: Padding(
                             padding: const EdgeInsets.only(bottom: 46),
@@ -1188,13 +1203,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                             padding: const EdgeInsets.only(bottom: 46),
                             child: Opacity(
                               // Let shader visualizers show through.
-                              opacity: _isShaderStyle(_visualizerStyle) ? 0.82 : 1.0,
+                              opacity:
+                                  _isShaderStyle(_visualizerStyle) ? 0.82 : 1.0,
                               child: Container(
                                 padding: isLandscape
                                     ? EdgeInsets.zero
                                     : const EdgeInsets.all(8),
                                 alignment: Alignment.center,
-                                child: _buildAlbumArtWidget(mediaItem, activeSkin),
+                                child:
+                                    _buildAlbumArtWidget(mediaItem, activeSkin),
                               ),
                             ),
                           ),
@@ -1683,8 +1700,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   Widget _buildVisualizerControls(
       PlaybackService service, PlayerSkin skin, ja.AudioPlayer player) {
     return StreamBuilder<double>(
-      stream: player.volumeStream,
-      initialData: player.volume,
+      stream: service.volumeStream,
+      initialData: service.volume,
       builder: (context, volumeSnapshot) {
         final volume = volumeSnapshot.data ?? 1.0;
 
@@ -1769,7 +1786,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
               ),
 
               // Right side: Persistent gradual heights Volume Bar
-              _buildSkeuomorphicVolumeBar(volume, player, skin),
+              _buildSkeuomorphicVolumeBar(volume, service, skin),
             ],
           ),
         );
@@ -4247,8 +4264,9 @@ class _VisualizerPainter extends CustomPainter {
               final double wave1 = math.sin(pct * 3 * math.pi + time * 4.5) *
                   8.0 *
                   (1 + normalizedAmp);
-              final double wave2 =
-                  math.cos(pct * 6 * math.pi - time * 3.0) * 4.0 * normalizedAmp;
+              final double wave2 = math.cos(pct * 6 * math.pi - time * 3.0) *
+                  4.0 *
+                  normalizedAmp;
               fluidPath.lineTo(x.toDouble(), midY + wave1 + wave2);
             }
             fluidPath.lineTo(w, h);
@@ -4926,9 +4944,9 @@ class _VisualizerPainter extends CustomPainter {
               final double size = (1.2 - star.z) * (3.5 + normalizedAmp * 8.0);
               final double opacity = (1.0 - star.z).clamp(0.0, 1.0);
 
-              starPaint.color =
-                  Color.lerp(barColor, peakColor, (star.z * 2.0).clamp(0.0, 1.0))!
-                      .withOpacity(opacity * (0.35 + normalizedAmp * 0.65));
+              starPaint.color = Color.lerp(
+                      barColor, peakColor, (star.z * 2.0).clamp(0.0, 1.0))!
+                  .withOpacity(opacity * (0.35 + normalizedAmp * 0.65));
 
               canvas.drawCircle(Offset(screenX, screenY), size, starPaint);
 
@@ -5272,8 +5290,8 @@ class _VisualizerPainter extends CustomPainter {
             final int bars = 32;
             final double bw = w / bars;
             for (int i = 0; i < bars; i++) {
-              final double v = (amplitudes[i % amplitudes.length] / 38.0)
-                  .clamp(0.0, 1.0);
+              final double v =
+                  (amplitudes[i % amplitudes.length] / 38.0).clamp(0.0, 1.0);
               final double bh = (h * 0.35) * v;
               final Rect top = Rect.fromLTWH(i * bw + 1, midY - bh, bw - 2, bh);
               final Rect bot = Rect.fromLTWH(i * bw + 1, midY, bw - 2, bh);
@@ -5283,7 +5301,6 @@ class _VisualizerPainter extends CustomPainter {
           }
         }
         break;
-
     }
     canvas.restore();
   }
