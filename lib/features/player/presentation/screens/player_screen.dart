@@ -12,6 +12,7 @@ import 'package:path/path.dart' as p;
 
 import 'package:ultramp3/core/services/playback_service.dart';
 import 'package:ultramp3/core/services/storage_service.dart';
+import 'package:ultramp3/core/theme/app_colors.dart';
 import 'package:ultramp3/features/player/presentation/providers/player_skin_provider.dart';
 import 'package:ultramp3/features/player/presentation/providers/player_settings_provider.dart';
 import 'package:ultramp3/features/player/domain/models/player_skin.dart';
@@ -135,6 +136,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   String _activePreset = 'Flat';
 
   static const List<String> _presetNames = [
+    'Bose Signature',
+    'Beats Audio',
+    'Harman Kardon',
+    'Sony ClearBass',
+    'Sennheiser Club',
     'Flat',
     'Rock',
     'Pop',
@@ -145,11 +151,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     'Live',
     'Dance',
     'Soft',
-    'Beats Audio',
-    'Harman Kardon',
-    'Sony ClearBass',
-    'Bose Signature',
-    'Sennheiser Club',
     'No Bass',
     'No Mids',
     'No Treble',
@@ -403,7 +404,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
       // C. Restore Volume & Equalizer Bands in the service
       final vol = storage.getVolumeLevel();
       try {
-        await player.setVolume(vol);
+        await playbackService.setSystemVolume(vol);
       } catch (_) {}
       // Apply mapped EQ to the underlying engine.
       await _applyEqualizerNow(playbackService);
@@ -622,10 +623,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   }
 
   void _volumeUp(PlaybackService service, PlayerSkin skin) async {
-    final player = service.handler.playerInstance;
-    final currentVol = player.volume;
+    final currentVol = service.volume;
     final targetVol = (currentVol + 0.1).clamp(0.0, 1.0);
-    await player.setVolume(targetVol);
+    await service.setSystemVolume(targetVol);
     if (mounted) {
       _showFeedbackGlow(
           context, 'VOLUME: ${(targetVol * 100).toInt()}%', skin.textColor);
@@ -633,10 +633,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   }
 
   void _volumeDown(PlaybackService service, PlayerSkin skin) async {
-    final player = service.handler.playerInstance;
-    final currentVol = player.volume;
+    final currentVol = service.volume;
     final targetVol = (currentVol - 0.1).clamp(0.0, 1.0);
-    await player.setVolume(targetVol);
+    await service.setSystemVolume(targetVol);
     if (mounted) {
       _showFeedbackGlow(
           context, 'VOLUME: ${(targetVol * 100).toInt()}%', skin.textColor);
@@ -1045,23 +1044,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (details) {
-        const double barWidth = 90.0;
+        const double barWidth = 80.0;
         final double x = details.localPosition.dx.clamp(0.0, barWidth);
         final double volumePercent = x / barWidth;
-        service.setVolume(volumePercent);
+        service.setSystemVolume(volumePercent);
       },
       onHorizontalDragUpdate: (details) {
-        const double barWidth = 90.0;
+        const double barWidth = 80.0;
         final double x = details.localPosition.dx.clamp(0.0, barWidth);
         final double volumePercent = x / barWidth;
-        service.setVolume(volumePercent);
+        service.setSystemVolume(volumePercent);
       },
-      child: Container(
-        width: 90,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-        decoration: const BoxDecoration(
-          color: Colors.transparent,
-        ),
+      child: SizedBox(
+        width: 80,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1071,36 +1066,40 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
               children: List.generate(numSegments, (i) {
                 final segmentThreshold = (i + 1) / numSegments;
                 final isActive = volume >= (segmentThreshold - 0.05);
-                final segmentHeight = 4.0 + (i * 2.2);
+                final segmentHeight = 4.0 + (i * 2.0);
 
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 100),
-                  width: 4.5,
-                  height: segmentHeight,
-                  decoration: BoxDecoration(
-                    color:
-                        isActive ? activeColor : activeColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(1),
-                    boxShadow: isActive
-                        ? [
-                            BoxShadow(
-                              color: activeColor.withOpacity(0.4),
-                              blurRadius: 4,
-                              spreadRadius: 0.2,
-                            )
-                          ]
-                        : [],
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 1.0),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 100),
+                      height: segmentHeight,
+                      decoration: BoxDecoration(
+                        color:
+                            isActive ? activeColor : activeColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(1),
+                        boxShadow: isActive
+                            ? [
+                                BoxShadow(
+                                  color: activeColor.withOpacity(0.4),
+                                  blurRadius: 3,
+                                  spreadRadius: 0.1,
+                                )
+                              ]
+                            : [],
+                      ),
+                    ),
                   ),
                 );
               }),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 2),
             Text(
-              'VOLUME',
+              'VOL',
               style: TextStyle(
                 color: activeColor.withOpacity(0.7),
                 fontFamily: 'Orbitron',
-                fontSize: 7.5,
+                fontSize: 7,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 0.5,
               ),
@@ -1140,6 +1139,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                 final int maxVars = _getMaxVariations(_visualizerStyle);
                 _visualizerVariation = (_visualizerVariation + 1) % maxVars;
               });
+              // Persist the new variation value
+              ref.read(storageServiceProvider).setVisualizerVariation(_visualizerVariation);
               _showFeedbackGlow(
                 context,
                 'VIS VARIATION: ${_visualizerVariation + 1}',
@@ -2110,6 +2111,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                               _visualizerStyle = style;
                               _visualizerVariation = 0;
                             });
+                            // Persist the visualizer style selection
+                            ref.read(storageServiceProvider).setVisualizerStyle(style.name);
+                            // Persist the variation reset to 0
+                            ref.read(storageServiceProvider).setVisualizerVariation(0);
                             Navigator.pop(context);
                             _showFeedbackGlow(
                                 context,
@@ -2404,25 +2409,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                   decoration: _buildBackgroundDecoration(activeSkin),
                 ),
               ),
-
-              // 2. Dynamic animated celestial backgrounds (Skeuomorphic Void / Glacier)
-              if (!activeSkin.isFlat &&
-                  (activeSkin.name.contains('Void') ||
-                      activeSkin.name.contains('Glacier')))
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _CelestialBackgroundPainter(
-                      style: activeSkin.name.contains('Void')
-                          ? CelestialStyle.blackHole
-                          : CelestialStyle.milkyWay,
-                      time: _animationTime,
-                      bassEnergy: _beatEnergy,
-                      stars: _bgCelestialStars,
-                      coreColor: activeSkin.visualizerColor,
-                      accentColor: activeSkin.visualizerPeakColor,
-                    ),
-                  ),
-                ),
 
               Column(
                 children: [
@@ -3416,52 +3402,45 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                   child: GestureDetector(
                     onTap: () => setState(() => _showEqualizer = false),
                     child: Container(
-                      color: Colors.black.withOpacity(0.72),
-                      alignment: isLandscape ? null : Alignment.center,
+                      color: Colors.black.withOpacity(0.85),
                       child: GestureDetector(
                         onTap: () {}, // Prevent tap-through
-                        child: Padding(
-                          padding: isLandscape
-                              ? EdgeInsets.zero
-                              : const EdgeInsets.symmetric(
-                                  horizontal: 16.0, vertical: 40.0),
-                          child: _SkeuomorphicEqualizerPanel(
-                            skin: activeSkin,
-                            bands: _eqBands,
-                            activePreset: _activePreset,
-                            bassValue: _bassValue,
-                            stereoValue: _stereoValue,
-                            onBassChanged: (val) {
-                              setState(() => _bassValue = val);
-                              _applyEqualizerWithKnobs(playbackService);
-                            },
-                            onStereoChanged: (val) {
-                              setState(() => _stereoValue = val);
-                              // Real Android stereo widening via native Virtualizer.
-                              playbackService.setStereoStrength(_stereoValue);
-                            },
-                            onBandChanged: (index, val) {
-                              setState(() {
-                                _eqBands[index] = val;
-                                _activePreset = 'Custom';
-                              });
-                              ref
-                                  .read(storageServiceProvider)
-                                  .setEqualizerPreset('Custom');
-                              ref
-                                  .read(storageServiceProvider)
-                                  .setEqualizerBands(List.from(_eqBands));
-                              _applyEqualizerWithKnobs(playbackService);
-                            },
-                            onPresetSelected: (name) => _applyEqPreset(
-                                playbackService, name, activeSkin.textColor),
-                            onClose: () =>
-                                setState(() => _showEqualizer = false),
-                            minDb: _eqMinDb,
-                            maxDb: _eqMaxDb,
-                            frequencyLabels: _eqUiLabels,
-                            presetNames: _presetNames,
-                          ),
+                        child: _SkeuomorphicEqualizerPanel(
+                          skin: activeSkin,
+                          bands: _eqBands,
+                          activePreset: _activePreset,
+                          bassValue: _bassValue,
+                          stereoValue: _stereoValue,
+                          onBassChanged: (val) {
+                            setState(() => _bassValue = val);
+                            _applyEqualizerWithKnobs(playbackService);
+                          },
+                          onStereoChanged: (val) {
+                            setState(() => _stereoValue = val);
+                            // Real Android stereo widening via native Virtualizer.
+                            playbackService.setStereoStrength(_stereoValue);
+                          },
+                          onBandChanged: (index, val) {
+                            setState(() {
+                              _eqBands[index] = val;
+                              _activePreset = 'Custom';
+                            });
+                            ref
+                                .read(storageServiceProvider)
+                                .setEqualizerPreset('Custom');
+                            ref
+                                .read(storageServiceProvider)
+                                .setEqualizerBands(List.from(_eqBands));
+                            _applyEqualizerWithKnobs(playbackService);
+                          },
+                          onPresetSelected: (name) => _applyEqPreset(
+                              playbackService, name, activeSkin.textColor),
+                          onClose: () =>
+                              setState(() => _showEqualizer = false),
+                          minDb: _eqMinDb,
+                          maxDb: _eqMaxDb,
+                          frequencyLabels: _eqUiLabels,
+                          presetNames: _presetNames,
                         ),
                       ),
                     ),
@@ -6266,198 +6245,237 @@ class _SkeuomorphicEqualizerPanel extends StatelessWidget {
 
     const double knobSize = 88;
 
-    return Container(
-      width: isLandscape ? MediaQuery.of(context).size.width : null,
-      height: isLandscape ? MediaQuery.of(context).size.height : null,
-      constraints:
-          BoxConstraints(maxHeight: isLandscape ? double.infinity : 460),
-      decoration: BoxDecoration(
-        borderRadius:
-            isLandscape ? BorderRadius.zero : BorderRadius.circular(20),
-        border: isLandscape
-            ? null
-            : Border.all(color: skin.outerBorderColor, width: 2.5),
-        color: skin.panelBgColor,
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.85), blurRadius: 20),
-        ],
-        gradient: LinearGradient(
-          colors: [skin.panelBgColor, skin.outerBorderColor],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+    return SafeArea(
+      child: Container(
+        width: isLandscape ? MediaQuery.of(context).size.width : null,
+        height: isLandscape ? MediaQuery.of(context).size.height : null,
+        decoration: BoxDecoration(
+          borderRadius:
+              isLandscape ? BorderRadius.zero : BorderRadius.circular(20),
+          border: isLandscape
+              ? null
+              : Border.all(color: skin.outerBorderColor, width: 2.5),
+          color: skin.panelBgColor,
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.85), blurRadius: 20),
+          ],
+          gradient: LinearGradient(
+            colors: [skin.panelBgColor, skin.outerBorderColor],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
         ),
-      ),
-      padding: EdgeInsets.only(
-        top: isLandscape ? (MediaQuery.of(context).padding.top + 8.0) : 12.0,
-        bottom: 12.0,
-        left: 14.0,
-        right: 14.0,
-      ),
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'S60 GRAPHIC EQUALIZER',
-                  style: TextStyle(
-                      color: skin.textColor,
-                      fontFamily: 'Orbitron',
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.8),
+        padding: const EdgeInsets.only(
+          top: 12.0,
+          bottom: 12.0,
+          left: 14.0,
+          right: 14.0,
+        ),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Text(
+                      'S60 GRAPHIC EQUALIZER',
+                      style: TextStyle(
+                          color: skin.textColor,
+                          fontFamily: 'Orbitron',
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.8),
+                    ),
+                    Positioned(
+                      right: 0,
+                      child: GestureDetector(
+                        onTap: onClose,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.black.withOpacity(0.4)),
+                          child: Icon(Icons.close_rounded,
+                              color: skin.textColor, size: 12),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                GestureDetector(
-                  onTap: onClose,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.black.withOpacity(0.4)),
-                    child: Icon(Icons.close_rounded,
-                        color: skin.textColor, size: 12),
-                  ),
+              ),
+              const SizedBox(height: 8),
+              // Bass & Stereo hardware knobs row
+              // Active preset display - centered
+              Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'PRESET: ',
+                      style: TextStyle(
+                          color: skin.textMutedColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10),
+                    ),
+                    Text(
+                      activePreset.toUpperCase(),
+                      style: TextStyle(
+                          color: skin.textColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                          fontFamily: 'monospace'),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // Bass & Stereo hardware knobs row
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.35),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: skin.textColor.withOpacity(0.15), width: 0.8),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _SkeuomorphicKnob(
-                    value: bassValue,
-                    label: 'BASS',
-                    accentColor: skin.textColor,
-                    size: knobSize,
-                    onChanged: onBassChanged,
-                  ),
-                  _SkeuomorphicKnob(
-                    value: stereoValue,
-                    label: 'STEREO',
-                    accentColor: skin.textColor,
-                    size: knobSize,
-                    onChanged: onStereoChanged,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Preset selector row
-            SizedBox(
-              height: 36,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                itemCount: presetNames.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final name = presetNames[index];
+              const SizedBox(height: 8),
+              // Presets - equal width badges distributed evenly
+              GridView.count(
+                crossAxisCount: 4,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 1.41,
+                children: presetNames.map((String name) {
                   final selected = name == activePreset;
+                  final isPremium = ['Bose Signature', 'Beats Audio', 'Harman Kardon', 'Sony ClearBass', 'Sennheiser Club'].contains(name);
+                  
                   return GestureDetector(
                     onTap: () => onPresetSelected(name),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                       decoration: BoxDecoration(
                         color: selected
-                            ? skin.textColor.withOpacity(0.18)
-                            : Colors.black.withOpacity(0.25),
-                        borderRadius: BorderRadius.circular(10),
+                            ? skin.textColor.withOpacity(0.3)
+                            : isPremium
+                                ? Color(0xFF1a472a).withOpacity(0.6)
+                                : Colors.black.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: selected
-                              ? skin.textColor.withOpacity(0.55)
-                              : skin.textColor.withOpacity(0.15),
-                          width: selected ? 1.2 : 0.8,
+                              ? skin.textColor.withOpacity(0.7)
+                              : isPremium
+                                  ? Color(0xFF4ade80).withOpacity(0.5)
+                                  : skin.textColor.withOpacity(0.2),
+                          width: selected ? 1.2 : isPremium ? 1.0 : 0.9,
                         ),
                       ),
                       child: Center(
                         child: Text(
                           name.toUpperCase(),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: selected
                                 ? skin.textColor
-                                : skin.textColor.withOpacity(0.55),
+                                : isPremium
+                                    ? Color(0xFF4ade80)
+                                    : skin.textColor.withOpacity(0.75),
                             fontFamily: 'monospace',
-                            fontSize: 8.5,
-                            fontWeight:
-                                selected ? FontWeight.bold : FontWeight.w600,
-                            letterSpacing: 0.6,
+                            fontSize: 10,
+                            fontWeight: selected ? FontWeight.bold : isPremium ? FontWeight.bold : FontWeight.w600,
                           ),
                         ),
                       ),
                     ),
                   );
-                },
+                }).toList(),
               ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 160,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(bands.length, (index) {
-                  return Column(
-                    children: [
-                      Text(
-                        '${bands[index].toInt() > 0 ? "+" : ""}${bands[index].toInt()}dB',
-                        style: TextStyle(
-                            color: skin.textColor,
-                            fontFamily: 'monospace',
-                            fontSize: 8,
-                            fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      Expanded(
-                        child: RotatedBox(
-                          quarterTurns: 3,
-                          child: SliderTheme(
-                            data: SliderThemeData(
-                              trackHeight: 2.5,
-                              activeTrackColor: skin.textColor,
-                              inactiveTrackColor: Colors.black26,
-                              thumbColor: skin.textColor,
-                              thumbShape: const RoundSliderThumbShape(
-                                  enabledThumbRadius: 5),
-                              overlayShape: const RoundSliderOverlayShape(
-                                  overlayRadius: 10),
-                            ),
-                            child: Slider(
-                              value: bands[index].clamp(minDb, maxDb),
-                              min: minDb,
-                              max: maxDb,
-                              onChanged: (val) => onBandChanged(index, val),
+              const SizedBox(height: 16),
+              // Bass & Stereo hardware knobs - larger and centered
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.35),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: skin.textColor.withOpacity(0.15), width: 0.8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _SkeuomorphicKnob(
+                      value: bassValue,
+                      label: 'BASS',
+                      accentColor: skin.textColor,
+                      size: 110,
+                      onChanged: onBassChanged,
+                    ),
+                    const SizedBox(width: 24),
+                    _SkeuomorphicKnob(
+                      value: stereoValue,
+                      label: 'STEREO',
+                      accentColor: skin.textColor,
+                      size: 110,
+                      onChanged: onStereoChanged,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 160,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: List.generate(bands.length, (index) {
+                    return Column(
+                      children: [
+                        Text(
+                          '${bands[index].toInt() > 0 ? "+" : ""}${bands[index].toInt()}dB',
+                          style: TextStyle(
+                              color: skin.textColor,
+                              fontFamily: 'monospace',
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Expanded(
+                          child: RotatedBox(
+                            quarterTurns: 3,
+                            child: SliderTheme(
+                              data: SliderThemeData(
+                                trackHeight: 2.5,
+                                activeTrackColor: skin.textColor,
+                                inactiveTrackColor: Colors.black26,
+                                thumbColor: skin.textColor,
+                                thumbShape: const RoundSliderThumbShape(
+                                    enabledThumbRadius: 5),
+                                overlayShape: const RoundSliderOverlayShape(
+                                    overlayRadius: 10),
+                              ),
+                              child: Slider(
+                                value: bands[index].clamp(minDb, maxDb),
+                                min: minDb,
+                                max: maxDb,
+                                onChanged: (val) => onBandChanged(index, val),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        index < frequencyLabels.length
-                            ? frequencyLabels[index]
-                            : '',
-                        style: TextStyle(
-                            color: skin.textMutedColor,
-                            fontFamily: 'monospace',
-                            fontSize: 8.5,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  );
-                }),
+                        const SizedBox(height: 4),
+                        Text(
+                          index < frequencyLabels.length
+                              ? frequencyLabels[index]
+                              : '',
+                          style: TextStyle(
+                              color: skin.textMutedColor,
+                              fontFamily: 'monospace',
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    );
+                  }),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

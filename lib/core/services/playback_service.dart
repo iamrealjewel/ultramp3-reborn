@@ -110,9 +110,14 @@ class PlaybackService {
   Stream<double> get volumeStream => _handler.volumeStream;
   double get volume => _handler.userVolume;
 
-  Future<void> setVolume(double volume) async {
-    await _handler.setVolume(volume);
+  Future<void> setSystemVolume(double volume) async {
+    await _handler.setSystemVolume(volume);
     await _storage.setVolumeLevel(volume);
+  }
+
+  Future<void> setVolume(double volume) async {
+    // Redirect to system volume
+    await setSystemVolume(volume);
   }
 
   Future<void> skipToNext() => _handler.skipToNext();

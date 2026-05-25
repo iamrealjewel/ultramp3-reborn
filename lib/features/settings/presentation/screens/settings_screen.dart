@@ -21,6 +21,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String _activePreset = 'Flat';
 
   final Map<String, List<double>> _presets = {
+    'Bose Signature': [3.5, 2.5, 1.0, 1.5, 2.0],
+    'Beats Audio': [5.5, 3.0, -2.0, 2.0, 4.5],
+    'Harman Kardon': [3.0, 1.0, -1.0, 1.5, 3.5],
+    'Sony ClearBass': [4.5, 2.0, 0.0, 1.0, 2.5],
+    'Sennheiser Club': [2.0, 1.0, 0.0, 1.0, 3.0],
     'Flat': [0.0, 0.0, 0.0, 0.0, 0.0],
     'Rock': [4.0, 2.0, -1.0, 2.0, 4.0],
     'Pop': [2.0, 2.0, -1.0, 1.0, 1.0],
@@ -31,11 +36,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     'Live': [1.5, 2.0, 3.0, 3.0, 2.0],
     'Dance': [5.5, 7.0, 3.5, 0.0, 5.0],
     'Soft': [2.5, 1.0, 0.0, 1.5, 3.0],
-    'Beats Audio': [5.5, 3.0, -2.0, 2.0, 4.5],
-    'Harman Kardon': [3.0, 1.0, -1.0, 1.5, 3.5],
-    'Sony ClearBass': [4.5, 2.0, 0.0, 1.0, 2.5],
-    'Bose Signature': [3.5, 2.5, 1.0, 1.5, 2.0],
-    'Sennheiser Club': [2.0, 1.0, 0.0, 1.0, 3.0],
     'No Bass': [-12.0, -12.0, 0.0, 0.0, 0.0],
     'No Mids': [2.0, 2.0, -12.0, -12.0, 0.0],
     'No Treble': [2.0, 2.0, 0.0, -12.0, -12.0],
@@ -134,7 +134,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final settingsNotifier = ref.read(playerSettingsProvider.notifier);
 
     return Scaffold(
+      backgroundColor: AppColors.voidBlack,
       appBar: AppBar(
+        backgroundColor: AppColors.voidBlack,
+        elevation: 0,
         title: Text(
           'ENGINE SETTINGS',
           style: theme.textTheme.displayMedium?.copyWith(
@@ -157,8 +160,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         child: ListView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(
-              16, 16, 16, kBottomNavigationBarHeight + 100),
+          padding: const EdgeInsets.all(16),
           children: [
             // Theme Engine Section
             _buildSectionHeader('THEME ENGINE'),
@@ -191,70 +193,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 border: Border.all(color: AppColors.glassBorder, width: 0.8),
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Presets Dropdown Row
+                  // Active preset indicator
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
-                        'ACTIVE PRESET',
+                        'ACTIVE: ',
                         style: TextStyle(
                             color: AppColors.textPrimary,
                             fontWeight: FontWeight.bold,
                             fontSize: 12),
                       ),
-                      Theme(
-                        data: Theme.of(context).copyWith(
-                          cardColor: AppColors.obsidianDark,
-                        ),
-                        child: PopupMenuButton<String>(
-                          initialValue: _activePreset,
-                          onSelected: _selectPreset,
-                          itemBuilder: (BuildContext context) {
-                            return _presets.keys.map((String key) {
-                              return PopupMenuItem<String>(
-                                value: key,
-                                child: Text(
-                                  key,
-                                  style: TextStyle(
-                                    color: key == _activePreset
-                                        ? AppColors.neonGreen
-                                        : AppColors.textPrimary,
-                                    fontSize: 12,
-                                    fontWeight: key == _activePreset
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                    fontFamily: 'monospace',
-                                  ),
-                                ),
-                              );
-                            }).toList();
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppColors.voidBlack,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                  color: AppColors.glassBorder, width: 0.8),
-                            ),
-                            child: Row(
-                              children: [
-                                Text(
-                                  _activePreset,
-                                  style: const TextStyle(
-                                      color: AppColors.neonGreen,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(width: 4),
-                                const Icon(Icons.arrow_drop_down_rounded,
-                                    color: AppColors.neonGreen, size: 16),
-                              ],
-                            ),
-                          ),
-                        ),
+                      Text(
+                        _activePreset.toUpperCase(),
+                        style: const TextStyle(
+                            color: AppColors.neonGreen,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            fontFamily: 'monospace'),
                       ),
                     ],
                   ),
@@ -271,6 +228,56 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       _buildEqualizerSlider('TREBLE (14kHz)', _trebleValue,
                           (val) => _updateEqualizerBands('treble', val)),
                     ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Presets list (vertical, no horizontal scrolling)
+                  const Text(
+                    'PRESETS',
+                    style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                        letterSpacing: 1.5),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _presets.keys.map((String name) {
+                      final selected = name == _activePreset;
+                      return GestureDetector(
+                        onTap: () => _selectPreset(name),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? AppColors.neonGreen.withOpacity(0.2)
+                                : AppColors.voidBlack.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: selected
+                                  ? AppColors.neonGreen
+                                  : AppColors.glassBorder,
+                              width: selected ? 1.2 : 0.8,
+                            ),
+                          ),
+                          child: Text(
+                            name.toUpperCase(),
+                            style: TextStyle(
+                              color: selected
+                                  ? AppColors.neonGreen
+                                  : AppColors.textPrimary,
+                              fontSize: 10,
+                              fontWeight:
+                                  selected ? FontWeight.bold : FontWeight.w500,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ],
               ),

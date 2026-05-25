@@ -1,6 +1,7 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -19,7 +20,6 @@ class UltraAudioHandler extends BaseAudioHandler
   final _visualizerBandsController = StreamController<List<double>>.broadcast();
   List<double>? _latestVisualizerBands;
   bool _equalizerEnabled = false;
-  List<double> _currentGains = const [];
   Timer? _eqRampTimer;
   double _userVolume = 1.0;
   final _volumeController = StreamController<double>.broadcast();
@@ -55,6 +55,9 @@ class UltraAudioHandler extends BaseAudioHandler
         ],
       ),
     );
+
+    // Initialize AudioSession for system volume control
+    _initAudioSession();
 
     // Audio effects are disabled by default in just_audio.
     // Enable the Android equalizer when present.
@@ -116,63 +119,20 @@ class UltraAudioHandler extends BaseAudioHandler
 
       final targetGains = gains.map((g) => g.clamp(minDb, maxDb)).toList();
 
-      // Pre-attenuate master volume immediately to secure headroom and prevent clipping
-      await _applyActualVolumeForGains(targetGains);
-
-      // If _currentGains is empty or size mismatch, initialize it instantly to avoid startup lag
-      if (_currentGains.length != targetGains.length) {
-        _currentGains = List<double>.from(targetGains);
-        final futures = <Future<void>>[];
-        for (int i = 0; i < bands.length && i < targetGains.length; i++) {
-          futures.add(bands[i].setGain(targetGains[i]));
-        }
-        await Future.wait(futures);
-        print('Native Equalizer initialized gains: $targetGains');
-        return;
-      }
-
-      // Cancel any ongoing transition to prevent overlapping timers
+      // Apply gains instantly without slow ramping to prevent audio artifacts
+      // Cancel any ongoing transition
       _eqRampTimer?.cancel();
+      _eqRampTimer = null;
 
-      // Ramp smoothly over 300 milliseconds. 15 steps of 20ms.
-      const int totalSteps = 15;
-      const int stepIntervalMs = 20;
-      int currentStep = 0;
-
-      final startGains = List<double>.from(_currentGains);
-
-      _eqRampTimer =
-          Timer.periodic(const Duration(milliseconds: stepIntervalMs), (timer) {
-        currentStep++;
-        final progress = (currentStep / totalSteps).clamp(0.0, 1.0);
-
-        final interpolatedGains = <double>[];
-        final futures = <Future<void>>[];
-
-        for (int i = 0; i < targetGains.length; i++) {
-          final start = startGains[i];
-          final target = targetGains[i];
-          final currentVal = start + (target - start) * progress;
-          interpolatedGains.add(currentVal);
-
-          if (i < bands.length) {
-            futures.add(bands[i].setGain(currentVal));
-          }
-        }
-
-        _currentGains = interpolatedGains;
-        Future.wait(futures).catchError((e) {
-          print('Error setting intermediate gains: $e');
-        });
-
-        if (currentStep >= totalSteps) {
-          timer.cancel();
-          _eqRampTimer = null;
-          print('Equalizer smoothly transitioned to: $targetGains');
-        }
-      });
+      // Apply all band gains immediately
+      final futures = <Future<void>>[];
+      for (int i = 0; i < bands.length && i < targetGains.length; i++) {
+        futures.add(bands[i].setGain(targetGains[i]));
+      }
+      await Future.wait(futures);
+      print('Equalizer applied gains: $targetGains');
     } catch (e) {
-      print('Failed to smoothly transition native equalizer gains: $e');
+      print('Failed to apply equalizer gains: $e');
     }
   }
 
@@ -239,10 +199,20 @@ class UltraAudioHandler extends BaseAudioHandler
   }
 
   @override
-  Future<void> skipToNext() => _player.seekToNext();
+  Future<void> skipToNext() async {
+    final nextIdx = _player.nextIndex;
+    if (nextIdx != null) {
+      await _player.seek(Duration.zero, index: nextIdx);
+    }
+  }
 
   @override
-  Future<void> skipToPrevious() => _player.seekToPrevious();
+  Future<void> skipToPrevious() async {
+    final prevIdx = _player.previousIndex;
+    if (prevIdx != null) {
+      await _player.seek(Duration.zero, index: prevIdx);
+    }
+  }
 
   // Access stream to read raw player durations and states
   Stream<Duration?> get positionStream => _player.positionStream;
@@ -268,29 +238,52 @@ class UltraAudioHandler extends BaseAudioHandler
     }
   }
 
-  Future<void> setVolume(double volume) async {
-    _userVolume = volume;
-    _volumeController.add(volume);
-    await _applyActualVolumeForGains(_currentGains);
+  Future<void> _initAudioSession() async {
+    try {
+      // Initialize flutter_volume_controller
+      final subscription = FlutterVolumeController.addListener((volume) {
+        _userVolume = volume;
+        _volumeController.add(volume);
+      });
+
+      // Get initial volume
+      final initialVolume = await FlutterVolumeController.getVolume();
+      _userVolume = initialVolume ?? 0.5;
+      _volumeController.add(_userVolume);
+
+      print('FlutterVolumeController initialized. System volume: $_userVolume');
+    } catch (e) {
+      print('FlutterVolumeController not available: $e');
+      // Fallback: keep using just_audio volume
+    }
   }
 
-  Future<void> _applyActualVolumeForGains(List<double> gainsList) async {
-    double maxBoost = 0.0;
-    if (_equalizerEnabled && gainsList.isNotEmpty) {
-      maxBoost = gainsList.fold(0.0, (max, val) => val > max ? val : max);
+  /// Set system volume (0.0 to 1.0)
+  Future<void> setSystemVolume(double volume) async {
+    try {
+      await FlutterVolumeController.setVolume(volume.clamp(0.0, 1.0));
+      _userVolume = volume.clamp(0.0, 1.0);
+      _volumeController.add(_userVolume);
+      print('System volume set to: $_userVolume');
+    } catch (e) {
+      print('Failed to set system volume: $e');
+      // Fallback to app volume
+      await setVolume(volume);
     }
+  }
 
-    // Safety attenuation headroom of -3.0 dB to prevent inter-sample clipping and filter summation peaks
-    double preAmpDb = 0.0;
-    if (maxBoost > 0.0) {
-      preAmpDb = -maxBoost - 3.0;
+  /// Get current system volume
+  double getSystemVolume() {
+    try {
+      return _userVolume;
+    } catch (_) {
+      return _userVolume;
     }
+  }
 
-    final preAmpFactor = math.pow(10.0, preAmpDb / 20.0).toDouble();
-    final actualVol = (_userVolume * preAmpFactor).clamp(0.0, 1.0);
-    await _player.setVolume(actualVol);
-    print(
-        'Volume Pre-Amp applied: user=$_userVolume, maxBoost=$maxBoost, preAmpDb=$preAmpDb, actual=$actualVol');
+  Future<void> setVolume(double volume) async {
+    // Redirect to system volume control
+    await setSystemVolume(volume);
   }
 
   void _startAndroidVisualizer(int sessionId) {
