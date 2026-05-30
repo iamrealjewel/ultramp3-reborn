@@ -10,6 +10,7 @@ import '../../features/playlists/presentation/screens/playlists_screen.dart';
 import '../../features/player/presentation/screens/player_screen.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
 import '../../features/player/presentation/screens/player_settings_screen.dart';
+import '../../features/settings/presentation/screens/settings_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -70,6 +71,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         path: '/player-settings',
         builder: (context, state) => const PlayerSettingsScreen(),
+      ),
+
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: AppRoutes.settings,
+        builder: (context, state) => const SettingsScreen(),
       ),
 
       // Slide-up Now Playing Screen (Slides over the bottom shell navigator)

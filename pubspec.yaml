@@ -23,6 +23,7 @@ dependencies:
   just_audio: ^0.9.36
   audio_service: ^0.18.12
   audio_session: ^0.1.16
+  flutter_soloud: ^2.0.0
   rxdart: ^0.27.7 # Combines playback position & duration streams cleanly
   flutter_volume_controller: ^2.0.0 # System volume control
 

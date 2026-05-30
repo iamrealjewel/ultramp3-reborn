@@ -11,6 +11,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import 'package:ultramp3/core/services/playback_service.dart';
+import 'package:ultramp3/core/services/audio_handler.dart';
 import 'package:ultramp3/core/services/storage_service.dart';
 import 'package:ultramp3/core/theme/app_colors.dart';
 import 'package:ultramp3/features/player/presentation/providers/player_skin_provider.dart';
@@ -85,7 +86,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
 
 class _PlayerScreenState extends ConsumerState<PlayerScreen>
     with TickerProviderStateMixin {
-  static bool _sessionRestored = false;
+  bool _sessionRestored = false;
 
   late AnimationController _visualizerController;
   late AnimationController _vinylRotationController;
@@ -161,21 +162,27 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   // These are the UI bands we persist and edit.
   static const List<double> _eqUiCentersHz = <double>[
     60,
-    230,
-    910,
-    3600,
-    14000,
+    150,
+    400,
+    1000,
+    2400,
+    6000,
+    15000,
+    20000,
   ];
   static const List<String> _eqUiLabels = <String>[
     '60Hz',
-    '230Hz',
-    '910Hz',
-    '3.6kHz',
-    '14kHz',
+    '150Hz',
+    '400Hz',
+    '1kHz',
+    '2.4kHz',
+    '6kHz',
+    '15kHz',
+    '20kHz',
   ];
 
-  // UI gains (5-band) in dB.
-  final List<double> _eqBands = List.filled(5, 0.0);
+  // UI gains (8-band) in dB.
+  final List<double> _eqBands = List.filled(8, 0.0);
 
   // Android device EQ parameters (used for mapping/clamping).
   double _eqMinDb = -12.0;
@@ -186,6 +193,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   StreamSubscription<List<double>>? _visualizerBandsSub;
   List<double>? _latestRealBands01;
   double _latestBeatPulse = 0.0;
+
+  /// Non-null only while the user is actively dragging the seek slider.
+  /// Isolates local UI drag position from the stream-driven position so the
+  /// thumb does not jump back to the old position during scrubbing.
+  double? _dragValue;
 
   // Cache technical metadata (best-effort) per file path.
   final Map<String, _AudioTechInfo> _techInfoCache = {};
@@ -346,19 +358,29 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
       // we load the fresh code-defined bands to ensure any preset tuning updates (like the 60Hz Pop fix) are immediately applied and saved.
       final List<double> bandsToRestore;
       if (_activePreset != 'Custom' && _activePreset != 'Flat') {
-        bandsToRestore = _computePresetForFiveBands(_activePreset);
+        bandsToRestore = _computePresetForEightBands(_activePreset);
         storage.setEqualizerBands(bandsToRestore);
       } else {
         bandsToRestore = savedBands;
       }
 
       // Migration rules:
-      // - if saved/restore is 5: direct restore
-      // - if saved/restore is 10: migrate from 10 to 5 by frequency interpolation using 10 centers
+      // - if saved/restore is 8: direct restore
+      // - if saved/restore is 5: migrate from 5 to 8 by frequency interpolation
+      // - if saved/restore is 10: migrate from 10 to 8 by frequency interpolation
       // - otherwise: best-effort copy/truncate
-      if (bandsToRestore.length == 5) {
-        for (int i = 0; i < 5; i++) {
+      if (bandsToRestore.length == 8) {
+        for (int i = 0; i < 8; i++) {
           _eqBands[i] = bandsToRestore[i];
+        }
+      } else if (bandsToRestore.length == 5) {
+        const legacyHz = <double>[60, 230, 910, 3600, 14000];
+        for (int i = 0; i < 8; i++) {
+          _eqBands[i] = _interpDb(
+            x: _eqUiCentersHz[i],
+            xs: legacyHz,
+            ys: bandsToRestore,
+          );
         }
       } else if (bandsToRestore.length == 10) {
         const legacyHz = <double>[
@@ -373,7 +395,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
           8000,
           16000
         ];
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 8; i++) {
           _eqBands[i] = _interpDb(
             x: _eqUiCentersHz[i],
             xs: legacyHz,
@@ -381,7 +403,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
           );
         }
       } else {
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 8; i++) {
           _eqBands[i] = i < bandsToRestore.length ? bandsToRestore[i] : 0.0;
         }
       }
@@ -500,7 +522,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
           var targetHeight = 4.0 + (realBands01[i].clamp(0.0, 1.0) * 34.0);
 
           // Beat pulse: emphasize lower bands, subtle on higher bands.
-          final beatBoost = i < 4 ? (1.0 + beat * 0.75) : (1.0 + beat * 0.20);
+          final beatBoost = i < 4 ? (1.0 + beat * 0.35) : (1.0 + beat * 0.10);
           targetHeight *= beatBoost;
 
           // Optional: keep the UI EQ influencing visuals (not audio) for style cohesion.
@@ -512,9 +534,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
           }
 
           targetHeight = targetHeight.clamp(4.0, 38.0);
-          // Stronger smoothing so movement follows musical phrasing more.
+          // Snappier, bouncy responsive smoothing — 0.40 smoothing / 0.60 target
+          // for instant visualizer decay so bars drop quickly between beats.
           _visualizerHeights[i] =
-              _visualizerHeights[i] * 0.78 + targetHeight * 0.22;
+              _visualizerHeights[i] * 0.40 + targetHeight * 0.60;
 
           if (_visualizerHeights[i] >= _peakHeights[i]) {
             _peakHeights[i] = _visualizerHeights[i];
@@ -700,9 +723,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   }
 
   void _applyEqPreset(PlaybackService service, String name, Color color) async {
-    // Always apply presets to the 5-band UI model.
-    // Android audio output is handled by mapping UI->device bands when applying.
-    final target = _computePresetForFiveBands(name);
+    // Always apply presets to the 8-band UI model.
+    final target = _computePresetForEightBands(name);
 
     setState(() {
       _activePreset = name;
@@ -724,7 +746,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     // Compute bass boost from knob: 0.5 = neutral (0dB), 1.0 = +12dB boost, 0.0 = -12dB cut
     final double bassBoostDb = (_bassValue - 0.5) * 24.0; // ±12dB range
     final uiBands = List<double>.from(_eqBands);
-    // Apply bass knob into the low-end UI bands (60Hz and 230Hz).
+    // Apply bass knob into the low-end UI bands (60Hz and 150Hz).
     uiBands[0] = (uiBands[0] + bassBoostDb * 1.0).clamp(_eqMinDb, _eqMaxDb);
     uiBands[1] = (uiBands[1] + bassBoostDb * 0.8).clamp(_eqMinDb, _eqMaxDb);
 
@@ -789,8 +811,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
 
   List<double> _computePresetForAndroid(
       String name, ja.AndroidEqualizerParameters params) {
-    // Build a 5-band UI preset first, then map it onto the device EQ layout.
-    final ui = _computePresetForFiveBands(name);
+    // Build an 8-band UI preset first, then map it onto the device EQ layout.
+    final ui = _computePresetForEightBands(name);
     final mapped = _deviceEqCentersHz.isNotEmpty
         ? _mapUiToDeviceBands(ui)
         : params.bands
@@ -802,48 +824,48 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
         .toList(growable: false);
   }
 
-  List<double> _computePresetForFiveBands(String name) {
-    // Simple recognizable curves across 5 bands.
-    // Order: 60Hz, 230Hz, 910Hz, 3.6kHz, 14kHz
+  List<double> _computePresetForEightBands(String name) {
+    // Recognizable curves across 8 bands.
+    // Order: 60Hz, 150Hz, 400Hz, 1kHz, 2.4kHz, 6kHz, 15kHz, 20kHz
     switch (name) {
       case 'Rock':
-        return [4.0, 2.0, -1.0, 2.0, 4.0];
+        return [4.0, 3.0, 1.0, -1.0, 1.0, 3.0, 4.0, 4.0];
       case 'Pop':
-        return [2.0, 2.0, -1.0, 1.0, 1.0];
+        return [2.0, 1.5, 1.0, -1.0, 0.5, 1.0, 1.0, 1.0];
       case 'Jazz':
-        return [3.0, 1.5, -1.5, 1.5, 3.0];
+        return [3.0, 2.0, 1.0, -1.5, 1.0, 2.0, 3.0, 3.0];
       case 'Bass & Treble':
-        return [7.0, 4.0, 0.0, 4.0, 7.0];
+        return [7.0, 5.0, 3.0, 0.0, 3.0, 5.0, 7.0, 7.0];
       case 'Mids':
-        return [1.0, -1.0, 6.0, 4.0, -2.0];
+        return [-2.0, -1.0, 3.0, 6.0, 5.0, 2.0, -1.0, -2.0];
       case 'Classic':
-        return [4.5, 3.0, 0.0, 2.5, 4.0];
+        return [4.5, 3.5, 2.0, 0.0, 1.5, 2.5, 4.0, 4.0];
       case 'Live':
-        return [1.5, 2.0, 3.0, 3.0, 2.0];
+        return [1.5, 2.0, 2.5, 3.0, 3.0, 2.5, 2.0, 2.0];
       case 'Dance':
-        return [5.5, 7.0, 3.5, 0.0, 5.0];
+        return [5.5, 6.5, 5.5, 3.5, 1.5, 0.0, 4.0, 5.0];
       case 'Soft':
-        return [2.5, 1.0, 0.0, 1.5, 3.0];
+        return [2.5, 2.0, 1.0, 0.0, 1.0, 1.5, 2.5, 3.0];
       case 'Beats Audio':
-        return [5.5, 3.0, -2.0, 2.0, 4.5];
+        return [5.5, 4.5, 2.5, -2.0, 1.5, 3.0, 4.5, 4.5];
       case 'Harman Kardon':
-        return [3.0, 1.0, -1.0, 1.5, 3.5];
+        return [3.0, 2.0, 1.0, -1.0, 1.0, 2.0, 3.5, 3.5];
       case 'Sony ClearBass':
-        return [4.5, 2.0, 0.0, 1.0, 2.5];
+        return [4.5, 3.5, 1.5, 0.0, 1.0, 1.5, 2.5, 2.5];
       case 'Bose Signature':
-        return [3.5, 2.5, 1.0, 1.5, 2.0];
+        return [3.5, 3.0, 2.0, 1.0, 1.5, 2.0, 2.0, 2.0];
       case 'Sennheiser Club':
-        return [2.0, 1.0, 0.0, 1.0, 3.0];
+        return [2.0, 1.5, 0.5, 0.0, 0.5, 1.0, 2.5, 3.0];
       case 'No Bass':
-        return [-12.0, -12.0, 0.0, 0.0, 0.0];
+        return [-12.0, -12.0, -12.0, 0.0, 0.0, 0.0, 0.0, 0.0];
       case 'No Mids':
-        return [2.0, 2.0, -12.0, -12.0, 0.0];
+        return [2.0, 2.0, -12.0, -12.0, -12.0, 0.0, 2.0, 2.0];
       case 'No Treble':
-        return [2.0, 2.0, 0.0, -12.0, -12.0];
+        return [2.0, 2.0, 2.0, 0.0, -12.0, -12.0, -12.0, -12.0];
       case 'Flat':
       case 'Custom':
       default:
-        return List.filled(5, 0.0);
+        return List.filled(8, 0.0);
     }
   }
 
@@ -1116,7 +1138,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     required PlayerSkin activeSkin,
     required PlaybackService playbackService,
     required PlayerSettings settings,
-    required ja.AudioPlayer player,
+    required MockAudioPlayer player,
     required bool isLandscape,
   }) {
     final double visOpacity = activeSkin.isFlat
@@ -1242,7 +1264,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     required BuildContext context,
     required PlayerSkin activeSkin,
     required PlaybackService playbackService,
-    required ja.AudioPlayer player,
+    required MockAudioPlayer player,
     required PlayerSettings settings,
     required bool isShuffle,
     required ja.LoopMode loopMode,
@@ -1304,7 +1326,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     PlayerSkin activeSkin,
     PlaybackService playbackService,
     PlayerSettings settings,
-    ja.AudioPlayer player,
+    MockAudioPlayer player,
   ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1396,11 +1418,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                                 const RoundSliderOverlayShape(overlayRadius: 8),
                           ),
                           child: Slider(
-                            value: progress,
+                            // Use _dragValue while scrubbing so the thumb tracks
+                            // the finger exactly; fall back to stream progress.
+                            value: (_dragValue ?? progress).clamp(0.0, 1.0),
                             onChanged: (val) {
+                              setState(() => _dragValue = val);
+                            },
+                            onChangeEnd: (val) {
                               final ms =
                                   (val * duration.inMilliseconds).toInt();
                               playbackService.seek(Duration(milliseconds: ms));
+                              setState(() => _dragValue = null);
                             },
                           ),
                         ),
@@ -1483,7 +1511,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
 
   Widget _buildFlatPlayControlPanel({
     required PlayerSkin activeSkin,
-    required ja.AudioPlayer player,
+    required MockAudioPlayer player,
     required PlaybackService playbackService,
     required bool isShuffle,
     required ja.LoopMode loopMode,
@@ -1699,7 +1727,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   }
 
   Widget _buildVisualizerControls(
-      PlaybackService service, PlayerSkin skin, ja.AudioPlayer player) {
+      PlaybackService service, PlayerSkin skin, MockAudioPlayer player) {
     return StreamBuilder<double>(
       stream: service.volumeStream,
       initialData: service.volume,
@@ -1712,78 +1740,86 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Left side: Bitrate/Sample badges + Selected Equalizer preset
-              StreamBuilder<MediaItem?>(
-                stream: service.currentMediaItemStream,
-                builder: (context, mediaSnap) {
-                  final mediaItem = mediaSnap.data;
-                  final sourceId = mediaItem?.id;
-
-                  Future<_AudioTechInfo?>? techFuture;
-                  if (sourceId != null && !sourceId.startsWith('http')) {
-                    techFuture = _getTechInfo(sourceId);
-                  }
-
-                  return FutureBuilder<_AudioTechInfo?>(
-                    future: techFuture,
-                    builder: (context, techSnap) {
-                      final info = techSnap.data;
-                      final bitrateText = info?.bitrateKbps != null
-                          ? '${info!.bitrateKbps} KBPS'
-                          : '-- KBPS';
-                      final sampleText = info?.sampleRateHz != null
-                          ? '${(info!.sampleRateHz! / 1000).toStringAsFixed(1)} KHZ'
-                          : '-- KHZ';
-
-                      return Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _BacklitLCDBadge(
-                              text: bitrateText, color: skin.textColor),
-                          const SizedBox(width: 6),
-                          _BacklitLCDBadge(
-                              text: sampleText, color: skin.textColor),
-                          const SizedBox(width: 6),
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _showEqualizer = !_showEqualizer;
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8.0, vertical: 4.0),
-                              decoration: BoxDecoration(
-                                color: skin.textColor.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                    color: skin.textColor.withOpacity(0.35),
-                                    width: 1.0),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.equalizer_rounded,
-                                      color: skin.textColor, size: 12),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    'EQ: ${_activePreset.toUpperCase()}',
-                                    style: TextStyle(
-                                      color: skin.textColor,
-                                      fontFamily: 'monospace',
-                                      fontSize: 10.0,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 0.5,
-                                    ),
+              Expanded(
+                child: StreamBuilder<MediaItem?>(
+                  stream: service.currentMediaItemStream,
+                  builder: (context, mediaSnap) {
+                    final mediaItem = mediaSnap.data;
+                    final sourceId = mediaItem?.id;
+  
+                    Future<_AudioTechInfo?>? techFuture;
+                    if (sourceId != null && !sourceId.startsWith('http')) {
+                      techFuture = _getTechInfo(sourceId);
+                    }
+  
+                    return FutureBuilder<_AudioTechInfo?>(
+                      future: techFuture,
+                      builder: (context, techSnap) {
+                        final info = techSnap.data;
+                        final bitrateText = info?.bitrateKbps != null
+                            ? '${info!.bitrateKbps}KBPS'
+                            : '--KBPS';
+                        final sampleText = info?.sampleRateHz != null
+                            ? '${(info!.sampleRateHz! / 1000).toStringAsFixed(1)}KHZ'
+                            : '--KHZ';
+  
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _BacklitLCDBadge(
+                                text: bitrateText, color: skin.textColor),
+                            const SizedBox(width: 6),
+                            _BacklitLCDBadge(
+                                text: sampleText, color: skin.textColor),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _showEqualizer = !_showEqualizer;
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8.0, vertical: 4.0),
+                                  decoration: BoxDecoration(
+                                    color: skin.textColor.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                        color: skin.textColor.withOpacity(0.35),
+                                        width: 1.0),
                                   ),
-                                ],
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.equalizer_rounded,
+                                          color: skin.textColor, size: 12),
+                                      const SizedBox(width: 5),
+                                      Flexible(
+                                        child: Text(
+                                          _activePreset.toUpperCase(),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: skin.textColor,
+                                            fontFamily: 'monospace',
+                                            fontSize: 10.0,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
+                          ],
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
 
               // Right side: Persistent gradual heights Volume Bar
@@ -2853,9 +2889,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                                                             overlayRadius: 10),
                                                   ),
                                                   child: Slider(
-                                                    value: currentProgress
+                                                    value: (_dragValue ?? currentProgress)
                                                         .clamp(0.0, 1.0),
                                                     onChanged: (val) {
+                                                      setState(() => _dragValue = val);
+                                                    },
+                                                    onChangeEnd: (val) {
                                                       final targetMs = (val *
                                                               duration
                                                                   .inMilliseconds)
@@ -2864,6 +2903,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                                                           Duration(
                                                               milliseconds:
                                                                   targetMs));
+                                                      setState(() => _dragValue = null);
                                                     },
                                                   ),
                                                 ),

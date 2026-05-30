@@ -87,7 +87,7 @@ class StorageService {
     if (bands is List) {
       return List<double>.from(bands.map((e) => (e as num).toDouble()));
     }
-    return [0.0, 0.0, 0.0, 0.0, 0.0];
+    return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
   }
 
   Future<void> setEqualizerBands(List<double> values) =>
@@ -117,6 +117,12 @@ class StorageService {
       _settingsBox.get('dial_style', defaultValue: 'circular');
   Future<void> setDialStyle(String value) =>
       _settingsBox.put('dial_style', value);
+
+  String getAudioEngine() =>
+      _settingsBox.get('audio_engine', defaultValue: 'soloud');
+  Future<void> setAudioEngine(String value) =>
+      _settingsBox.put('audio_engine', value);
+
 
   // --- FAVORITES MODULE ---
   Box<String> get _favoritesBox => Hive.box<String>(_favoritesBoxName);

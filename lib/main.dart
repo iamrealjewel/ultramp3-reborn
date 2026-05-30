@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter_soloud/flutter_soloud.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/routing/app_router.dart';
@@ -15,6 +16,9 @@ void main() async {
   // 2. Initialize Hive local persistent cache
   final storageService = StorageService();
   await storageService.init();
+
+  // 2b. Initialize C++ SoLoud audio engine
+  await SoLoud.instance.init();
 
   // 3. Spin up Android Background Audio Service channel
   final audioHandler = await AudioService.init(

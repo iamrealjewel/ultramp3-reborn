@@ -34,15 +34,13 @@ class PlaybackService {
 
   // Stream combining current progress and duration cleanly
   Stream<PositionState> get positionStateStream =>
-      Rx.combineLatest3<Duration?, Duration?, MediaItem?, PositionState>(
+      Rx.combineLatest2<Duration, MediaItem?, PositionState>(
         _handler.positionStream,
-        _handler.playerInstance.durationStream,
         _handler.mediaItem,
-        (position, playerDuration, mediaItem) {
-          final duration =
-              playerDuration ?? mediaItem?.duration ?? Duration.zero;
+        (position, mediaItem) {
+          final duration = mediaItem?.duration ?? Duration.zero;
           return PositionState(
-            position: position ?? Duration.zero,
+            position: position,
             duration: duration,
           );
         },

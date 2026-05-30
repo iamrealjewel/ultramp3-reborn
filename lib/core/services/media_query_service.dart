@@ -117,6 +117,7 @@ class MediaQueryService {
             progress: 0.2,
             currentPath: "Accessing media system...",
             songsIndexed: 0));
+        
         final List<SongModel> songs = await _audioQuery.querySongs(
           sortType: SongSortType.TITLE,
           orderType: OrderType.ASC_OR_SMALLER,
@@ -128,7 +129,12 @@ class MediaQueryService {
             progress: 0.6,
             currentPath: "Processing track list...",
             songsIndexed: songs.length));
-        final list = songs.map((song) {
+
+        final list = songs
+            .where((song) =>
+                (song.isMusic == true) &&
+                (song.duration == null || song.duration! >= 10000))
+            .map((song) {
           final title =
               song.title.isNotEmpty ? song.title : (song.displayNameWOExt);
           final artist = (song.artist != null && song.artist != '<unknown>')

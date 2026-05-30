@@ -3,9 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:ultramp3/core/theme/app_colors.dart';
 import 'package:ultramp3/features/player/presentation/providers/player_settings_provider.dart';
-import 'package:ultramp3/core/services/playback_service.dart';
-import 'package:ultramp3/core/services/storage_service.dart';
 import 'package:ultramp3/core/services/media_query_service.dart';
+import 'package:ultramp3/core/services/playback_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -15,118 +14,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  double _bassValue = 0.5;
-  double _midValue = 0.5;
-  double _trebleValue = 0.5;
-  String _activePreset = 'Flat';
-
-  final Map<String, List<double>> _presets = {
-    'Bose Signature': [3.5, 2.5, 1.0, 1.5, 2.0],
-    'Beats Audio': [5.5, 3.0, -2.0, 2.0, 4.5],
-    'Harman Kardon': [3.0, 1.0, -1.0, 1.5, 3.5],
-    'Sony ClearBass': [4.5, 2.0, 0.0, 1.0, 2.5],
-    'Sennheiser Club': [2.0, 1.0, 0.0, 1.0, 3.0],
-    'Flat': [0.0, 0.0, 0.0, 0.0, 0.0],
-    'Rock': [4.0, 2.0, -1.0, 2.0, 4.0],
-    'Pop': [2.0, 2.0, -1.0, 1.0, 1.0],
-    'Jazz': [3.0, 1.5, -1.5, 1.5, 3.0],
-    'Bass & Treble': [7.0, 4.0, 0.0, 4.0, 7.0],
-    'Mids': [1.0, -1.0, 6.0, 4.0, -2.0],
-    'Classic': [4.5, 3.0, 0.0, 2.5, 4.0],
-    'Live': [1.5, 2.0, 3.0, 3.0, 2.0],
-    'Dance': [5.5, 7.0, 3.5, 0.0, 5.0],
-    'Soft': [2.5, 1.0, 0.0, 1.5, 3.0],
-    'No Bass': [-12.0, -12.0, 0.0, 0.0, 0.0],
-    'No Mids': [2.0, 2.0, -12.0, -12.0, 0.0],
-    'No Treble': [2.0, 2.0, 0.0, -12.0, -12.0],
-    'Custom': [0.0, 0.0, 0.0, 0.0, 0.0],
-  };
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initEqualizer();
-    });
-  }
-
-  void _initEqualizer() {
-    final storage = ref.read(storageServiceProvider);
-    _activePreset = storage.getEqualizerPreset();
-    List<double> bands;
-    if (_activePreset != 'Custom' &&
-        _activePreset != 'Flat' &&
-        _presets.containsKey(_activePreset)) {
-      bands = _presets[_activePreset]!;
-      storage.setEqualizerBands(bands);
-    } else {
-      bands = storage.getEqualizerBands();
-    }
-    _loadSliderValues(bands);
-    setState(() {});
-  }
-
-  void _loadSliderValues(List<double> bands) {
-    if (bands.length >= 5) {
-      final avgBass = (bands[0] + bands[1]) / 2.0;
-      final avgMid = (bands[2] + bands[3]) / 2.0;
-      final treble = bands[4];
-
-      _bassValue = ((avgBass / 24.0) + 0.5).clamp(0.0, 1.0);
-      _midValue = ((avgMid / 24.0) + 0.5).clamp(0.0, 1.0);
-      _trebleValue = ((treble / 24.0) + 0.5).clamp(0.0, 1.0);
-    }
-  }
-
-  void _updateEqualizerBands(String channel, double sliderValue) {
-    setState(() {
-      if (channel == 'bass') {
-        _bassValue = sliderValue;
-      } else if (channel == 'mid') {
-        _midValue = sliderValue;
-      } else {
-        _trebleValue = sliderValue;
-      }
-      _activePreset = 'Custom';
-    });
-
-    final bassDb = (_bassValue - 0.5) * 24.0;
-    final midDb = (_midValue - 0.5) * 24.0;
-    final trebleDb = (_trebleValue - 0.5) * 24.0;
-
-    final updatedBands = [
-      bassDb, // 60Hz
-      bassDb * 0.8, // 230Hz
-      midDb, // 1kHz
-      midDb * 0.9, // 3.6kHz-ish (mapped)
-      trebleDb, // 14-16kHz-ish (mapped)
-    ];
-
-    final storage = ref.read(storageServiceProvider);
-    final playbackService = ref.read(playbackServiceProvider);
-
-    storage.setEqualizerPreset('Custom');
-    storage.setEqualizerBands(updatedBands);
-    playbackService.setEqualizerBands(updatedBands);
-  }
-
-  void _selectPreset(String presetName) {
-    final bands = _presets[presetName];
-    if (bands != null) {
-      setState(() {
-        _activePreset = presetName;
-        _loadSliderValues(bands);
-      });
-
-      final storage = ref.read(storageServiceProvider);
-      final playbackService = ref.read(playbackServiceProvider);
-
-      storage.setEqualizerPreset(presetName);
-      storage.setEqualizerBands(bands);
-      playbackService.setEqualizerBands(bands);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -138,6 +25,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.voidBlack,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text(
           'ENGINE SETTINGS',
           style: theme.textTheme.displayMedium?.copyWith(
@@ -182,105 +73,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
             const SizedBox(height: 32),
 
-            // Equalizer preset configuration
-            _buildSectionHeader('GRAPHIC EQUALIZER (ACTIVE HARDWARE)'),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceCard.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.glassBorder, width: 0.8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Active preset indicator
-                  Row(
-                    children: [
-                      const Text(
-                        'ACTIVE: ',
-                        style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12),
-                      ),
-                      Text(
-                        _activePreset.toUpperCase(),
-                        style: const TextStyle(
-                            color: AppColors.neonGreen,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            fontFamily: 'monospace'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Sliding Dials Grid
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildEqualizerSlider('BASS (60Hz)', _bassValue,
-                          (val) => _updateEqualizerBands('bass', val)),
-                      _buildEqualizerSlider('MID (1kHz)', _midValue,
-                          (val) => _updateEqualizerBands('mid', val)),
-                      _buildEqualizerSlider('TREBLE (14kHz)', _trebleValue,
-                          (val) => _updateEqualizerBands('treble', val)),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Presets list (vertical, no horizontal scrolling)
-                  const Text(
-                    'PRESETS',
-                    style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                        letterSpacing: 1.5),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _presets.keys.map((String name) {
-                      final selected = name == _activePreset;
-                      return GestureDetector(
-                        onTap: () => _selectPreset(name),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? AppColors.neonGreen.withOpacity(0.2)
-                                : AppColors.voidBlack.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: selected
-                                  ? AppColors.neonGreen
-                                  : AppColors.glassBorder,
-                              width: selected ? 1.2 : 0.8,
-                            ),
-                          ),
-                          child: Text(
-                            name.toUpperCase(),
-                            style: TextStyle(
-                              color: selected
-                                  ? AppColors.neonGreen
-                                  : AppColors.textPrimary,
-                              fontSize: 10,
-                              fontWeight:
-                                  selected ? FontWeight.bold : FontWeight.w500,
-                              fontFamily: 'monospace',
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
+            // Playback Engine Section
+            _buildSectionHeader('PLAYBACK DECODER ENGINE'),
+            const SizedBox(height: 8),
+            _buildEngineSelectorItem(
+              title: 'Active Audio Engine',
+              subtitle: 'Select underlying decoders and DSP',
+              currentValue: settings.audioEngine,
+              activeColor: AppColors.neonGreen,
+              onChanged: (newEngine) async {
+                if (newEngine == settings.audioEngine) return;
+                
+                final playbackService = ref.read(playbackServiceProvider);
+                final currentTrack = playbackService.handler.mediaItem.valueOrNull;
+                final currentPosition = playbackService.handler.playerInstance.position;
+                
+                settingsNotifier.setAudioEngine(newEngine);
+                playbackService.handler.updateEngineSelection(newEngine);
+                
+                if (currentTrack != null) {
+                  await playbackService.playTrack(
+                    filePath: currentTrack.id,
+                    title: currentTrack.title,
+                    artist: currentTrack.artist ?? 'Unknown Artist',
+                    album: currentTrack.album ?? 'Unknown Album',
+                    duration: currentTrack.duration ?? Duration.zero,
+                  );
+                  if (currentPosition > Duration.zero) {
+                    await playbackService.seek(currentPosition);
+                  }
+                }
+              },
             ),
 
             const SizedBox(height: 32),
@@ -291,10 +114,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             Container(
               padding: const EdgeInsets.all(16.0),
               decoration: BoxDecoration(
-                color: AppColors.surfaceCard.withOpacity(0.3),
+                color: AppColors.surfaceCard.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                    color: AppColors.glassBorder.withOpacity(0.04), width: 0.8),
+                    color: AppColors.glassBorder.withValues(alpha: 0.04), width: 0.8),
               ),
               child: Consumer(
                 builder: (context, ref, _) {
@@ -366,10 +189,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8.0),
       decoration: BoxDecoration(
-        color: AppColors.surfaceCard.withOpacity(0.3),
+        color: AppColors.surfaceCard.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-            color: AppColors.glassBorder.withOpacity(0.04), width: 0.8),
+            color: AppColors.glassBorder.withValues(alpha: 0.04), width: 0.8),
       ),
       child: ListTile(
         title: Text(title,
@@ -389,32 +212,107 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildEqualizerSlider(
-      String label, double value, ValueChanged<double> onChanged) {
-    return Column(
-      children: [
-        SizedBox(
-          height: 140,
-          child: RotatedBox(
-            quarterTurns: 3,
-            child: Slider(
-              value: value,
-              min: 0.0,
-              max: 1.0,
-              activeColor: AppColors.electricCyan,
-              onChanged: onChanged,
-            ),
+  Widget _buildEngineSelectorItem({
+    required String title,
+    required String subtitle,
+    required String currentValue,
+    required ValueChanged<String> onChanged,
+    required Color activeColor,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceCard.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+            color: AppColors.glassBorder.withValues(alpha: 0.04), width: 0.8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13)),
+                    const SizedBox(height: 2),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            color: AppColors.textSecondary, fontSize: 11)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSegmentButton(
+                  label: 'SoLoud C++ Engine',
+                  isActive: currentValue == 'soloud',
+                  onTap: () => onChanged('soloud'),
+                  activeColor: activeColor,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildSegmentButton(
+                  label: 'JustAudio Native SDK',
+                  isActive: currentValue == 'just_audio',
+                  onTap: () => onChanged('just_audio'),
+                  activeColor: activeColor,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSegmentButton({
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+    required Color activeColor,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isActive
+              ? activeColor.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.01),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isActive
+                ? activeColor
+                : Colors.white.withValues(alpha: 0.08),
+            width: isActive ? 1.5 : 1.0,
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 10,
-              fontWeight: FontWeight.w600),
+        alignment: Alignment.center,
+        child: Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            color: isActive ? Colors.white : Colors.white38,
+            fontSize: 9.5,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+          ),
         ),
-      ],
+      ),
     );
   }
 }

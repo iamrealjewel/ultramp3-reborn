@@ -59,7 +59,7 @@ class AppShell extends ConsumerWidget {
                     bottom: true,
                     child: BottomNavigationBar(
                       currentIndex: navigationShell.currentIndex,
-                      backgroundColor: AppColors.obsidianDark.withOpacity(0.7),
+                      backgroundColor: AppColors.obsidianDark.withValues(alpha: 0.7),
                       selectedItemColor: navActiveColor,
                       unselectedItemColor: AppColors.textMuted,
                       selectedLabelStyle: const TextStyle(
@@ -69,9 +69,9 @@ class AppShell extends ConsumerWidget {
                       type: BottomNavigationBarType.fixed,
                       items: [
                         BottomNavigationBarItem(
-                          icon: const Icon(Icons.home_outlined),
-                          activeIcon: Icon(Icons.home, color: navActiveColor),
-                          label: 'Home',
+                          icon: const Icon(Icons.play_circle_outline_rounded),
+                          activeIcon: Icon(Icons.play_circle_filled_rounded, color: navActiveColor),
+                          label: 'Player',
                         ),
                         BottomNavigationBarItem(
                           icon: const Icon(Icons.music_note_outlined),

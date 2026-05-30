@@ -10,6 +10,7 @@ class PlayerSettings {
   final bool showAlbumArt; // true = Album Art, false = Visualizer
   final bool glowEnabled;
   final bool glassEnabled;
+  final String audioEngine; // 'soloud' or 'just_audio'
 
   const PlayerSettings({
     required this.dialerTransparencyEnabled,
@@ -20,6 +21,7 @@ class PlayerSettings {
     required this.showAlbumArt,
     required this.glowEnabled,
     required this.glassEnabled,
+    required this.audioEngine,
   });
 
   PlayerSettings copyWith({
@@ -31,6 +33,7 @@ class PlayerSettings {
     bool? showAlbumArt,
     bool? glowEnabled,
     bool? glassEnabled,
+    String? audioEngine,
   }) {
     return PlayerSettings(
       dialerTransparencyEnabled:
@@ -43,6 +46,7 @@ class PlayerSettings {
       showAlbumArt: showAlbumArt ?? this.showAlbumArt,
       glowEnabled: glowEnabled ?? this.glowEnabled,
       glassEnabled: glassEnabled ?? this.glassEnabled,
+      audioEngine: audioEngine ?? this.audioEngine,
     );
   }
 
@@ -55,6 +59,7 @@ class PlayerSettings {
     showAlbumArt: false,
     glowEnabled: true,
     glassEnabled: true,
+    audioEngine: 'soloud',
   );
 }
 
@@ -77,6 +82,7 @@ class PlayerSettingsNotifier extends StateNotifier<PlayerSettings> {
       showAlbumArt: _storageService.getShowAlbumArt(),
       glowEnabled: _storageService.getGlowEnabled(),
       glassEnabled: _storageService.getGlassEnabled(),
+      audioEngine: _storageService.getAudioEngine(),
     );
   }
 
@@ -118,6 +124,11 @@ class PlayerSettingsNotifier extends StateNotifier<PlayerSettings> {
   void toggleGlassEnabled(bool enabled) {
     state = state.copyWith(glassEnabled: enabled);
     _storageService.setGlassEnabled(enabled);
+  }
+
+  void setAudioEngine(String engine) {
+    state = state.copyWith(audioEngine: engine);
+    _storageService.setAudioEngine(engine);
   }
 }
 

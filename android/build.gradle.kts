@@ -85,6 +85,46 @@ subprojects {
                         // Ignore
                     }
                 }
+                // 4. Dynamically force a valid NDK version for plugin build stability
+                try {
+                    val setNdkVersion = android.javaClass.getMethod("setNdkVersion", String::class.java)
+                    setNdkVersion.invoke(android, "27.0.12077973")
+                    logger.quiet("Dynamically forced ndkVersion to 27.0.12077973 for project :${project.name}")
+                } catch (e: Exception) {
+                    // Ignore
+                }
+
+                // 5. Upgrade minSdk to 21 if it is below 21 to satisfy NDK 27 requirements
+                try {
+                    val defaultConfig = android.javaClass.getMethod("getDefaultConfig").invoke(android)
+                    val getMinSdk = defaultConfig.javaClass.getMethod("getMinSdk")
+                    val currentMinSdk = getMinSdk.invoke(defaultConfig)
+                    var currentMinSdkVal = 0
+                    if (currentMinSdk != null) {
+                        if (currentMinSdk is Number) {
+                            currentMinSdkVal = currentMinSdk.toInt()
+                        } else {
+                            try {
+                                val getApiLevel = currentMinSdk.javaClass.getMethod("getApiLevel")
+                                currentMinSdkVal = getApiLevel.invoke(currentMinSdk) as Int
+                            } catch (_: Exception) {}
+                        }
+                    }
+                    if (currentMinSdkVal < 21) {
+                        val setMinSdk = defaultConfig.javaClass.getMethod("setMinSdk", java.lang.Integer::class.java)
+                        setMinSdk.invoke(defaultConfig, 21)
+                        logger.quiet("Dynamically upgraded minSdk from $currentMinSdkVal to 21 for project :${project.name}")
+                    }
+                } catch (e: Exception) {
+                    try {
+                        val defaultConfig = android.javaClass.getMethod("getDefaultConfig").invoke(android)
+                        val setMinSdkVersion = defaultConfig.javaClass.getMethod("setMinSdkVersion", java.lang.Integer::class.java)
+                        setMinSdkVersion.invoke(defaultConfig, 21)
+                        logger.quiet("Dynamically upgraded minSdkVersion to 21 (fallback) for project :${project.name}")
+                    } catch (e2: Exception) {
+                        // Ignore
+                    }
+                }
             }
         }
     }

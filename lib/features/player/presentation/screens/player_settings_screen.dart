@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:go_router/go_router.dart';
 import '../providers/player_settings_provider.dart';
 import '../providers/player_skin_provider.dart';
 
@@ -124,6 +125,39 @@ class PlayerSettingsScreen extends ConsumerWidget {
                           ),
                         ],
                       ],
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  // Section 4: Engine Settings & Diagnostics
+                  _buildSettingsCard(
+                    title: 'SYSTEM & AUDIO ENGINE',
+                    children: [
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text(
+                          'Engine Settings & Diagnostics',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Theme Glows, Frost Blurs, Diagnostics',
+                          style: TextStyle(
+                            color: Colors.white30,
+                            fontSize: 11,
+                          ),
+                        ),
+                        trailing: const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          color: Colors.white30,
+                          size: 16,
+                        ),
+                        onTap: () {
+                          context.push('/settings');
+                        },
+                      ),
                     ],
                   ),
                 ],
