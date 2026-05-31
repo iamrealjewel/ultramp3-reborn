@@ -126,8 +126,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     }
   }
 
-  // EQ Hardware Knobs (0.0 = min/neutral, 1.0 = max)
-  double _bassValue = 0.5; // Boosts 60Hz + 230Hz bands via native EQ
+  // EQ Hardware Knobs — restored from storage on init
+  double _bassValue = 0.5; // 0.5 = neutral (no boost). Persisted across sessions.
   double _stereoValue = 0.5; // Simulates stereo widening in visualizer
 
   String? _statusMessage;
@@ -289,6 +289,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     );
 
     _activePreset = storage.getEqualizerPreset();
+    // Restore persisted bass knob position
+    _bassValue = storage.getBassValue();
 
     // 2. Restore active playback session in a post-frame callback
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -423,13 +425,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
         await player.setLoopMode(loopMode);
       } catch (_) {}
 
-      // C. Restore Volume & Equalizer Bands in the service
+      // C. Restore Volume & Equalizer Bands + Bass Boost in the service
       final vol = storage.getVolumeLevel();
       try {
         await playbackService.setSystemVolume(vol);
       } catch (_) {}
-      // Apply mapped EQ to the underlying engine.
-      await _applyEqualizerNow(playbackService);
+      // Apply EQ with knobs (handles both JustAudio and SoLoud paths correctly).
+      _applyEqualizerWithKnobs(playbackService);
 
       // D. Register position subscription for real-time throttled persistence
       int lastSavedMs = 0;
@@ -741,21 +743,38 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     _showFeedbackGlow(context, 'EQ PRESET: ${name.toUpperCase()}', color);
   }
 
-  /// Applies EQ bands to native engine, adding Bass knob boost on top of preset values.
+  /// Applies EQ preset bands + bass knob to the active engine.
+  ///
+  /// JustAudio mode:
+  ///   - Sends raw preset dB gains to the Android native Equalizer (proper parametric).
+  ///   - Sends bass knob value to Android BassBoost AudioEffect separately.
+  ///   - Bass is NOT baked into bands (the hardware effect handles it).
+  ///
+  /// SoLoud mode:
+  ///   - Bakes bass knob boost into bands[0]+bands[1] as before.
+  ///   - Routes to SoLoud's FFT filter.
   void _applyEqualizerWithKnobs(PlaybackService service) {
-    // Compute bass boost from knob: 0.5 = neutral (0dB), 1.0 = +12dB boost, 0.0 = -12dB cut
-    final double bassBoostDb = (_bassValue - 0.5) * 24.0; // ±12dB range
-    final uiBands = List<double>.from(_eqBands);
-    // Apply bass knob into the low-end UI bands (60Hz and 150Hz).
-    uiBands[0] = (uiBands[0] + bassBoostDb * 1.0).clamp(_eqMinDb, _eqMaxDb);
-    uiBands[1] = (uiBands[1] + bassBoostDb * 0.8).clamp(_eqMinDb, _eqMaxDb);
+    final isJustAudio = service.activeEngine == 'just_audio';
 
-    // Persist UI state.
+    if (isJustAudio) {
+      // Raw preset bands → NativeEqService (no bass bake-in)
+      final deviceBands = _mapUiToDeviceBands(List.from(_eqBands));
+      service.setEqualizerBands(deviceBands);
+      // Bass knob → Android BassBoost
+      service.setBassBoost(_bassValue);
+    } else {
+      // SoLoud: bake bass boost into low-end bands
+      final double bassBoostDb = (_bassValue - 0.5) * 24.0; // ±12dB range
+      final uiBands = List<double>.from(_eqBands);
+      uiBands[0] = (uiBands[0] + bassBoostDb * 1.0).clamp(_eqMinDb, _eqMaxDb);
+      uiBands[1] = (uiBands[1] + bassBoostDb * 0.8).clamp(_eqMinDb, _eqMaxDb);
+      final deviceBands = _mapUiToDeviceBands(uiBands);
+      service.setEqualizerBands(deviceBands);
+    }
+
+    // Persist raw UI state (without bass bake-in, so restore is always clean)
     ref.read(storageServiceProvider).setEqualizerBands(List.from(_eqBands));
-
-    // Map UI -> device and apply.
-    final deviceBands = _mapUiToDeviceBands(uiBands);
-    service.setEqualizerBands(deviceBands);
+    ref.read(storageServiceProvider).setBassValue(_bassValue);
   }
 
   Future<void> _applyEqualizerNow(PlaybackService service) async {

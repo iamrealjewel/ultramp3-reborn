@@ -119,10 +119,14 @@ class StorageService {
       _settingsBox.put('dial_style', value);
 
   String getAudioEngine() =>
-      _settingsBox.get('audio_engine', defaultValue: 'soloud');
+      _settingsBox.get('audio_engine', defaultValue: 'just_audio');
   Future<void> setAudioEngine(String value) =>
       _settingsBox.put('audio_engine', value);
 
+  double getBassValue() =>
+      (_settingsBox.get('bass_value', defaultValue: 0.5) as num).toDouble();
+  Future<void> setBassValue(double value) =>
+      _settingsBox.put('bass_value', value);
 
   // --- FAVORITES MODULE ---
   Box<String> get _favoritesBox => Hive.box<String>(_favoritesBoxName);

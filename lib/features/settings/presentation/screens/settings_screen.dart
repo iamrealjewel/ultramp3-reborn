@@ -257,18 +257,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             children: [
               Expanded(
                 child: _buildSegmentButton(
-                  label: 'SoLoud C++ Engine',
-                  isActive: currentValue == 'soloud',
-                  onTap: () => onChanged('soloud'),
+                  label: 'JustAudio Native ✓',
+                  isActive: currentValue == 'just_audio',
+                  onTap: () => onChanged('just_audio'),
                   activeColor: activeColor,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildSegmentButton(
-                  label: 'JustAudio Native SDK',
-                  isActive: currentValue == 'just_audio',
-                  onTap: () => onChanged('just_audio'),
+                  label: 'SoLoud FFT Visualizer',
+                  isActive: currentValue == 'soloud',
+                  onTap: () => onChanged('soloud'),
                   activeColor: activeColor,
                 ),
               ),

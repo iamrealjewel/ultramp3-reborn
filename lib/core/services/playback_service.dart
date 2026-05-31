@@ -121,6 +121,13 @@ class PlaybackService {
   Future<void> skipToNext() => _handler.skipToNext();
 
   Future<void> skipToPrevious() => _handler.skipToPrevious();
+
+  /// Active engine identifier ('just_audio' or 'soloud').
+  String get activeEngine => _handler.activeEngine;
+
+  /// Sets the bass boost level (0.0–1.0, 0.5 = neutral).
+  /// Routes to Android BassBoost in JustAudio mode.
+  Future<void> setBassBoost(double value) => _handler.setBassBoost(value);
 }
 
 class PositionState {
