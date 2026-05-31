@@ -38,12 +38,12 @@ class StorageService {
       _settingsBox.put('glass_enabled', value);
 
   bool getDialerTransparencyEnabled() =>
-      _settingsBox.get('dialer_transparency_enabled', defaultValue: false);
+      _settingsBox.get('dialer_transparency_enabled', defaultValue: true);
   Future<void> setDialerTransparencyEnabled(bool value) =>
       _settingsBox.put('dialer_transparency_enabled', value);
 
   double getDialerOpacity() =>
-      _settingsBox.get('dialer_opacity', defaultValue: 1.0);
+      _settingsBox.get('dialer_opacity', defaultValue: 0.5);
   Future<void> setDialerOpacity(double value) =>
       _settingsBox.put('dialer_opacity', value);
 
@@ -53,12 +53,12 @@ class StorageService {
       _settingsBox.put('skin_type', value);
 
   bool getVisualizerTransparencyEnabled() =>
-      _settingsBox.get('visualizer_transparency_enabled', defaultValue: false);
+      _settingsBox.get('visualizer_transparency_enabled', defaultValue: true);
   Future<void> setVisualizerTransparencyEnabled(bool value) =>
       _settingsBox.put('visualizer_transparency_enabled', value);
 
   double getVisualizerOpacity() =>
-      _settingsBox.get('visualizer_opacity', defaultValue: 0.55);
+      _settingsBox.get('visualizer_opacity', defaultValue: 0.5);
   Future<void> setVisualizerOpacity(double value) =>
       _settingsBox.put('visualizer_opacity', value);
 
@@ -114,7 +114,7 @@ class StorageService {
       _settingsBox.put('active_skin', value);
 
   String getDialStyle() =>
-      _settingsBox.get('dial_style', defaultValue: 'circular');
+      _settingsBox.get('dial_style', defaultValue: 'rectangular');
   Future<void> setDialStyle(String value) =>
       _settingsBox.put('dial_style', value);
 

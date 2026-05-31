@@ -39,24 +39,24 @@ class PlayerSkin {
   // 1. Lonely Cat S60 Classic Grey
   static const PlayerSkin s60Grey = PlayerSkin(
     name: 'S60 Classic Grey',
-    outerBorderColor: Color(0xFF3E3E42),
-    panelBgColor: Color(0xFFCCCCCC),
+    outerBorderColor: Color(0xFF1E1E22),
+    panelBgColor: Color(0xFF28282C),
     metallicGradients: [
-      Color(0xFFF0F0F2),
-      Color(0xFFD4D4D9),
-      Color(0xFFABABAF),
-      Color(0xFFF0F0F2),
+      Color(0xFF3A3A3F),
+      Color(0xFF2A2A2E),
+      Color(0xFF1C1C1F),
+      Color(0xFF3A3A3F),
     ],
-    lcdBgColor: Color(0xFF8FA38F), // Reflective Nokia Retro LCD olive
-    lcdBorderColor: Color(0xFF4A5C4A),
-    textColor: Color(0xFF142014), // Deep charcoal Nokia LCD active pixels
-    textMutedColor: Color(0xFF405040),
-    visualizerColor: Color(0xFF203020),
-    visualizerPeakColor: Color(0xFF3A4A3A),
-    buttonFaceColor: Color(0xFFD6D6DB), // Brushed metallic chrome button base
-    buttonIconColor: Color(0xFF252528),
-    statusLedColor: Color(0xFFFF5500),
-    bgAssetPath: 'assets/images/bg_nature.png',
+    lcdBgColor: Color(0xFF141518), // Reflective Dark Obsidian Glass
+    lcdBorderColor: Color(0xFF2E3138),
+    textColor: Color(0xFFECEFF4), // Glowing Ice White active pixels
+    textMutedColor: Color(0xFF818693), // Muted Silver
+    visualizerColor: Color(0xFFECEFF4),
+    visualizerPeakColor: Color(0xFF00FFCC), // Ice Cyan Peak Markers
+    buttonFaceColor: Color(0xFF36373C), // Brushed Dark Chrome button base
+    buttonIconColor: Color(0xFFECEFF4),
+    statusLedColor: Color(0xFF00FFBB), // Glowing Mint LED
+    bgAssetPath: 'assets/images/bg_classic_gray.png',
     isFlat: false,
   );
 

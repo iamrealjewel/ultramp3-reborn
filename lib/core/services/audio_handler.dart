@@ -166,7 +166,7 @@ class UltraAudioHandler extends BaseAudioHandler
 
   // --- PLAYBACK CONTROL MODULE ---
 
-  Future<void> loadQueueItem(MediaItem item, {List<MediaItem>? fullQueue}) async {
+  Future<void> loadQueueItem(MediaItem item, {List<MediaItem>? fullQueue, bool autoplay = true}) async {
     mediaItem.add(item);
     
     if (fullQueue != null) {
@@ -179,10 +179,10 @@ class UltraAudioHandler extends BaseAudioHandler
     }
 
     _mockPlayer.updateIndex(_queueIndex);
-    await _loadAndPlayFile(item.id);
+    await _loadAndPlayFile(item.id, autoplay: autoplay);
   }
 
-  Future<void> _loadAndPlayFile(String path) async {
+  Future<void> _loadAndPlayFile(String path, {bool autoplay = true}) async {
     // 1. Stop current playback if active
     if (_activeHandle != null) {
       final handleToStop = _activeHandle!;
@@ -231,8 +231,31 @@ class UltraAudioHandler extends BaseAudioHandler
       }
     }
 
-    // 4. Autostart playback
-    await play();
+    // 4. Autostart playback if requested
+    if (autoplay) {
+      await play();
+    } else {
+      // Setup initial player configuration but do not start playback
+      if (_activeEngine == 'soloud') {
+        final sound = _currentSound;
+        if (sound != null) {
+          try {
+            final newHandle = await SoLoud.instance.play(sound);
+            _activeHandle = newHandle;
+            SoLoud.instance.setVolume(newHandle, _userVolume);
+            SoLoud.instance.pauseSwitch(newHandle); // Pause immediately
+            if (!_isEqFlat) {
+              final filter = SoLoud.instance.filters.equalizerFilter;
+              if (!filter.isActive) filter.activate();
+            }
+          } catch (_) {}
+        }
+      } else {
+        _initJustAudioPlayer();
+        _jaPlayer!.setVolume(1.0);
+      }
+      _updatePlaybackState(playing: false);
+    }
   }
 
   Future<String> _resolvePlayablePath(String path) async {

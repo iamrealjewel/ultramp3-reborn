@@ -29,7 +29,6 @@ enum VisualizerStyle {
   liquidFluid, // Fluid simulation reacting to music
   breathingRings, // Expanding concentric circles
   retroWinamp, // Classical Winamp green/yellow grid
-  albumArtReactive, // Glow, Blur pulse, Dynamic shadow heartbeat
   combinedUltra, // Waveform+Spectrum, Circular+Album, Particles+Pulse, BackgroundBlur+Glow, Ultra Combo
   solarFlares, // [NEW] Concentric laser rings & solar flares
   vortexOrbit, // [NEW] Vocal double helix orbit dots
@@ -40,7 +39,6 @@ enum VisualizerStyle {
   frequencyLaser,
   dnaHelix,
   audioMatrixGrid,
-  blackHoleStars, // [NEW] 3D gravitational starfall vortex swallowing stars into a central singing singularity
 
   // GPU shader visualizers (Android-only for now)
   shaderAppsRing,
@@ -113,7 +111,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   // Active configurations
   VisualizerStyle _visualizerStyle = VisualizerStyle.spectrumBars;
   int _visualizerVariation = 0; // Cycles from 0 to 4 depending on style!
-  DialStyle _dialStyle = DialStyle.circular;
+  DialStyle _dialStyle = DialStyle.rectangular;
   bool _showEqualizer = false;
 
   bool _isShaderStyle(VisualizerStyle style) {
@@ -285,7 +283,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     final dialStyleStr = storage.getDialStyle();
     _dialStyle = DialStyle.values.firstWhere(
       (e) => e.name == dialStyleStr,
-      orElse: () => DialStyle.circular,
+      orElse: () => DialStyle.rectangular,
     );
 
     _activePreset = storage.getEqualizerPreset();
@@ -330,7 +328,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
             }).toList();
 
             await playbackService.handler
-                .loadQueueItem(activeSongItem, fullQueue: fullQueueItems);
+                .loadQueueItem(activeSongItem, fullQueue: fullQueueItems, autoplay: false);
 
             if (positionMs > 0) {
               await player.seek(Duration(milliseconds: positionMs));
@@ -626,7 +624,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
         return 4;
       case VisualizerStyle.breathingRings:
       case VisualizerStyle.retroWinamp:
-      case VisualizerStyle.albumArtReactive:
         return 3;
       case VisualizerStyle.combinedUltra:
         return 4; // V5 removed (index 4)
@@ -640,7 +637,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
       case VisualizerStyle.frequencyLaser:
       case VisualizerStyle.dnaHelix:
       case VisualizerStyle.audioMatrixGrid:
-      case VisualizerStyle.blackHoleStars:
       case VisualizerStyle.shaderAppsRing:
       case VisualizerStyle.shaderSteamBars:
         return 4; // All newer styles support 4 variations
@@ -1856,6 +1852,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
         PlayerSkin.all.where((s) => s.isFlat == activeSkin.isFlat).toList();
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
+    final topPadding = math.max(MediaQuery.of(context).padding.top, 36.0) + 12.0;
 
     showModalBottomSheet(
       context: context,
@@ -1869,7 +1866,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
             child: Container(
               height: MediaQuery.of(context).size.height,
               padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 8,
+                top: topPadding,
                 bottom: MediaQuery.of(context).padding.bottom + 16,
               ),
               decoration: BoxDecoration(
@@ -2045,6 +2042,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     final activeSkin = ref.read(playerSkinProvider);
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
+    final topPadding = math.max(MediaQuery.of(context).padding.top, 36.0) + 12.0;
 
     showModalBottomSheet(
       context: context,
@@ -2058,7 +2056,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
             child: Container(
               height: MediaQuery.of(context).size.height,
               padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 8,
+                top: topPadding,
                 bottom: MediaQuery.of(context).padding.bottom + 16,
               ),
               decoration: BoxDecoration(
@@ -2131,8 +2129,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                           styleIcon = Icons.blur_circular_rounded;
                         if (style == VisualizerStyle.retroWinamp)
                           styleIcon = Icons.grid_view_rounded;
-                        if (style == VisualizerStyle.albumArtReactive)
-                          styleIcon = Icons.album_rounded;
                         if (style == VisualizerStyle.combinedUltra)
                           styleIcon = Icons.auto_awesome_rounded;
                         if (style == VisualizerStyle.solarFlares)
@@ -2153,8 +2149,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                           styleIcon = Icons.sync_rounded;
                         if (style == VisualizerStyle.audioMatrixGrid)
                           styleIcon = Icons.apps_rounded;
-                        if (style == VisualizerStyle.blackHoleStars)
-                          styleIcon = Icons.blur_on_rounded;
                         if (style == VisualizerStyle.shaderAppsRing)
                           styleIcon = Icons.auto_awesome_motion_rounded;
                         if (style == VisualizerStyle.shaderSteamBars)
@@ -2251,6 +2245,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     final activeSkin = ref.read(playerSkinProvider);
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
+    final topPadding = math.max(MediaQuery.of(context).padding.top, 36.0) + 12.0;
 
     showModalBottomSheet(
       context: context,
@@ -2268,7 +2263,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                   ? MediaQuery.of(context).size.height
                   : MediaQuery.of(context).size.height * 0.45,
               padding: EdgeInsets.only(
-                top: isLandscape ? (MediaQuery.of(context).padding.top + 8) : 0,
+                top: isLandscape ? topPadding : 0,
                 bottom: isLandscape
                     ? 12
                     : (kBottomNavigationBarHeight +
@@ -2438,9 +2433,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   @override
   Widget build(BuildContext context) {
     final activeSkin = ref.watch(playerSkinProvider);
-    final topNavColor = activeSkin.name == 'S60 Classic Grey'
-        ? const Color(0xFF2ECC71)
-        : activeSkin.textColor;
+    final topNavColor = activeSkin.textColor;
     final playbackService = ref.watch(playbackServiceProvider);
     final player = playbackService.handler.playerInstance;
     final settings = ref.watch(playerSettingsProvider);
@@ -3799,8 +3792,7 @@ class _VisualizerPainter extends CustomPainter {
 
     // Background blur / ambient glow for specific combined styles
     if (hasTrack &&
-        ((style == VisualizerStyle.combinedUltra && (variation % 4 == 3)) ||
-            style == VisualizerStyle.albumArtReactive)) {
+        (style == VisualizerStyle.combinedUltra && (variation % 4 == 3))) {
       final double avgAmp =
           amplitudes.fold(0.0, (sum, val) => sum + val) / amplitudes.length;
       final double intensity = (avgAmp / 38.0).clamp(0.0, 1.0);
@@ -3828,8 +3820,7 @@ class _VisualizerPainter extends CustomPainter {
       canvas.drawLine(Offset(0, h / 2), Offset(w, h / 2), flatPaint);
 
       // If no track is playing, draw an empty vinyl outline in the center for combined/album-art visualizer
-      if (style == VisualizerStyle.albumArtReactive ||
-          (style == VisualizerStyle.combinedUltra && (variation % 4 == 1))) {
+      if (style == VisualizerStyle.combinedUltra && (variation % 4 == 1)) {
         final Paint discPaint = Paint()
           ..color = barColor.withOpacity(0.12)
           ..style = PaintingStyle.stroke
@@ -4463,73 +4454,7 @@ class _VisualizerPainter extends CustomPainter {
         }
         break;
 
-      // 8. ALBUM-ART REACTIVE EFFECTS
-      case VisualizerStyle.albumArtReactive:
-        final double cx = w / 2;
-        final double cy = h / 2;
-        final int artMode = variation %
-            3; // 0=Glow around vinyl, 1=Blur pulse, 2=Dynamic shadow heartbeat
 
-        // 1. Draw central skeuomorphic Vinyl Record / CD disk
-        final double vinylRotation = time * 1.5;
-        final double baseRadius = 24.0 + (normalizedAmp * 4.0);
-
-        // Render reactive pulsing outer ring
-        if (artMode == 0) {
-          // Glow halo
-          final Paint glowPaint = Paint()
-            ..color = barColor.withOpacity(0.4 + normalizedAmp * 0.4)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2.0;
-          canvas.drawCircle(Offset(cx, cy), baseRadius + 4, glowPaint);
-        } else if (artMode == 1) {
-          // Blur pulse
-          final Paint glowPaint = Paint()
-            ..color = barColor.withOpacity(0.18)
-            ..style = PaintingStyle.fill;
-          canvas.drawCircle(
-              Offset(cx, cy), baseRadius + 12 + normalizedAmp * 8.0, glowPaint);
-        } else {
-          // Dynamic shadow ring
-          final Paint shadowPaint = Paint()
-            ..color = Colors.black.withOpacity(0.55 - normalizedAmp * 0.2)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 3.5;
-          canvas.drawCircle(Offset(cx + 2, cy + 3), baseRadius, shadowPaint);
-        }
-
-        // Draw Vinyl Disc Body
-        final Paint discPaint = Paint()
-          ..color = const Color(0xFF0F0F0F)
-          ..style = PaintingStyle.fill;
-        canvas.drawCircle(Offset(cx, cy), baseRadius, discPaint);
-
-        // Stylized Vinyl grooved lines
-        final Paint groovePaint = Paint()
-          ..color = Colors.white.withOpacity(0.1)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 0.8;
-        canvas.drawCircle(Offset(cx, cy), baseRadius * 0.72, groovePaint);
-        canvas.drawCircle(Offset(cx, cy), baseRadius * 0.48, groovePaint);
-
-        // Center Album Art sticker (Spinning)
-        canvas.save();
-        canvas.translate(cx, cy);
-        canvas.rotate(vinylRotation);
-
-        final Paint stickerPaint = Paint()
-          ..color = barColor.withOpacity(0.85)
-          ..style = PaintingStyle.fill;
-        canvas.drawCircle(Offset.zero, baseRadius * 0.32, stickerPaint);
-
-        // Center spindle pinhole
-        final Paint spindlePaint = Paint()
-          ..color = Colors.black
-          ..style = PaintingStyle.fill;
-        canvas.drawCircle(Offset.zero, 2.5, spindlePaint);
-
-        canvas.restore();
-        break;
 
       // 9. COMBINED ULTRA
       case VisualizerStyle.combinedUltra:
@@ -5193,81 +5118,7 @@ class _VisualizerPainter extends CustomPainter {
         }
         break;
 
-      case VisualizerStyle.blackHoleStars:
-        {
-          final double cx = w / 2;
-          final double cy = h / 2;
-          final double maxRadius = math.max(cx, cy) * 1.2;
 
-          final double avgAmp =
-              amplitudes.fold(0.0, (sum, val) => sum + val) / amplitudes.length;
-          final double amp = avgAmp / 38.0;
-          final double bhRadius = 15.0 + amp * 22.0;
-
-          // 1. Accretion Disk Glow (Layered concentric glowing pulses)
-          final Paint glowPaint = Paint()..style = PaintingStyle.fill;
-          glowPaint.color = barColor.withOpacity(0.12 + amp * 0.15);
-          canvas.drawCircle(Offset(cx, cy), bhRadius * 2.8, glowPaint);
-
-          glowPaint.color = peakColor.withOpacity(0.24 + amp * 0.2);
-          canvas.drawCircle(Offset(cx, cy), bhRadius * 1.8, glowPaint);
-
-          glowPaint.color = Colors.white.withOpacity(0.45);
-          canvas.drawCircle(Offset(cx, cy), bhRadius * 1.2, glowPaint);
-
-          // 2. Accretion Disk Swirling Gas Rings
-          final Paint ringPaint = Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.5 + amp * 2.5
-            ..color = barColor.withOpacity(0.35 + amp * 0.3);
-          canvas.drawCircle(Offset(cx, cy), bhRadius + 4.0, ringPaint);
-
-          // 3. Falling Spaghettified Stars
-          final int starCount = 36;
-          final Paint starPaint = Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeCap = StrokeCap.round;
-
-          for (int i = 0; i < starCount; i++) {
-            final double starAmp = amplitudes[i % 10] / 38.0;
-            final double radius = (maxRadius -
-                (time * (35.0 + starAmp * 85.0) + i * 22.0) % maxRadius);
-
-            // Do not paint stars that are already consumed inside the event horizon
-            if (radius <= bhRadius + 2.0) continue;
-
-            final double angle =
-                i * 0.8 + (maxRadius - radius) * 0.016 + time * 1.4;
-
-            final double sx = cx + math.cos(angle) * radius;
-            final double sy = cy + math.sin(angle) * radius;
-
-            // Prev position for spaghettification tail stretching
-            final double radiusPrev = radius + 6.0 + starAmp * 15.0;
-            final double anglePrev =
-                i * 0.8 + (maxRadius - radiusPrev) * 0.016 + time * 1.4;
-            final double sxPrev = cx + math.cos(anglePrev) * radiusPrev;
-            final double syPrev = cy + math.sin(anglePrev) * radiusPrev;
-
-            final double proximityFactor =
-                (radius - bhRadius) / (maxRadius - bhRadius);
-            final double opacity =
-                (proximityFactor * 0.8 + 0.2).clamp(0.0, 1.0);
-
-            final Color starColor = Color.lerp(barColor, Colors.white, 0.45)!;
-            starPaint.color = starColor.withOpacity(opacity);
-            starPaint.strokeWidth = 1.0 + (1.0 - proximityFactor) * 2.5;
-
-            canvas.drawLine(Offset(sx, sy), Offset(sxPrev, syPrev), starPaint);
-          }
-
-          // 4. Central Singularity (Pure Void Event Horizon)
-          final Paint singularityPaint = Paint()
-            ..color = Colors.black
-            ..style = PaintingStyle.fill;
-          canvas.drawCircle(Offset(cx, cy), bhRadius, singularityPaint);
-        }
-        break;
 
       case VisualizerStyle.shaderAppsRing:
         {

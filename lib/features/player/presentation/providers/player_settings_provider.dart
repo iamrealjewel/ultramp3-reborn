@@ -51,11 +51,11 @@ class PlayerSettings {
   }
 
   static const defaultSettings = PlayerSettings(
-    dialerTransparencyEnabled: false,
-    dialerOpacity: 1.0,
+    dialerTransparencyEnabled: true,
+    dialerOpacity: 0.5,
     skinType: 'classic',
-    visualizerTransparencyEnabled: false,
-    visualizerOpacity: 0.55,
+    visualizerTransparencyEnabled: true,
+    visualizerOpacity: 0.5,
     showAlbumArt: false,
     glowEnabled: true,
     glassEnabled: true,

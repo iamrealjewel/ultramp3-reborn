@@ -18,9 +18,7 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeSkin = ref.watch(playerSkinProvider);
-    final navActiveColor = activeSkin.name == 'S60 Classic Grey'
-        ? const Color(0xFF2ECC71)
-        : activeSkin.textColor;
+    final navActiveColor = activeSkin.textColor;
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
 
