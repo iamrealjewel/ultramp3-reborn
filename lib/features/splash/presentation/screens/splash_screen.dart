@@ -4,8 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/routing/routes.dart';
+
+// Logo palette — neon blue / purple / magenta
+const Color _splashBlue    = Color(0xFF00AAFF); // primary neon blue
+const Color _splashPurple  = Color(0xFF9B30FF); // vivid purple
+const Color _splashMagenta = Color(0xFFFF2D9E); // hot pink / magenta
+const Color _splashBg      = Color(0xFF070C1A); // deep dark navy
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -109,6 +114,7 @@ class _SplashScreenState extends State<SplashScreen>
     return Stack(
       alignment: Alignment.center,
       children: [
+        // Outer glow halo — blue/purple
         Container(
           width: 140,
           height: 140,
@@ -116,9 +122,14 @@ class _SplashScreenState extends State<SplashScreen>
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: AppColors.neonGreen.withOpacity(0.18),
+                color: _splashBlue.withOpacity(0.20),
                 blurRadius: 40,
                 spreadRadius: 8,
+              ),
+              BoxShadow(
+                color: _splashPurple.withOpacity(0.15),
+                blurRadius: 60,
+                spreadRadius: 12,
               ),
             ],
           ),
@@ -142,6 +153,12 @@ class _SplashScreenState extends State<SplashScreen>
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(26),
               boxShadow: [
+                BoxShadow(
+                  color: _splashBlue.withOpacity(0.35),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 6),
+                ),
                 BoxShadow(
                   color: Colors.black.withOpacity(0.5),
                   blurRadius: 15,
@@ -169,14 +186,18 @@ class _SplashScreenState extends State<SplashScreen>
         Text(
           'ULTRAMP3',
           style: GoogleFonts.orbitron(
-            color: AppColors.neonGreen,
+            color: _splashBlue,
             fontSize: 24,
             fontWeight: FontWeight.bold,
             letterSpacing: 4.0,
             shadows: [
               Shadow(
-                color: AppColors.neonGreen.withOpacity(0.4),
-                blurRadius: 8,
+                color: _splashBlue.withOpacity(0.5),
+                blurRadius: 10,
+              ),
+              Shadow(
+                color: _splashPurple.withOpacity(0.3),
+                blurRadius: 20,
               ),
             ],
           ),
@@ -184,7 +205,7 @@ class _SplashScreenState extends State<SplashScreen>
         Text(
           'REBORN',
           style: GoogleFonts.rajdhani(
-            color: AppColors.electricCyan,
+            color: _splashPurple,
             fontSize: 14,
             fontWeight: FontWeight.bold,
             letterSpacing: 6.0,
@@ -200,10 +221,10 @@ class _SplashScreenState extends State<SplashScreen>
       constraints: const BoxConstraints(maxWidth: 260),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       decoration: BoxDecoration(
-        color: AppColors.obsidianDark.withOpacity(0.6),
+        color: const Color(0xFF0D1730).withOpacity(0.7),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppColors.glassBorder,
+          color: _splashBlue.withOpacity(0.15),
           width: 0.8,
         ),
       ),
@@ -217,7 +238,7 @@ class _SplashScreenState extends State<SplashScreen>
               Text(
                 'INDEXING STORAGE',
                 style: GoogleFonts.orbitron(
-                  color: AppColors.neonGreen,
+                  color: _splashBlue,
                   fontWeight: FontWeight.bold,
                   fontSize: 9.5,
                   letterSpacing: 1.0,
@@ -226,7 +247,7 @@ class _SplashScreenState extends State<SplashScreen>
               Text(
                 '${(_loadingProgress * 100).toInt()}%',
                 style: GoogleFonts.orbitron(
-                  color: AppColors.neonGreen,
+                  color: _splashBlue,
                   fontWeight: FontWeight.bold,
                   fontSize: 9.5,
                 ),
@@ -235,14 +256,14 @@ class _SplashScreenState extends State<SplashScreen>
           ),
           const SizedBox(height: 10),
 
-          // Neon Digital S60 LED bar
+          // Neon Digital LED bar — blue→purple gradient fill
           Container(
             height: 12,
             decoration: BoxDecoration(
               color: Colors.black,
               borderRadius: BorderRadius.circular(3),
               border: Border.all(
-                color: AppColors.neonGreen.withOpacity(0.2),
+                color: _splashBlue.withOpacity(0.2),
                 width: 0.8,
               ),
             ),
@@ -253,12 +274,14 @@ class _SplashScreenState extends State<SplashScreen>
                 widthFactor: _loadingProgress,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppColors.neonGreen,
+                    gradient: const LinearGradient(
+                      colors: [_splashBlue, _splashPurple, _splashMagenta],
+                    ),
                     borderRadius: BorderRadius.circular(1.5),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.neonGreen.withOpacity(0.6),
-                        blurRadius: 4,
+                        color: _splashBlue.withOpacity(0.6),
+                        blurRadius: 6,
                       ),
                     ],
                   ),
@@ -276,7 +299,7 @@ class _SplashScreenState extends State<SplashScreen>
             child: Text(
               _diagnosticLog,
               style: GoogleFonts.shareTechMono(
-                color: AppColors.textSecondary,
+                color: _splashBlue.withOpacity(0.7),
                 fontSize: 10.5,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 0.5,
@@ -297,15 +320,15 @@ class _SplashScreenState extends State<SplashScreen>
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
-      backgroundColor: AppColors.voidBlack,
+      backgroundColor: _splashBg,
       body: Container(
         decoration: const BoxDecoration(
           gradient: RadialGradient(
             center: Alignment.center,
             radius: 1.2,
             colors: [
-              Color(0xFF141224),
-              AppColors.voidBlack,
+              Color(0xFF0E1535), // deep navy-blue center
+              _splashBg,
             ],
           ),
         ),
@@ -384,7 +407,7 @@ class _SplashBackgroundPainter extends CustomPainter {
     final double w = size.width;
     final double h = size.height;
 
-    // Draw galaxy particles
+    // Draw galaxy particles — blue & purple
     final math.Random random =
         math.Random(42); // deterministic seed for stable particles
     final Paint particlePaint = Paint()..style = PaintingStyle.fill;
@@ -393,28 +416,27 @@ class _SplashBackgroundPainter extends CustomPainter {
     final double speedFactor = 1.0 + progress * 4.0;
 
     for (int i = 0; i < 40; i++) {
-      // Base positions
       final double baseAngle = random.nextDouble() * 2 * math.pi;
       final double baseRadius = 30 + random.nextDouble() * math.max(w, h) * 0.6;
 
-      // Animate radius outwards
       final double driftRadius =
           (baseRadius + (animationTime * 12.0 * speedFactor)) %
               (math.max(w, h) * 0.7);
 
-      // Calculate coordinates centered in the screen
       final double dx = w / 2 + math.cos(baseAngle) * driftRadius;
       final double dy = h / 2 + math.sin(baseAngle) * driftRadius;
 
-      // Draw particle with opacity fading near edges
       final double edgeOpacity =
           (1.0 - (driftRadius / (math.max(w, h) * 0.7))).clamp(0.0, 1.0);
       final double particleSize = 1.0 + random.nextDouble() * 2.5;
 
-      // Green/cyan glow
-      final Color pColor =
-          i % 2 == 0 ? AppColors.neonGreen : AppColors.electricCyan;
-      particlePaint.color = pColor.withOpacity(0.18 * edgeOpacity);
+      // Blue / purple / magenta particles cycling through logo palette
+      final Color pColor = i % 3 == 0
+          ? _splashBlue
+          : i % 3 == 1
+              ? _splashPurple
+              : _splashMagenta;
+      particlePaint.color = pColor.withOpacity(0.20 * edgeOpacity);
 
       canvas.drawCircle(Offset(dx, dy), particleSize, particlePaint);
     }
@@ -447,9 +469,12 @@ class _SplashBackgroundPainter extends CustomPainter {
         wavePath.lineTo(dx, dy);
       }
 
-      // Color from neon green to electric cyan with low opacity for background aura
-      final Color waveColor =
-          layer % 2 == 0 ? AppColors.neonGreen : AppColors.electricCyan;
+      // Color waves: blue → purple → magenta
+      final Color waveColor = layer == 0
+          ? _splashBlue
+          : layer == 1
+              ? _splashPurple
+              : _splashMagenta;
       wavePaint.color = waveColor.withOpacity(0.12 - (layer * 0.03));
 
       canvas.drawPath(wavePath, wavePaint);

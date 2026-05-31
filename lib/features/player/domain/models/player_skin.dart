@@ -585,6 +585,30 @@ class PlayerSkin {
     isFlat: true,
   );
 
+  // 26. Retro Cyber (Splash Screen Aesthetic)
+  static const PlayerSkin retroCyber = PlayerSkin(
+    name: 'Retro Cyber',
+    outerBorderColor: Color(0xFF141224),
+    panelBgColor: Color(0xFF0A0A0F),
+    metallicGradients: [
+      Color(0xFF141224),
+      Color(0xFF0A0A0F),
+      Color(0xFF07070A),
+      Color(0xFF141224),
+    ],
+    lcdBgColor: Color(0xFF050508),
+    lcdBorderColor: Color(0xFF39FF14),
+    textColor: Color(0xFF39FF14),
+    textMutedColor: Color(0xFF1B5E20),
+    visualizerColor: Color(0xFF39FF14),
+    visualizerPeakColor: Color(0xFF00E5FF),
+    buttonFaceColor: Color(0xFF1A1A24),
+    buttonIconColor: Color(0xFF39FF14),
+    statusLedColor: Color(0xFF00E5FF),
+    bgAssetPath: 'assets/images/bg_scifi.png',
+    isFlat: false, // Semi-skeuomorphic with metallic gradients to match splash screen feel
+  );
+
   static const List<PlayerSkin> all = [
     classicBlue,
     s60Grey,
@@ -609,5 +633,6 @@ class PlayerSkin {
     flatVinylNoir,
     flatPastelLavender,
     flatSakuraLight,
+    retroCyber,
   ];
 }

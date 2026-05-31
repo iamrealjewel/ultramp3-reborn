@@ -8,13 +8,17 @@ class AppColors {
   static const Color obsidianDark = Color(0xFF0F0F16);
   static const Color surfaceCard = Color(0xFF161622);
 
-  // Neon Retro Accents
-  static const Color neonGreen =
-      Color(0xFF39FF14); // Playback active state, equalizers
-  static const Color electricCyan =
-      Color(0xFF00E5FF); // Seek bar, progress, timers
-  static const Color cyberPink =
-      Color(0xFFFF0055); // Heart/Favorites active status, warnings
+  // Primary accent — logo palette (neon blue / purple / magenta)
+  static const Color neonBlue    = Color(0xFF00AAFF); // primary neon blue
+  static const Color vibrantPurple = Color(0xFF9B30FF); // vivid purple
+  static const Color hotMagenta  = Color(0xFFFF2D9E); // hot pink / magenta
+
+  // Legacy aliases — kept so existing references compile without changes
+  static const Color neonGreen   = neonBlue;       // was lime green, now blue
+  static const Color electricCyan = vibrantPurple;  // was cyan, now purple
+
+  // Other Neon Accents
+  static const Color cyberPink   = Color(0xFFFF0055); // Heart/Favorites, warnings
   static const Color laserViolet = Color(0xFF9D00FF); // Ambient glow accents
 
   // Typography Colors
@@ -28,7 +32,13 @@ class AppColors {
 
   // Sleek Neon Gradients
   static const LinearGradient cyberGreenGradient = LinearGradient(
-    colors: [Color(0xFF39FF14), Color(0xFF00E5FF)],
+    colors: [neonBlue, vibrantPurple, hotMagenta],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient logoPalette = LinearGradient(
+    colors: [neonBlue, vibrantPurple, hotMagenta],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

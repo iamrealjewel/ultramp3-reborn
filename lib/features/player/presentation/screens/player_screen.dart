@@ -39,6 +39,9 @@ enum VisualizerStyle {
   frequencyLaser,
   dnaHelix,
   audioMatrixGrid,
+  milkyWayRevolving,
+  accretionBlackHole,
+  illuminatingAurora,
 
   // GPU shader visualizers (Android-only for now)
   shaderAppsRing,
@@ -485,6 +488,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
         for (var star in _stars) {
           star.update(0.08);
         }
+        for (var star in _bgCelestialStars) {
+          star.update(0.08);
+        }
         if (_vinylRotationController.isAnimating) {
           _vinylRotationController.stop();
         }
@@ -505,6 +511,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
       }
 
       for (var star in _stars) {
+        star.update(_visualizerHeights[0] / 38.0);
+      }
+      for (var star in _bgCelestialStars) {
         star.update(_visualizerHeights[0] / 38.0);
       }
 
@@ -637,6 +646,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
       case VisualizerStyle.frequencyLaser:
       case VisualizerStyle.dnaHelix:
       case VisualizerStyle.audioMatrixGrid:
+      case VisualizerStyle.milkyWayRevolving:
+      case VisualizerStyle.accretionBlackHole:
+      case VisualizerStyle.illuminatingAurora:
       case VisualizerStyle.shaderAppsRing:
       case VisualizerStyle.shaderSteamBars:
         return 4; // All newer styles support 4 variations
@@ -1015,6 +1027,31 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
         ),
       ),
     );
+  }
+
+  CelestialStyle? _getCelestialStyle(PlayerSkin skin) {
+    if (skin.name == 'Symbian Classic Blue' ||
+        skin.name == 'Flat Cyberpunk' ||
+        skin.name == 'Glacier Crystalline Ice' ||
+        skin.name == 'Flat Dark Monochrome' ||
+        skin.name == 'Retro Cyber' ||
+        skin.name == 'S60 Classic Grey') {
+      return CelestialStyle.retroCyber;
+    }
+    if (skin.name == 'Matrix Amber' || 
+        skin.name == 'Flat Amber Sunset' ||
+        skin.name == 'Desert Horizon Gold') {
+      return CelestialStyle.milkyWay;
+    }
+    if (skin.name == 'Obsidian Void' || 
+        skin.name == 'Flat Glassmorphic' ||
+        skin.name == 'Ferrari Special Edition') {
+      return CelestialStyle.blackHole;
+    }
+    if (skin.name == 'Neon Aurora Green' || skin.name == 'Flat Polar Cyan') {
+      return CelestialStyle.aurora;
+    }
+    return null;
   }
 
   Widget _buildTactileControl({
@@ -2149,6 +2186,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                           styleIcon = Icons.sync_rounded;
                         if (style == VisualizerStyle.audioMatrixGrid)
                           styleIcon = Icons.apps_rounded;
+                        if (style == VisualizerStyle.milkyWayRevolving)
+                          styleIcon = Icons.brightness_low_rounded;
+                        if (style == VisualizerStyle.accretionBlackHole)
+                          styleIcon = Icons.incomplete_circle_rounded;
+                        if (style == VisualizerStyle.illuminatingAurora)
+                          styleIcon = Icons.filter_hdr_rounded;
                         if (style == VisualizerStyle.shaderAppsRing)
                           styleIcon = Icons.auto_awesome_motion_rounded;
                         if (style == VisualizerStyle.shaderSteamBars)
@@ -2458,6 +2501,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                 ),
               ),
 
+              // Dynamic animated celestial overlays
+              if (_getCelestialStyle(activeSkin) != null)
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _CelestialBackgroundPainter(
+                      style: _getCelestialStyle(activeSkin)!,
+                      time: _animationTime,
+                      bassEnergy: _beatEnergy,
+                      stars: _bgCelestialStars,
+                      coreColor: activeSkin.visualizerColor,
+                      accentColor: activeSkin.visualizerPeakColor,
+                    ),
+                  ),
+                ),
+
               Column(
                 children: [
                   // 2. Tucked Top Bar (full-width flat container at the very top edge with dynamic notch padding, compact in landscape)
@@ -2493,21 +2551,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              'ULTRAMP3',
-                              style: TextStyle(
-                                color: topNavColor,
-                                fontFamily: 'Orbitron',
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                letterSpacing: 1.5,
-                                shadows: [
-                                  Shadow(
-                                      color: topNavColor.withOpacity(0.6),
-                                      blurRadius: 8),
-                                ],
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.asset(
+                                'assets/icons/app_icon.png',
+                                width: 36,
+                                height: 36,
+                                fit: BoxFit.cover,
                               ),
                             ),
+
                             if (isLandscape) ...[
                               const SizedBox(width: 24),
                               IconButton(
@@ -5110,15 +5163,301 @@ class _VisualizerPainter extends CustomPainter {
               } else {
                 cellPaint.color = baseCellColor.withOpacity(0.08);
                 canvas.drawRRect(
-                    RRect.fromRectAndRadius(cellRect, const Radius.circular(2)),
-                    cellPaint);
+                  RRect.fromRectAndRadius(cellRect, const Radius.circular(2)),
+                  cellPaint,
+                );
               }
             }
           }
         }
         break;
 
+      case VisualizerStyle.milkyWayRevolving:
+        {
+          final double cx = w / 2;
+          final double cy = h / 2;
+          final double maxDim = math.min(w, h);
+          final Offset polaris = Offset(cx - w * 0.1, -h * 0.15); // offscreen polar center
+          final double rot = time * 0.45; // slow revolving star arc
 
+          // Soft volumetric curved nebula band
+          final Paint bandGlowPaint = Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = maxDim * 0.32
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
+
+          canvas.save();
+          canvas.clipRect(Offset.zero & size);
+          
+          canvas.translate(polaris.dx, polaris.dy);
+          canvas.rotate(rot);
+          canvas.translate(-polaris.dx, -polaris.dy);
+
+          // Diagonal curved path representing the Milky Way Band inside the LCD display
+          final Path bandPath = Path();
+          bandPath.moveTo(w * 1.2, -h * 0.2);
+          bandPath.quadraticBezierTo(w * 0.5, h * 0.5, w * -0.2, h * 1.2);
+
+          bandGlowPaint.shader = ui.Gradient.linear(
+            Offset(w * 0.9, 0),
+            Offset(0, h * 0.9),
+            [
+              peakColor.withOpacity(0.0),
+              barColor.withOpacity(0.42 + beat * 0.2),
+              peakColor.withOpacity(0.32 + beat * 0.15),
+              barColor.withOpacity(0.0),
+            ],
+            [0.0, 0.4, 0.65, 1.0],
+          );
+          canvas.drawPath(bandPath, bandGlowPaint);
+
+          // Twinkling stars distributed along the diagonal milky way band in visualizer
+          final Paint starPaint = Paint()..style = PaintingStyle.fill;
+          final math.Random random = math.Random(1337);
+          final int density = (variation == 0) ? 45 : ((variation == 2) ? 30 : 20);
+
+          for (int i = 0; i < density; i++) {
+            final double t = i / density;
+            final double baseX = w * 1.2 - t * w * 1.4;
+            final double baseY = -h * 0.2 + (t * h * 1.4) + (math.sin(t * math.pi) * h * 0.08);
+
+            // Scatter offset
+            final double scatterX = (random.nextDouble() - 0.5) * maxDim * 0.14;
+            final double scatterY = (random.nextDouble() - 0.5) * maxDim * 0.14;
+
+            final double amp = amplitudes[i % amplitudes.length] / 38.0;
+            final double flicker = math.sin(time * 5.0 + i).abs() * (0.3 + amp * 0.7);
+            final double starSize = (1.2 + random.nextDouble() * 2.2) * (0.8 + flicker * 0.4);
+            final double opacityVal = (0.35 + (1.0 - t * 0.6) * 0.55) * (0.4 + flicker * 0.6);
+
+            starPaint.color = (i % 2 == 0 ? Colors.white : (i % 2 == 1 ? barColor : peakColor))
+                .withOpacity(opacityVal.clamp(0.0, 1.0));
+            canvas.drawCircle(Offset(baseX + scatterX, baseY + scatterY), starSize, starPaint);
+          }
+          canvas.restore();
+        }
+        break;
+
+      case VisualizerStyle.accretionBlackHole:
+        {
+          final double cx = w / 2;
+          final double cy = h / 2;
+          final double maxDim = math.min(w, h);
+          final double singularityRadius = (variation == 2) ? 18.0 : 12.0;
+
+          // 1. Einstein Ring / Light bending halo (sharp boundary)
+          canvas.drawCircle(
+            Offset(cx, cy),
+            singularityRadius * 1.2,
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1.8 + beat * 2.0
+              ..color = peakColor.withOpacity(0.7 + beat * 0.3)
+              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.8),
+          );
+
+          // 2. Gravitational Lensing of the Accretion Disk (Background part bent ABOVE and BELOW)
+          final Paint lensedPaint = Paint()
+            ..style = PaintingStyle.fill
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5.0);
+
+          // Upper warped lensed arc
+          final double upperWarpRadius = singularityRadius * 1.7 + beat * 8.0;
+          final Path upperLensedPath = Path();
+          upperLensedPath.moveTo(cx - upperWarpRadius, cy - 2);
+          upperLensedPath.cubicTo(
+            cx - upperWarpRadius * 0.7, cy - upperWarpRadius * 0.8,
+            cx + upperWarpRadius * 0.7, cy - upperWarpRadius * 0.8,
+            cx + upperWarpRadius, cy - 2,
+          );
+          upperLensedPath.lineTo(cx + upperWarpRadius, cy - 8);
+          upperLensedPath.cubicTo(
+            cx + upperWarpRadius * 0.7, cy - upperWarpRadius * 1.25,
+            cx - upperWarpRadius * 0.7, cy - upperWarpRadius * 1.25,
+            cx - upperWarpRadius, cy - 8,
+          );
+          upperLensedPath.close();
+
+          // Relativistic Beaming: Left side bright orange/yellow, right side dark red
+          lensedPaint.shader = ui.Gradient.linear(
+            Offset(cx - upperWarpRadius, cy),
+            Offset(cx + upperWarpRadius, cy),
+            [
+              peakColor.withOpacity(0.85 + beat * 0.15), // bright left
+              barColor.withOpacity(0.4),
+              barColor.withOpacity(0.12), // dark right
+            ],
+            [0.0, 0.45, 1.0],
+          );
+          canvas.drawPath(upperLensedPath, lensedPaint);
+
+          // Lower warped lensed arc
+          final Path lowerLensedPath = Path();
+          lowerLensedPath.moveTo(cx - upperWarpRadius, cy + 2);
+          lowerLensedPath.cubicTo(
+            cx - upperWarpRadius * 0.7, cy + upperWarpRadius * 0.7,
+            cx + upperWarpRadius * 0.7, cy + upperWarpRadius * 0.7,
+            cx + upperWarpRadius, cy + 2,
+          );
+          lowerLensedPath.lineTo(cx + upperWarpRadius, cy + 7);
+          lowerLensedPath.cubicTo(
+            cx + upperWarpRadius * 0.7, cy + upperWarpRadius * 1.1,
+            cx - upperWarpRadius * 0.7, cy + upperWarpRadius * 1.1,
+            cx - upperWarpRadius, cy + 7,
+          );
+          lowerLensedPath.close();
+          canvas.drawPath(lowerLensedPath, lensedPaint);
+
+          // 3. Foreground Accretion Disk crossing directly in front of the horizon
+          final double diskW = maxDim * 0.46;
+          final Rect diskRect = Rect.fromLTRB(cx - diskW, cy - 5, cx + diskW, cy + 5);
+          final Paint foregroundDiskPaint = Paint()
+            ..style = PaintingStyle.fill
+            ..shader = ui.Gradient.linear(
+              Offset(cx - diskW, cy),
+              Offset(cx + diskW, cy),
+              [
+                peakColor.withOpacity(0.88 + beat * 0.12), // bright approaching left
+                barColor.withOpacity(0.58),
+                barColor.withOpacity(0.16), // dim receding right
+              ],
+              [0.0, 0.38, 1.0],
+            )
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.5);
+          canvas.drawRect(diskRect, foregroundDiskPaint);
+
+          // Glowing Event Horizon outline
+          canvas.drawCircle(
+            Offset(cx, cy),
+            singularityRadius + 1.2,
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2.0
+              ..color = Colors.white.withOpacity(0.7 + beat * 0.3)
+              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.2),
+          );
+
+          // 4. Singularity Event Horizon (Solid Void Black)
+          canvas.drawCircle(
+            Offset(cx, cy),
+            singularityRadius,
+            Paint()
+              ..style = PaintingStyle.fill
+              ..color = Colors.black,
+          );
+
+          // 5. Inward falling warped spaghettified stars
+          final Paint starPaint = Paint()
+            ..strokeCap = StrokeCap.round
+            ..style = PaintingStyle.stroke;
+
+          for (int i = 0; i < stars.length; i++) {
+            final star = stars[i];
+            final double starTime = (time * 0.65 + i * 0.25) % 1.0;
+            final double currentRadius = (1.0 - starTime) * maxDim * 0.45;
+
+            if (currentRadius <= singularityRadius) continue; // crossed horizon
+
+            final double amp = amplitudes[i % amplitudes.length] / 38.0;
+            // Elliptical path that warps closer to singularity
+            final double angle = star.x * 2 * math.pi + starTime * 4.5;
+            
+            final double startX = cx + math.cos(angle) * currentRadius * 1.35;
+            final double startY = cy + math.sin(angle) * currentRadius * 0.65;
+
+            final double nextAngle = star.x * 2 * math.pi + (starTime - 0.04) * 4.5;
+            final double nextRadius = currentRadius + 10.0 * (1.0 + amp);
+            final double endX = cx + math.cos(nextAngle) * nextRadius * 1.35;
+            final double endY = cy + math.sin(nextAngle) * nextRadius * 0.65;
+
+            final double opacity = ((currentRadius - singularityRadius) / (maxDim * 0.35)).clamp(0.0, 1.0);
+            starPaint
+              ..color = barColor.withOpacity(opacity * 0.58)
+              ..strokeWidth = (1.0 + (1.0 - starTime) * 1.8) * (1.0 + beat * 0.4);
+
+            canvas.drawLine(Offset(startX, startY), Offset(endX, endY), starPaint);
+          }
+        }
+        break;
+
+      case VisualizerStyle.illuminatingAurora:
+        {
+          // Layered waving curtains
+          final int curtains = (variation == 3) ? 4 : 3;
+          final Paint auroraPaint = Paint()..style = PaintingStyle.fill;
+          
+          final Color primary = (variation == 1) 
+              ? Colors.white 
+              : ((variation == 2) ? const Color(0xFFBF55EC) : barColor);
+          final Color secondary = (variation == 1)
+              ? Colors.cyan 
+              : ((variation == 2) ? const Color(0xFFFF007F) : peakColor);
+
+          for (int c = 0; c < curtains; c++) {
+            final Path path = Path();
+            final double baseHeight = h * 0.3 + c * 15.0;
+            final double speed = (variation == 3) ? 2.5 : 1.2;
+            final double wavePhase = time * speed + c * 2.1;
+            
+            path.moveTo(0, h);
+            path.lineTo(0, baseHeight);
+
+            final int steps = 18;
+            for (int i = 0; i <= steps; i++) {
+              final double pct = i / steps;
+              final double dx = pct * w;
+              final double amp = amplitudes[i % amplitudes.length] / 38.0;
+              
+              // Waving sine model
+              final double dy = baseHeight -
+                  (amp * 16.0 * (1.2 + beat)) -
+                  (math.sin(pct * 2.5 * math.pi + wavePhase) * 12.0) -
+                  (math.cos(pct * 4 * math.pi - wavePhase * 0.4) * 6.0);
+                  
+              path.lineTo(dx, dy.clamp(0.0, h));
+            }
+            path.lineTo(w, h);
+            path.close();
+
+            // Blend colors for dynamic curtain lights
+            auroraPaint.shader = ui.Gradient.linear(
+              Offset(w * 0.5, baseHeight - 20.0),
+              Offset(w * 0.5, h),
+              [
+                secondary.withOpacity(0.0),
+                primary.withOpacity((0.36 - c * 0.08 + beat * 0.2).clamp(0.05, 1.0)),
+                Colors.transparent,
+              ],
+              [0.0, 0.4, 1.0],
+            );
+            canvas.drawPath(path, auroraPaint);
+          }
+
+          // Aurora streaks: glowing vertical light columns drifting across the screen
+          final Paint streakPaint = Paint()..style = PaintingStyle.stroke;
+          final int numStreaks = (variation == 3) ? 8 : 5;
+          for (int i = 0; i < numStreaks; i++) {
+            final double pct = (i / numStreaks);
+            final double dx = pct * w + math.sin(time * 0.4 + i) * 10.0;
+            final double amp = amplitudes[i % amplitudes.length] / 38.0;
+            final double streakH = h * 0.45 + amp * h * 0.25 * (1.0 + beat);
+
+            streakPaint.shader = ui.Gradient.linear(
+              Offset(dx, h * 0.1),
+              Offset(dx, h * 0.1 + streakH),
+              [
+                Colors.transparent,
+                secondary.withOpacity(0.12 * (1.0 + beat * 0.8)),
+                primary.withOpacity(0.04),
+                Colors.transparent,
+              ],
+              [0.0, 0.28, 0.7, 1.0],
+            );
+            streakPaint.strokeWidth = 6.0 + math.sin(time * 2.0 + i).abs() * 12.0;
+            canvas.drawLine(Offset(dx, h * 0.1), Offset(dx, h * 0.1 + streakH), streakPaint);
+          }
+        }
+        break;
 
       case VisualizerStyle.shaderAppsRing:
         {
@@ -7237,6 +7576,8 @@ class _TactileRoundToggle extends StatelessWidget {
 enum CelestialStyle {
   milkyWay,
   blackHole,
+  aurora,
+  retroCyber,
 }
 
 class _CelestialBackgroundPainter extends CustomPainter {
@@ -7270,136 +7611,327 @@ class _CelestialBackgroundPainter extends CustomPainter {
     final double maxDim = math.max(w, h);
 
     if (style == CelestialStyle.milkyWay) {
-      // 1. Twinkling Milky Way Spiral Galaxy
-      final corePaint = Paint()
+      // Polaris center off-screen (top left)
+      final Offset polaris = Offset(w * 0.15, -h * 0.12);
+      final double rotation = time * 0.04; // slow rotation as earth rotates
+
+      // Soft volumetric nebula background glow
+      final Paint bandGlowPaint = Paint()
         ..style = PaintingStyle.fill
-        ..shader = ui.Gradient.radial(
-          center,
-          maxDim * 0.35,
-          [
-            coreColor.withOpacity(0.4 + bassEnergy * 0.2),
-            accentColor.withOpacity(0.15 + bassEnergy * 0.1),
-            Colors.transparent,
-          ],
-          [0.0, 0.55, 1.0],
-        );
-      canvas.drawCircle(center, maxDim * 0.35, corePaint);
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 55);
 
-      // Spiral arms particles
-      final particlePaint = Paint()..style = PaintingStyle.fill;
-      final int armCount = 2;
-      final double rotAngle = time * 0.05;
+      // Curve cutting diagonally from top-right to bottom-left representing the milky way band
+      final Path bandPath = Path();
+      bandPath.moveTo(w * 1.1, -h * 0.1);
+      bandPath.quadraticBezierTo(w * 0.65, h * 0.45, w * -0.1, h * 1.1);
+      
+      // Rotate the band slightly to match earth rotation
+      canvas.save();
+      canvas.translate(polaris.dx, polaris.dy);
+      canvas.rotate(rotation);
+      canvas.translate(-polaris.dx, -polaris.dy);
 
-      for (int arm = 0; arm < armCount; arm++) {
-        final double baseAngle = arm * math.pi;
-        for (int i = 0; i < 40; i++) {
-          final double t = i / 40.0;
-          final double distance = t * maxDim * 0.45;
-          final double spiralAngle = baseAngle + t * 4.0 + rotAngle;
-
-          final double dx = center.dx + math.cos(spiralAngle) * distance;
-          final double dy = center.dy + math.sin(spiralAngle) * distance;
-
-          // React to bass for twinkling size and opacity
-          final double sparkle =
-              math.sin(time * 3 + i).abs() * (0.3 + bassEnergy * 0.7);
-          final double sizeVal = (1.5 + t * 2.0) * (0.8 + sparkle * 0.5);
-          final double opacityVal =
-              (0.2 + (1.0 - t) * 0.6) * (0.5 + sparkle * 0.5);
-
-          particlePaint.color = (i % 2 == 0 ? coreColor : accentColor)
-              .withOpacity(opacityVal.clamp(0.0, 1.0));
-          canvas.drawCircle(Offset(dx, dy), sizeVal, particlePaint);
-        }
-      }
-    } else {
-      // 2. Black Hole Gravitational Vortex
-      // Swirling accretion gas rings expanding/contracting with bass
-      final gasPaint = Paint()
+      bandGlowPaint.shader = ui.Gradient.linear(
+        Offset(w * 0.9, 0),
+        Offset(0, h * 0.9),
+        [
+          accentColor.withOpacity(0.0),
+          coreColor.withOpacity(0.24 + bassEnergy * 0.12),
+          accentColor.withOpacity(0.18 + bassEnergy * 0.08),
+          coreColor.withOpacity(0.0),
+        ],
+        [0.0, 0.38, 0.65, 1.0],
+      );
+      
+      // Draw dynamic galactic band thickness
+      canvas.drawPath(bandPath, Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0
-        ..shader = ui.Gradient.radial(
-          center,
-          120.0 + bassEnergy * 40.0,
-          [
-            accentColor.withOpacity(0.35),
-            coreColor.withOpacity(0.1),
-            Colors.transparent,
-          ],
-          [0.0, 0.6, 1.0],
-        );
+        ..strokeWidth = maxDim * 0.28
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 45)
+        ..shader = bandGlowPaint.shader);
 
-      for (int r = 0; r < 3; r++) {
-        final double radius = 40.0 +
-            r * 25.0 +
-            math.sin(time * 2.0 + r).abs() * 15.0 * (1.0 + bassEnergy);
-        canvas.drawCircle(center, radius, gasPaint);
+      // Twinkling stars distributed along the diagonal milky way band
+      final Paint starPaint = Paint()..style = PaintingStyle.fill;
+      final math.Random random = math.Random(101); // deterministic positions
+      for (int i = 0; i < 75; i++) {
+        // Distribute stars along the diagonal axis with scatter
+        final double t = i / 75.0;
+        final double baseX = w * 1.1 - t * w * 1.2;
+        // Curved y coordinates
+        final double baseY = -h * 0.1 + (t * h * 1.2) + (math.sin(t * math.pi) * h * 0.1);
+        
+        // Scatter offset off the main band line
+        final double scatterX = (random.nextDouble() - 0.5) * maxDim * 0.16;
+        final double scatterY = (random.nextDouble() - 0.5) * maxDim * 0.16;
+
+        final double flicker = math.sin(time * 3.5 + i).abs() * (0.3 + bassEnergy * 0.7);
+        final double sizeVal = (1.0 + random.nextDouble() * 2.2) * (0.7 + flicker * 0.4);
+        final double opacityVal = (0.2 + (1.0 - t * 0.5) * 0.5) * (0.4 + flicker * 0.6);
+
+        starPaint.color = (i % 3 == 0 ? Colors.white : (i % 3 == 1 ? coreColor : accentColor))
+            .withOpacity(opacityVal.clamp(0.0, 1.0));
+        canvas.drawCircle(Offset(baseX + scatterX, baseY + scatterY), sizeVal, starPaint);
       }
+      canvas.restore();
+    } else if (style == CelestialStyle.blackHole) {
+      final double cx = center.dx;
+      final double cy = center.dy;
+      final double singularityRadius = isLandscape ? h * 0.08 : w * 0.12;
 
-      // Gravitational lens / accretion glow
-      final lensPaint = Paint()
+      // 1. Einstein Ring / Light bending halo (sharp boundary)
+      canvas.drawCircle(
+        center,
+        singularityRadius * 1.18,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0 + bassEnergy * 2.5
+          ..color = accentColor.withOpacity(0.65 + bassEnergy * 0.35)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
+      );
+
+      // 2. Gravitational Lensing of the Accretion Disk (Background part bent ABOVE and BELOW)
+      final Paint lensedPaint = Paint()
         ..style = PaintingStyle.fill
-        ..shader = ui.Gradient.radial(
-          center,
-          52.0 + bassEnergy * 15.0,
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12.0);
+
+      // Draw Upper warped halo (Disk background bent OVER the singularity)
+      final double upperWarpRadius = singularityRadius * 1.7 + bassEnergy * 15.0;
+      final Path upperLensedPath = Path();
+      upperLensedPath.moveTo(cx - upperWarpRadius, cy - 3);
+      upperLensedPath.cubicTo(
+        cx - upperWarpRadius * 0.7, cy - upperWarpRadius * 0.8,
+        cx + upperWarpRadius * 0.7, cy - upperWarpRadius * 0.8,
+        cx + upperWarpRadius, cy - 3,
+      );
+      upperLensedPath.lineTo(cx + upperWarpRadius, cy - 14);
+      upperLensedPath.cubicTo(
+        cx + upperWarpRadius * 0.7, cy - upperWarpRadius * 1.3,
+        cx - upperWarpRadius * 0.7, cy - upperWarpRadius * 1.3,
+        cx - upperWarpRadius, cy - 14,
+      );
+      upperLensedPath.close();
+
+      // Relativistic Beaming: Left side is spinning towards us (extremely bright yellow),
+      // Right side is spinning away (dimmer, colder red)
+      lensedPaint.shader = ui.Gradient.linear(
+        Offset(cx - upperWarpRadius, cy),
+        Offset(cx + upperWarpRadius, cy),
+        [
+          accentColor.withOpacity(0.8 + bassEnergy * 0.2), // Bright Left
+          coreColor.withOpacity(0.35),
+          coreColor.withOpacity(0.12), // Dark Red/dim Right
+        ],
+        [0.0, 0.45, 1.0],
+      );
+      canvas.drawPath(upperLensedPath, lensedPaint);
+
+      // Draw Lower warped halo (Disk background bent UNDER the singularity)
+      final Path lowerLensedPath = Path();
+      lowerLensedPath.moveTo(cx - upperWarpRadius, cy + 3);
+      lowerLensedPath.cubicTo(
+        cx - upperWarpRadius * 0.7, cy + upperWarpRadius * 0.7,
+        cx + upperWarpRadius * 0.7, cy + upperWarpRadius * 0.7,
+        cx + upperWarpRadius, cy + 3,
+      );
+      lowerLensedPath.lineTo(cx + upperWarpRadius, cy + 12);
+      lowerLensedPath.cubicTo(
+        cx + upperWarpRadius * 0.7, cy + upperWarpRadius * 1.1,
+        cx - upperWarpRadius * 0.7, cy + upperWarpRadius * 1.1,
+        cx - upperWarpRadius, cy + 12,
+      );
+      lowerLensedPath.close();
+      canvas.drawPath(lowerLensedPath, lensedPaint);
+
+      // 3. Foreground Accretion Disk passing in front of Event Horizon
+      // Draw horizontal band crossing directly in front of singularity, with strong relativistic beaming
+      final double diskW = maxDim * 0.55;
+      final Rect diskRect = Rect.fromLTRB(cx - diskW, cy - 8, cx + diskW, cy + 8);
+      final Paint foregroundDiskPaint = Paint()
+        ..style = PaintingStyle.fill
+        ..shader = ui.Gradient.linear(
+          Offset(cx - diskW, cy),
+          Offset(cx + diskW, cy),
           [
-            accentColor.withOpacity(0.55),
-            coreColor.withOpacity(0.2),
-            Colors.transparent,
+            accentColor.withOpacity(0.85 + bassEnergy * 0.15), // left (approaching)
+            coreColor.withOpacity(0.68),
+            coreColor.withOpacity(0.18), // right (receding)
           ],
-          [0.0, 0.55, 1.0],
-        );
-      canvas.drawCircle(center, 52.0 + bassEnergy * 15.0, lensPaint);
+          [0.0, 0.38, 1.0],
+        )
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+      canvas.drawRect(diskRect, foregroundDiskPaint);
 
-      // Singularity / Event Horizon (pure black void)
-      final eventHorizonPaint = Paint()
-        ..style = PaintingStyle.fill
-        ..color = Colors.black;
-      canvas.drawCircle(center, 22.0, eventHorizonPaint);
+      // Add a dynamic glowing core edge
+      canvas.drawCircle(
+        center,
+        singularityRadius + 2.0,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3.0
+          ..color = Colors.white.withOpacity(0.65 + bassEnergy * 0.35)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+      );
 
-      // Inward falling spaghettified stars
-      final starPaint = Paint()
+      // 4. Singularity / Event Horizon (Absolute pitch black void)
+      canvas.drawCircle(
+        center,
+        singularityRadius,
+        Paint()
+          ..style = PaintingStyle.fill
+          ..color = Colors.black,
+      );
+
+      // 5. Relativistic bent orbiting star fields (spaghettified spires)
+      final Paint starPaint = Paint()
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round;
 
       for (int i = 0; i < stars.length; i++) {
         final star = stars[i];
+        final double starTime = (time * 0.6 + i * 0.25) % 1.0;
+        final double currentRadius = (1.0 - starTime) * maxDim * 0.5;
 
-        // Convert star's 3D coordinates into spaghettified inward spiral
-        final double starTime = (time * 0.8 + i * 0.25) % 1.0;
-        final double currentRadius = (1.0 - starTime) * maxDim * 0.55;
+        if (currentRadius <= singularityRadius) continue; // crossed horizon
 
-        if (currentRadius <= 22.0) {
-          // Swallow star when it crosses event horizon
-          continue;
+        // Elliptical path that warps closer to singularity
+        final double angle = star.x * 2 * math.pi + starTime * 5.0;
+        
+        final double startX = cx + math.cos(angle) * currentRadius * 1.4;
+        final double startY = cy + math.sin(angle) * currentRadius * 0.7;
+
+        final double nextAngle = star.x * 2 * math.pi + (starTime - 0.04) * 5.0;
+        final double nextRadius = currentRadius + 14.0 * (1.0 + bassEnergy);
+        final double endX = cx + math.cos(nextAngle) * nextRadius * 1.4;
+        final double endY = cy + math.sin(nextAngle) * nextRadius * 0.7;
+
+        final double opacity = ((currentRadius - singularityRadius) / (maxDim * 0.4)).clamp(0.0, 1.0);
+        starPaint
+          ..color = coreColor.withOpacity(opacity * 0.58)
+          ..strokeWidth = (1.2 + (1.0 - starTime) * 2.0) * (1.0 + bassEnergy * 0.5);
+
+        canvas.drawLine(Offset(startX, startY), Offset(endX, endY), starPaint);
+      }
+    } else if (style == CelestialStyle.retroCyber) {
+      // 1. Drifting green/cyan galaxy particles expanding outward
+      final math.Random random = math.Random(1337); // stable seed
+      final Paint particlePaint = Paint()..style = PaintingStyle.fill;
+      final double speedFactor = 1.0 + bassEnergy * 3.5;
+
+      for (int i = 0; i < 40; i++) {
+        final double baseAngle = random.nextDouble() * 2 * math.pi;
+        final double baseRadius = 25 + random.nextDouble() * maxDim * 0.6;
+        final double driftRadius = (baseRadius + (time * 45.0 * speedFactor)) % (maxDim * 0.65);
+
+        final double dx = w / 2 + math.cos(baseAngle) * driftRadius;
+        final double dy = h / 2 + math.sin(baseAngle) * driftRadius;
+
+        final double edgeOpacity = (1.0 - (driftRadius / (maxDim * 0.65))).clamp(0.0, 1.0);
+        final double starSize = 1.2 + random.nextDouble() * 2.5 * (1.0 + bassEnergy * 0.5);
+
+        particlePaint.color = (i % 2 == 0 ? coreColor : accentColor)
+            .withOpacity(0.24 * edgeOpacity * (0.6 + bassEnergy * 0.4));
+        canvas.drawCircle(Offset(dx, dy), starSize, particlePaint);
+      }
+
+      // 2. Audio-reactive layered horizontal oscilloscope waves across the center
+      final Paint wavePaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6
+        ..strokeCap = StrokeCap.round;
+
+      final double midY = h / 2 + (isLandscape ? 0 : h * 0.08); // center vertically
+      final int samplePoints = 40;
+
+      for (int layer = 0; layer < 3; layer++) {
+        final wavePath = Path();
+        wavePath.moveTo(0, midY);
+
+        final double amplitude = (20.0 + layer * 10.0) * (0.28 + bassEnergy * 1.1);
+        final double frequency = 0.012 + layer * 0.008;
+        final double phaseShift = time * (3.0 + layer * 2.0);
+
+        for (int x = 0; x <= samplePoints; x++) {
+          final double pct = x / samplePoints;
+          final double dx = pct * w;
+          
+          // Modulate wave height by frequency amplitude
+          final double dy = midY +
+              math.sin(pct * w * frequency - phaseShift) *
+                  amplitude *
+                  math.sin(pct * math.pi);
+          wavePath.lineTo(dx, dy);
         }
 
-        final double angle = star.x * 2 * math.pi + starTime * 3.5;
+        final Color waveColor = layer % 2 == 0 ? coreColor : accentColor;
+        wavePaint.color = waveColor.withOpacity((0.22 - layer * 0.06) * (0.6 + bassEnergy * 0.4));
+        canvas.drawPath(wavePath, wavePaint);
+      }
+    } else if (style == CelestialStyle.aurora) {
+      // 3. Volumetric Waving Aurora Curtains
+      final Paint auroraPaint = Paint()..style = PaintingStyle.fill;
+      final int curtains = 3;
 
-        // Draw stretching light tail (spaghettified trail)
-        final double tailLength =
-            10.0 + (1.0 - starTime) * 35.0 * (1.0 + bassEnergy * 2.0);
-        final Path tailPath = Path();
+      for (int c = 0; c < curtains; c++) {
+        final Path path = Path();
+        final double baseHeight = h * 0.35 + c * 35.0;
+        final double wavePhase = time * 0.6 + c * 1.8;
 
-        final double startX = center.dx + math.cos(angle) * currentRadius;
-        final double startY = center.dy + math.sin(angle) * currentRadius;
+        path.moveTo(0, h);
+        path.lineTo(0, baseHeight);
 
-        final double nextAngle = star.x * 2 * math.pi + (starTime - 0.05) * 3.5;
-        final double nextRadius = currentRadius + tailLength;
-        final double endX = center.dx + math.cos(nextAngle) * nextRadius;
-        final double endY = center.dy + math.sin(nextAngle) * nextRadius;
+        final int steps = 20;
+        for (int i = 0; i <= steps; i++) {
+          final double pct = i / steps;
+          final double dx = pct * w;
+          
+          // Volumetric organic waving equation
+          final double dy = baseHeight +
+              math.sin(pct * 2 * math.pi + wavePhase) * 28.0 * (1.0 + bassEnergy * 0.35) +
+              math.cos(pct * 3.5 * math.pi - wavePhase * 0.6) * 12.0;
+          path.lineTo(dx, dy);
+        }
+        path.lineTo(w, h);
+        path.close();
 
-        tailPath.moveTo(startX, startY);
-        tailPath.lineTo(endX, endY);
+        // Vertical linear gradient blending from glowing accent to fully transparent
+        auroraPaint.shader = ui.Gradient.linear(
+          Offset(w * 0.5, baseHeight - 30.0),
+          Offset(w * 0.5, h * 0.95),
+          [
+            accentColor.withOpacity(0.0),
+            coreColor.withOpacity((0.26 - c * 0.08 + bassEnergy * 0.12).clamp(0.02, 1.0)),
+            Colors.transparent,
+          ],
+          [0.0, 0.4, 1.0],
+        );
+        canvas.drawPath(path, auroraPaint);
+      }
 
-        final double opacity =
-            ((currentRadius - 22.0) / (maxDim * 0.55)).clamp(0.0, 1.0);
-        starPaint
-          ..color = coreColor.withOpacity(opacity * 0.65)
-          ..strokeWidth =
-              (1.2 + (1.0 - starTime) * 2.5) * (1.0 + bassEnergy * 0.5);
+      // Draw drifting vertical streaks (curtain lighting beams)
+      final Paint streakPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
 
-        canvas.drawPath(tailPath, starPaint);
+      final int numStreaks = 8;
+      for (int i = 0; i < numStreaks; i++) {
+        final double pct = i / numStreaks;
+        final double dx = pct * w + math.sin(time * 0.35 + i) * 12.0;
+        final double beamLength = h * 0.38 + math.cos(time * 1.1 + i).abs() * h * 0.22 * (1.0 + bassEnergy * 0.4);
+        final double startY = h * 0.12 + math.sin(time * 0.6 + i) * 15.0;
+
+        streakPaint.shader = ui.Gradient.linear(
+          Offset(dx, startY),
+          Offset(dx, startY + beamLength),
+          [
+            Colors.transparent,
+            accentColor.withOpacity(0.10 * (1.0 + bassEnergy * 0.4)),
+            coreColor.withOpacity(0.03),
+            Colors.transparent,
+          ],
+          [0.0, 0.26, 0.72, 1.0],
+        );
+        streakPaint.strokeWidth = 7.0 + math.sin(time * 1.4 + i).abs() * 12.0;
+        canvas.drawLine(Offset(dx, startY), Offset(dx, startY + beamLength), streakPaint);
       }
     }
   }
